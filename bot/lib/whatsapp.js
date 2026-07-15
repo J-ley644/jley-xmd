@@ -11,6 +11,7 @@ import { fileURLToPath } from "url";
 import logger from "./logger.js";
 import config from "../config/config.js";
 import { handleCommand } from "../core/commandHandler.js";
+import groupSettings from "../system/groupSettings.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -173,6 +174,114 @@ async function startWhatsApp() {
     );
 
 
+    socket.ev.on(
+    "group-participants.update",
+    async (update) => {
+
+        try {
+
+            const {
+                id,
+                participants,
+                action
+            } = update;
+
+
+            const settings =
+                groupSettings.get(id);
+
+
+
+            if (action === "add" && settings.welcome) {
+
+
+                for (const user of participants) {
+
+
+                    const jid =
+                        typeof user === "string"
+                            ? user
+                            : user.id;
+
+
+                    const number =
+                        jid.split("@")[0];
+
+
+                    await socket.sendMessage(
+                        id,
+                        {
+                            text:
+`🤖 ${config.botName}
+
+👋 Welcome @${number}!
+
+Welcome to the group.
+
+Enjoy your stay ❤️`,
+                            mentions: [
+                                jid
+                            ]
+                        }
+                    );
+
+
+                }
+
+            }
+
+
+
+            if (action === "remove" && settings.goodbye) {
+
+
+                for (const user of participants) {
+
+
+                    const jid =
+                        typeof user === "string"
+                            ? user
+                            : user.id;
+
+
+                    const number =
+                        jid.split("@")[0];
+
+
+                    await socket.sendMessage(
+                        id,
+                        {
+                            text:
+`🤖 ${config.botName}
+
+👋 Goodbye @${number}
+
+We'll miss you ❤️`,
+                            mentions: [
+                                jid
+                            ]
+                        }
+                    );
+
+
+                }
+
+            }
+
+
+        } catch(error) {
+
+
+            logger.error(
+                error,
+                "Group participant update error"
+            );
+
+
+        }
+
+    }
+);
 
     return socket;
 

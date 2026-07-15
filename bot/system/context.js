@@ -220,12 +220,24 @@ const botLid =
         null;
 
 
+        const isReply =
+    Boolean(quoted);
 
-    const isReply =
-        Boolean(quoted);
+const target =
 
+    // Reply target
+    message.message
+        ?.extendedTextMessage
+        ?.contextInfo
+        ?.participant ||
 
+    // Mention target
+    message.message
+        ?.extendedTextMessage
+        ?.contextInfo
+        ?.mentionedJid?.[0] ||
 
+    null;
 
 
     // Media
@@ -268,14 +280,13 @@ const botLid =
         command,
 
 
-
-
-
         // User
 
         number: realNumber,
 
         pushName,
+
+        target,
 
 
 
@@ -371,21 +382,17 @@ const botLid =
         // Helpers
 
 
-        async reply(text) {
+        async reply(text, options = {}) {
 
+    return client.sendMessage(
+        chat,
+        {
+            text,
+            ...options
+        }
+    );
 
-            return client.sendMessage(
-
-                chat,
-
-                {
-                    text
-                }
-
-            );
-
-
-        },
+},
 
 
 
