@@ -28,7 +28,7 @@ A next generation WhatsApp automation platform.
 📦 Version:
 ${config.version}
 
-❤️ Developed by ${config.ownerName}`
+❤️ Developed by ${config.owner.name}`
         );
 
     }

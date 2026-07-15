@@ -42,15 +42,16 @@ async function getGroupInfo(client, chat) {
 
 
     const admins =
-        members
-        .filter(
-            member =>
-                member.admin === "admin" ||
-                member.admin === "superadmin"
-        )
-        .map(
-            member => member.id
-        );
+members
+.filter(
+    member =>
+        member.admin === "admin" ||
+        member.admin === "superadmin"
+)
+.flatMap(member => [
+    member.id,
+    member.lid
+].filter(Boolean));
 
 
 
@@ -118,8 +119,6 @@ export default async function createContext(client, message) {
         message.key.participant ||
         message.key.remoteJid;
 
-
-
     const chat =
         message.key.remoteJid;
 
@@ -128,17 +127,23 @@ export default async function createContext(client, message) {
 
     // Identity
 
-    const number =
-        sender.split("@")[0];
+const realNumber =
+    sender.includes("@lid")
+    ? config.owner.number
+    : sender
+        .split(":")[0]
+        .replace("@s.whatsapp.net", "")
+        .replace("@lid", "");
+
+        console.log({
+    sender,
+    realNumber
+});
 
 
-
-    const pushName =
-        message.pushName ||
-        "Unknown";
-
-
-
+const pushName =
+    message.pushName ||
+    "Unknown";
 
 
     // Chat
@@ -179,12 +184,11 @@ export default async function createContext(client, message) {
 
 
     const botPhoneJid =
-        client.user.id;
+    client.user?.id || "";
 
 
-
-    const botLid =
-        client.authState?.creds?.me?.lid;
+const botLid =
+    client.user?.lid || "";
 
 
 
@@ -269,7 +273,7 @@ export default async function createContext(client, message) {
 
         // User
 
-        number,
+        number: realNumber,
 
         pushName,
 

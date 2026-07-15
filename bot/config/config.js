@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const config = {
+
     botName: process.env.BOT_NAME || "JLEY-XMD",
 
     version: process.env.BOT_VERSION || "1.0.0",
@@ -11,12 +12,21 @@ const config = {
 
     mode: process.env.MODE || "public",
 
+
     owner: {
+
         name: "J.ley",
-        number: "254702946278"
+
+        number: "254702946278",
+
+        lid: "185122200547532"
+
     },
 
+
     status: "online"
+
 };
+
 
 export default config;

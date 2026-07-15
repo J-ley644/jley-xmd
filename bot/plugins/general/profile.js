@@ -14,7 +14,10 @@ export default {
 
     async execute(ctx) {
 
-        const user = ctx.sender.split("@")[0];
+
+        const user =
+            ctx.number;
+
 
         const text = `
 ╭━━━〔 👤 PROFILE 〕━━━╮
@@ -23,7 +26,9 @@ export default {
 +${user}
 
 💬 Chat:
-${ctx.chat}
+${ctx.isGroup
+    ? (ctx.groupMetadata?.subject || "Group Chat")
+    : "Private Chat"}
 
 🤖 Bot:
 ${ctx.botName}
@@ -34,6 +39,7 @@ Thank you for using JLEY-XMD ❤️
 
 ╰━━━━━━━━━━━━━━━━━━╯
 `;
+
 
         await ctx.reply(text);
 

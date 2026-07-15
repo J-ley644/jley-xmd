@@ -1,51 +1,80 @@
+/**
+ * JLEY-XMD Permission System
+ * --------------------------
+ * Handles command permission checks.
+ */
+
 import config from "../config/config.js";
+import { jidMatch } from "./jid.js";
 
 
+export function isOwner(ctx) {
 
-function isOwner(message) {
-
-
-    const sender =
-        message.key.participant ||
-        message.key.remoteJid;
-
-
-    if(!config.owner.number){
-        return false;
-    }
-
-
-    return sender.includes(
-        config.owner.number
+    return (
+        jidMatch(
+            ctx.sender,
+            config.owner.number
+        )
+        ||
+        jidMatch(
+            ctx.sender,
+            config.owner.lid
+        )
     );
 
 }
 
 
+export default function checkPermissions(ctx, command) {
 
-function checkPermission(
-    message,
-    permissions={}
-){
+    const permissions =
+        command.permissions || {};
 
 
-    if(
-        permissions.owner &&
-        !isOwner(message)
-    ){
+    // Owner only
+    if (permissions.owner) {
 
-        return false;
+        if (!isOwner(ctx)) {
+
+            return "❌ This command is only available to the bot owner.";
+
+        }
 
     }
 
 
-    return true;
+    // Group only
+    if (permissions.group && !ctx.isGroup) {
+
+        return "❌ This command can only be used in groups.";
+
+    }
+
+
+    // Private only
+    if (permissions.private && ctx.isGroup) {
+
+        return "❌ This command can only be used in private chats.";
+
+    }
+
+
+    // Group admin
+    if (permissions.admin && !ctx.isAdmin) {
+
+        return "❌ You must be a group admin to use this command.";
+
+    }
+
+
+    // Bot admin
+    if (permissions.botAdmin && !ctx.isBotAdmin) {
+
+        return "❌ I need admin rights to use this command.";
+
+    }
+
+
+    return null;
 
 }
-
-
-
-export {
-    isOwner,
-    checkPermission
-};

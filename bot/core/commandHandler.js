@@ -1,9 +1,6 @@
 import config from "../config/config.js";
 import logger from "../lib/logger.js";
-import {
-    checkPermission,
-    isOwner
-} from "../lib/permissions.js";
+import checkPermissions from "../lib/permissions.js";
 import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 
@@ -37,7 +34,6 @@ async function handleCommand(
             "";
 
 
-
         if(!text.startsWith(config.prefix)){
             return;
         }
@@ -69,63 +65,71 @@ async function handleCommand(
 
 
 
-        message.isOwner =
-            isOwner(message);
-
-
-
-        if(
-            !checkPermission(
-                message,
-                command.permissions
-            )
-        ){
-
-            await client.sendMessage(
-                message.chat,
-                {
-                    text:
-                    "❌ You don't have permission to use this command."
-                }
+        // Create command context first
+        const ctx =
+            await createContext(
+                client,
+                message
             );
 
-            return;
+
+
+        // Permission check
+        const permissionError =
+            checkPermissions(
+                ctx,
+                command
+            );
+
+
+
+        if(permissionError){
+
+            return await ctx.reply(
+                permissionError
+            );
 
         }
 
 
 
-        const ctx = await createContext(client, message);
+        // Cooldown check
 
-    const cooldown =
-    command.cooldown || 3;
+        const cooldown =
+            command.cooldown || 3;
 
-const result =
-    cooldowns.check(
-        ctx.sender,
-        command.name,
-        cooldown
-    );
 
-if (!result.allowed) {
 
-    return await ctx.reply(
+        const result =
+            cooldowns.check(
+                ctx.sender,
+                command.name,
+                cooldown
+            );
+
+
+
+        if(!result.allowed){
+
+            return await ctx.reply(
 
 `⏳ Please wait ${result.remaining}s before using *${command.name}* again.`
 
-    );
+            );
 
-}
+        }
 
-await command.execute(ctx);
+
+
+        // Execute plugin
+
+        await command.execute(ctx);
 
 
 
     }catch(error){
 
-        logger.error(
-            error
-        );
+        logger.error(error);
 
     }
 

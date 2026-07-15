@@ -10,16 +10,21 @@ export default {
 
     description: "Show bot owner information",
 
+    permissions: {
+        owner: true
+    },
+
     async execute(ctx) {
 
         const text = `
 ╭━━━〔 👤 OWNER INFO 〕━━━╮
 
 👤 Name:
-${config.ownerName}
+${config.owner.name}
+
 
 📞 Number:
-${config.ownerNumber}
+${config.owner. number}
 
 🤖 Bot:
 ${config.botName}
