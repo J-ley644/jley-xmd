@@ -3,18 +3,7 @@ import logger from "../lib/logger.js";
 import checkPermissions from "../lib/permissions.js";
 import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
-
-
-let plugins = new Map();
-
-
-
-function setPlugins(pluginCollection){
-
-    plugins = pluginCollection;
-
-}
-
+import pluginStore from "../system/pluginStore.js";
 
 
 async function handleCommand(
@@ -55,7 +44,7 @@ async function handleCommand(
 
 
         const command =
-            plugins.get(commandName);
+    pluginStore.get(commandName);
 
 
 
@@ -138,6 +127,5 @@ async function handleCommand(
 
 
 export {
-    setPlugins,
     handleCommand
 };

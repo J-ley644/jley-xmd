@@ -19,12 +19,18 @@ export default {
 
     async execute(ctx) {
 
-        const menu = generateMenu(
-            pluginStore.getAll()
-        );
+    const plugins = pluginStore.getAll();
 
-        await ctx.reply(menu);
+    console.log("PLUGIN COUNT:", plugins.size);
 
+    for (const [key, value] of plugins) {
+        console.log(key, "=>", value.name);
     }
+
+    const menu = generateMenu(plugins);
+
+    await ctx.reply(menu);
+
+}
 
 };

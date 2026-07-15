@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 
 async function loadPlugins() {
 
+    console.log("PLUGIN LOADER VERSION 2");
+
     const plugins = new Map();
 
     const pluginsPath = path.join(
@@ -56,13 +58,53 @@ async function loadPlugins() {
                 const command = plugin.default;
 
                 if (!command || !command.name) {
-                    logger.warn(`Invalid plugin skipped: ${file}`);
-                    continue;
-                }
 
-                plugins.set(command.name, command);
+    logger.warn(
+        `Invalid plugin skipped: ${file} (missing name)`
+    );
 
-                logger.info(`Loaded plugin: ${command.name}`);
+    continue;
+
+}
+
+
+// Validate category
+
+if (!command.category) {
+
+    logger.warn(
+        `Plugin ${command.name} has no category`
+    );
+
+    command.category = "general";
+
+}
+
+
+// Register main command
+
+if (plugins.has(command.name)) {
+
+    logger.warn(
+        `Duplicate command skipped: ${command.name}`
+    );
+
+    continue;
+
+}
+
+
+plugins.set(
+    command.name,
+    command
+);
+
+
+// Register aliases
+
+logger.info(
+    `Loaded plugin: ${command.name}`
+);
 
             } catch (error) {
 

@@ -2,7 +2,6 @@ import pluginStore from "../system/pluginStore.js";
 import config from "../config/config.js";
 import logger from "../lib/logger.js";
 import loadPlugins from "./pluginLoader.js";
-import { setPlugins } from "./commandHandler.js";
 import startWhatsApp from "../lib/whatsapp.js";
 
 
@@ -35,21 +34,13 @@ async function startBot() {
             Load command plugins
         */
 
-        const plugins =
-            await loadPlugins();
-
-
+        await loadPlugins();
 
         /*
             Connect plugins to command engine
         */
 
-        setPlugins(plugins);
-
-        
-
-
-
+    
         logger.info(
             "✅ Core system initialized"
         );
@@ -62,10 +53,7 @@ async function startBot() {
     } catch(error) {
 
 
-        logger.error(
-            "Failed starting JLEY-XMD",
-            error
-        );
+        logger.error(error);
 
 
         process.exit(1);

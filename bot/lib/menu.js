@@ -2,6 +2,17 @@ import config from "../config/config.js";
 
 function generateMenu(plugins) {
 
+    console.log("MENU SIZE:", plugins.size);
+
+for (const [key, command] of plugins) {
+    console.log(
+        "MENU ENTRY:",
+        key,
+        "=>",
+        command.name
+    );
+}
+
     const categories = {};
 
     for (const [, command] of plugins) {
