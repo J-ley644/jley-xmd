@@ -21,21 +21,26 @@ export default {
         }
 
 
-        console.log(
-            "BOT:",
-            ctx.client.user.id
-        );
+        const metadata =
+            ctx.groupMetadata;
 
 
-        console.log(
-            "ADMINS:",
-            ctx.admins
-        );
+        const groupName =
+            metadata?.subject || "Unknown";
+
+
+        const description =
+            metadata?.desc || "No description";
 
 
         await ctx.reply(
 
-`╭━━━〔 GROUP INFO 〕━━━╮
+`╭━━━〔 🤖 ${ctx.botName} 〕━━━╮
+
+📌 *GROUP INFORMATION*
+
+🏷️ Name:
+${groupName}
 
 👥 Members:
 ${ctx.members.length}
@@ -43,13 +48,16 @@ ${ctx.members.length}
 👑 Admins:
 ${ctx.admins.length}
 
-🛡 You Admin:
-${ctx.isAdmin ? "Yes" : "No"}
+🛡 Your Status:
+${ctx.isAdmin ? "✅ Admin" : "❌ Member"}
 
-🤖 Bot Admin:
-${ctx.isBotAdmin ? "Yes" : "No"}
+🤖 Bot Status:
+${ctx.isBotAdmin ? "✅ Admin" : "❌ Not Admin"}
 
-📌 Chat:
+📝 Description:
+${description}
+
+🆔 Group ID:
 ${ctx.chat}
 
 ╰━━━━━━━━━━━━━━╯`

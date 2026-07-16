@@ -8,6 +8,19 @@ const DB_PATH = path.join(
     "groupSettings.json"
 );
 
+
+const DEFAULT_SETTINGS = {
+
+    welcome: false,
+
+    goodbye: false,
+
+    antilink: false
+
+};
+
+
+
 function load() {
 
     if (!fs.existsSync(DB_PATH)) {
@@ -19,19 +32,17 @@ function load() {
 
     }
 
+
     const content =
         fs.readFileSync(DB_PATH, "utf8").trim();
 
-    if (!content) {
 
-        fs.writeFileSync(
-            DB_PATH,
-            JSON.stringify({}, null, 4)
-        );
+    if (!content) {
 
         return {};
 
     }
+
 
     try {
 
@@ -39,16 +50,14 @@ function load() {
 
     } catch {
 
-        fs.writeFileSync(
-            DB_PATH,
-            JSON.stringify({}, null, 4)
-        );
-
         return {};
 
     }
 
 }
+
+
+
 
 function save(data) {
 
@@ -59,53 +68,76 @@ function save(data) {
 
 }
 
+
+
+
 function get(group) {
 
     const db = load();
 
+
     if (!db[group]) {
 
         db[group] = {
-
-            welcome: false,
-            goodbye: false
-
+            ...DEFAULT_SETTINGS
         };
 
         save(db);
 
     }
 
+
     return db[group];
 
 }
+
+
+
 
 function set(group, key, value) {
 
     const db = load();
 
+
     if (!db[group]) {
 
         db[group] = {
-
-            welcome: false,
-            goodbye: false
-
+            ...DEFAULT_SETTINGS
         };
 
     }
 
+
     db[group][key] = value;
 
+
     save(db);
+
 
     return db[group];
 
 }
 
+
+
+
+function getValue(group, key){
+
+    const settings =
+        get(group);
+
+    return settings[key];
+
+}
+
+
+
 export default {
 
     get,
-    set
+
+    set,
+
+    getValue
 
 };

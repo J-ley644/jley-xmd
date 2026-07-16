@@ -12,6 +12,7 @@ import logger from "./logger.js";
 import config from "../config/config.js";
 import { handleCommand } from "../core/commandHandler.js";
 import groupSettings from "../system/groupSettings.js";
+import { containsLink } from "./antiLink.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -164,10 +165,115 @@ async function startWhatsApp() {
 
 
 
-            await handleCommand(
-                socket,
-                message
-            );
+            // Anti-Link protection
+
+try {
+
+
+    const chat =
+        message.key.remoteJid;
+
+
+    const sender =
+        message.key.participant ||
+        message.key.remoteJid;
+
+
+    const text =
+        message.message?.conversation ||
+        message.message?.extendedTextMessage?.text ||
+        "";
+
+
+
+    if(chat.endsWith("@g.us")){
+
+
+        const settings =
+            groupSettings.get(chat);
+
+
+
+        if(settings.antilink){
+
+
+
+            const metadata =
+                await socket.groupMetadata(chat);
+
+
+
+            const participant =
+                metadata.participants
+                .find(
+                    p =>
+                    p.id === sender
+                );
+
+
+
+            const isAdmin =
+                participant?.admin;
+
+
+
+            if(
+                containsLink(text)
+                &&
+                !isAdmin
+            ){
+
+
+                await socket.sendMessage(
+                    chat,
+                    {
+                        delete:
+                        message.key
+                    }
+                );
+
+
+
+                await socket.sendMessage(
+                    chat,
+                    {
+                        text:
+`🚫 Links are not allowed here.
+
+Please remove links @${sender.split("@")[0]}`,
+                        mentions:[
+                            sender
+                        ]
+                    }
+                );
+
+
+                return;
+
+            }
+
+        }
+
+    }
+
+
+}catch(error){
+
+    logger.error(
+        error,
+        "Anti-link error"
+    );
+
+}
+
+
+
+// Continue normal commands
+
+await handleCommand(
+    socket,
+    message
+);
 
 
         }

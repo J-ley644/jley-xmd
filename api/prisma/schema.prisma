@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(CLIENT)
+
+  bots    Bot[]
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bot {
+  id      String    @id @default(uuid())
+  name    String
+  status  BotStatus @default(OFFLINE)
+  session String?
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  logs     Log[]
+  settings BotSetting[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BotSetting {
+  id    String @id @default(uuid())
+  key   String
+  value String
+
+  botId String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+}
+
+model Log {
+  id String @id @default(uuid())
+
+  event String
+  type  String
+
+  botId String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Ticket {
+  id String @id @default(uuid())
+
+  subject String
+  message String
+  status  TicketStatus @default(OPEN)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum BotStatus {
+  ONLINE
+  OFFLINE
+  ERROR
+}
+
+enum TicketStatus {
+  OPEN
+  REPLIED
+  CLOSED
+}

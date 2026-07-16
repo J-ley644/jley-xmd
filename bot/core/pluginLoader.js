@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import logger from "../lib/logger.js";
 import pluginStore from "../system/pluginStore.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,7 +39,16 @@ async function loadPlugins() {
 
         const files = fs.readdirSync(categoryPath);
 
+        console.log(
+    "CATEGORY:",
+    category,
+    "FILES:",
+    files
+);
+
         for (const file of files) {
+
+            console.log("FOUND PLUGIN FILE:", category, file);
 
             if (!file.endsWith(".js")) {
                 continue;
@@ -52,8 +62,8 @@ async function loadPlugins() {
                 );
 
                 const plugin = await import(
-                    `file://${pluginPath}`
-                );
+    pathToFileURL(pluginPath).href
+);
 
                 const command = plugin.default;
 

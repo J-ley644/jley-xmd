@@ -327,19 +327,22 @@ const target =
 
         // Runtime
 
-        runtime,
+runtime,
 
 
-        version:
-            runtime.version(),
+config,
 
 
-        botName:
-            runtime.botName(),
+version:
+    runtime.version(),
 
 
-        prefix:
-            config.prefix,
+botName:
+    runtime.botName(),
+
+
+prefix:
+    config.prefix,
 
 
 
