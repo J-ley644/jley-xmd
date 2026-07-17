@@ -1,10 +1,10 @@
 function Navbar() {
   return (
     <header className="navbar">
-      <h3>Client Dashboard</h3>
+      <h3>Dashboard</h3>
 
-      <div className="user">
-        <span>Welcome, User</span>
+      <div>
+        <span>JL Balance: 0 JL</span>
       </div>
     </header>
   );

@@ -1,13 +1,22 @@
+import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Navbar";
+
 function DashboardLayout({ children }) {
   return (
-    <div>
-      <header>
-        <h2>JLEY-XMD Dashboard</h2>
-      </header>
+    <div className="dashboard-container">
 
-      <main>
-        {children}
-      </main>
+      <Sidebar />
+
+      <div className="dashboard-main">
+
+        <Navbar />
+
+        <main className="dashboard-content">
+          {children}
+        </main>
+
+      </div>
+
     </div>
   );
 }

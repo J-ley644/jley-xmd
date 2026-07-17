@@ -31,16 +31,31 @@ export async function register(data) {
         );
 
     const user =
-        await prisma.user.create({
+    await prisma.user.create({
 
-            data: {
-                name: data.name,
-                email: data.email,
-                password,
-                role: "CLIENT"
+        data: {
+
+            name: data.name,
+
+            email: data.email,
+
+            password,
+
+            role: "CLIENT",
+
+            wallet: {
+
+                create: {
+
+                    balance: 500
+
+                }
+
             }
 
-        });
+        }
+
+    });
 
     return user;
 
