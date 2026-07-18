@@ -5,6 +5,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import Dashboard from "../pages/Dashboard";
 
 import Login from "../pages/Login";
+import Deployments from "../pages/Deployments";
 
 
 function AppRoutes() {
@@ -40,6 +41,15 @@ function AppRoutes() {
         }
 
       />
+
+      <Route
+    path="/deployments"
+    element={
+        <DashboardLayout>
+            <Deployments />
+        </DashboardLayout>
+    }
+/>
 
 
     </Routes>

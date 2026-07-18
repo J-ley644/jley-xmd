@@ -10,24 +10,45 @@ import { fileURLToPath } from "url";
 
 import logger from "./logger.js";
 import config from "../config/config.js";
+
 import { handleCommand } from "../core/commandHandler.js";
+
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antiLink.js";
 
 
+
 const __filename = fileURLToPath(import.meta.url);
+
 const __dirname = path.dirname(__filename);
 
 
 
-async function startWhatsApp() {
 
 
-    const sessionPath =
-        path.join(
-            __dirname,
-            "../sessions"
-        );
+/*
+    JLEY WhatsApp Engine
+
+    Every deployment receives:
+    - own session
+    - own socket
+    - own identity
+*/
+
+
+async function startWhatsApp(deploymentId) {
+
+
+    const sessionName =
+    deploymentId || "main";
+
+
+const sessionPath =
+    path.join(
+        __dirname,
+        "../sessions",
+        sessionName
+    );
 
 
 
@@ -43,6 +64,7 @@ async function startWhatsApp() {
 
 
 
+
     const socket =
         makeWASocket({
 
@@ -50,16 +72,21 @@ async function startWhatsApp() {
 
             auth: state,
 
-            printQRInTerminal: false,
 
-            browser: [
+            browser:[
                 "JLEY-XMD",
-                "Chrome",
-                "1.0.0"
+                "Dashboard",
+                config.version
             ]
 
         });
 
+
+
+
+    /*
+        Save WhatsApp credentials
+    */
 
 
     socket.ev.on(
@@ -69,9 +96,15 @@ async function startWhatsApp() {
 
 
 
+
+    /*
+        Connection handler
+    */
+
+
     socket.ev.on(
         "connection.update",
-        (update) => {
+        async(update)=>{
 
 
             const {
@@ -82,11 +115,21 @@ async function startWhatsApp() {
 
 
 
+
             if(qr){
 
+
                 logger.info(
-                    "Scan the QR code below:"
+                    `QR generated for deployment ${deploymentId}`
                 );
+
+
+                /*
+                    Temporary terminal QR
+
+                    Later replaced by:
+                    Dashboard QR API
+                */
 
 
                 qrcode.generate(
@@ -96,24 +139,30 @@ async function startWhatsApp() {
                     }
                 );
 
+
             }
 
 
 
-            if(connection === "open"){
+
+            if(connection==="open"){
+
 
                 logger.info(
-                    "✅ WhatsApp connected"
+                    `✅ Deployment ${deploymentId} connected`
                 );
+
 
             }
 
 
 
-            if(connection === "close"){
 
 
-                const shouldReconnect =
+            if(connection==="close"){
+
+
+                const reconnect =
                     lastDisconnect
                     ?.error
                     ?.output
@@ -123,20 +172,26 @@ async function startWhatsApp() {
 
 
                 logger.warn(
-                    "WhatsApp connection closed"
+                    `Deployment ${deploymentId} disconnected`
                 );
 
 
 
-                if(shouldReconnect){
+                if(reconnect){
+
 
                     logger.info(
-                        "Reconnecting..."
+                        "Restarting connection..."
                     );
 
-                    startWhatsApp();
+
+                    startWhatsApp(
+                        deploymentId
+                    );
+
 
                 }
+
 
             }
 
@@ -146,18 +201,33 @@ async function startWhatsApp() {
 
 
 
+
+    /*
+        Message Engine
+
+        All incoming messages enter here
+
+        Later:
+        Dashboard logs
+        AI engine
+        Plugin engine
+        Analytics
+    */
+
+
     socket.ev.on(
         "messages.upsert",
-        async ({messages}) => {
+        async({messages})=>{
 
 
             const message =
                 messages[0];
 
 
-            if(!message.message){
+
+            if(!message.message)
                 return;
-            }
+
 
 
             message.chat =
@@ -165,110 +235,392 @@ async function startWhatsApp() {
 
 
 
-            // Anti-Link protection
 
-try {
-
-
-    const chat =
-        message.key.remoteJid;
-
-
-    const sender =
-        message.key.participant ||
-        message.key.remoteJid;
-
-
-    const text =
-        message.message?.conversation ||
-        message.message?.extendedTextMessage?.text ||
-        "";
+            await processMessage(
+                socket,
+                message
+            );
 
 
 
-    if(chat.endsWith("@g.us")){
+        }
+    );
+
+
+
+
+
+
+/*
+    Group Events Engine
+
+    Handles:
+    - welcome
+    - goodbye
+    - future group automation
+*/
+
+
+socket.ev.on(
+"group-participants.update",
+async(update)=>{
+
+
+    try{
+
+
+        const {
+            id,
+            participants,
+            action
+        } = update;
+
 
 
         const settings =
-            groupSettings.get(chat);
+            groupSettings.get(id);
 
 
 
-        if(settings.antilink){
+        if(!settings)
+            return;
 
 
 
-            const metadata =
-                await socket.groupMetadata(chat);
+
+        /*
+            Get group name
+
+            Instead of:
+            "Welcome to the group"
+
+            We now get:
+            "Welcome to JLEY Developers"
+        */
+
+
+        const metadata =
+            await socket.groupMetadata(id);
 
 
 
-            const participant =
-                metadata.participants
-                .find(
-                    p =>
-                    p.id === sender
-                );
+        const groupName =
+            metadata.subject;
 
 
 
-            const isAdmin =
-                participant?.admin;
+
+
+        if(
+            action==="add"
+            &&
+            settings.welcome
+        ){
 
 
 
-            if(
-                containsLink(text)
-                &&
-                !isAdmin
-            ){
+            for(const user of participants){
+
+
+
+                const jid =
+                    typeof user==="string"
+                    ? user
+                    : user.id;
+
+
+
+                const number =
+                    jid.split("@")[0];
+
+
 
 
                 await socket.sendMessage(
-                    chat,
+
+                    id,
+
                     {
-                        delete:
-                        message.key
+
+
+text:
+`🤖 ${config.botName}
+
+👋 Welcome @${number}
+
+You joined:
+📌 ${groupName}
+
+Enjoy your stay ❤️`,
+
+
+
+mentions:[
+    jid
+]
+
+
                     }
+
                 );
 
-
-
-                await socket.sendMessage(
-                    chat,
-                    {
-                        text:
-`🚫 Links are not allowed here.
-
-Please remove links @${sender.split("@")[0]}`,
-                        mentions:[
-                            sender
-                        ]
-                    }
-                );
-
-
-                return;
 
             }
 
+
         }
+
+
+
+
+
+        if(
+            action==="remove"
+            &&
+            settings.goodbye
+        ){
+
+
+
+            for(const user of participants){
+
+
+
+                const jid =
+                    typeof user==="string"
+                    ? user
+                    : user.id;
+
+
+
+
+                const number =
+                    jid.split("@")[0];
+
+
+
+
+                await socket.sendMessage(
+
+                    id,
+
+                    {
+
+text:
+`🤖 ${config.botName}
+
+👋 Goodbye @${number}
+
+Left:
+📌 ${groupName}
+
+We'll miss you ❤️`,
+
+
+mentions:[
+    jid
+]
+
+
+                    }
+
+                );
+
+
+
+            }
+
+
+        }
+
+
+
+
+    }catch(error){
+
+
+        logger.error(
+            error,
+            "Group event error"
+        );
+
 
     }
 
 
-}catch(error){
+});
 
-    logger.error(
-        error,
-        "Anti-link error"
-    );
+
+
+
+
+/*
+    Return socket
+
+    DeploymentManager will store this
+
+    Future:
+
+    deploymentManager.addBot(
+        id,
+        socket
+    )
+
+*/
+
+
+return socket;
+
+
 
 }
 
 
 
-// Continue normal commands
+
+
+
+/*
+    Message Processing Layer
+
+    This keeps whatsapp.js clean
+
+    Later this becomes:
+    JLEY Engine
+*/
+
+
+async function processMessage(
+    socket,
+    message
+){
+
+
+
+try{
+
+
+
+const chat =
+    message.key.remoteJid;
+
+
+
+const sender =
+    message.key.participant ||
+    message.key.remoteJid;
+
+
+
+const text =
+    message.message?.conversation ||
+    message.message?.extendedTextMessage?.text ||
+    "";
+
+
+
+
+
+/*
+    Anti-Link System
+*/
+
+
+if(chat.endsWith("@g.us")){
+
+
+    const settings =
+        groupSettings.get(chat);
+
+
+
+    if(
+        settings?.antilink
+    ){
+
+
+
+        const metadata =
+            await socket.groupMetadata(chat);
+
+
+
+        const participant =
+            metadata.participants.find(
+                p =>
+                p.id===sender
+            );
+
+
+
+        const isAdmin =
+            participant?.admin;
+
+
+
+        if(
+            containsLink(text)
+            &&
+            !isAdmin
+        ){
+
+
+
+            await socket.sendMessage(
+
+                chat,
+
+                {
+                    delete:
+                    message.key
+                }
+
+            );
+
+
+
+
+            await socket.sendMessage(
+
+                chat,
+
+                {
+
+text:
+`🚫 Links are not allowed here.
+
+@${sender.split("@")[0]} please remove the link.`,
+
+mentions:[
+    sender
+]
+
+                }
+
+            );
+
+
+
+            return;
+
+        }
+
+
+    }
+
+
+}
+
+
+
+
+
+/*
+    JLEY Command Engine
+
+    Every command/plugin enters here
+*/
+
 
 await handleCommand(
     socket,
@@ -276,122 +628,24 @@ await handleCommand(
 );
 
 
-        }
-    );
+
+}catch(error){
 
 
-    socket.ev.on(
-    "group-participants.update",
-    async (update) => {
-
-        try {
-
-            const {
-                id,
-                participants,
-                action
-            } = update;
-
-
-            const settings =
-                groupSettings.get(id);
-
-
-
-            if (action === "add" && settings.welcome) {
-
-
-                for (const user of participants) {
-
-
-                    const jid =
-                        typeof user === "string"
-                            ? user
-                            : user.id;
-
-
-                    const number =
-                        jid.split("@")[0];
-
-
-                    await socket.sendMessage(
-                        id,
-                        {
-                            text:
-`🤖 ${config.botName}
-
-👋 Welcome @${number}!
-
-Welcome to the group.
-
-Enjoy your stay ❤️`,
-                            mentions: [
-                                jid
-                            ]
-                        }
-                    );
-
-
-                }
-
-            }
-
-
-
-            if (action === "remove" && settings.goodbye) {
-
-
-                for (const user of participants) {
-
-
-                    const jid =
-                        typeof user === "string"
-                            ? user
-                            : user.id;
-
-
-                    const number =
-                        jid.split("@")[0];
-
-
-                    await socket.sendMessage(
-                        id,
-                        {
-                            text:
-`🤖 ${config.botName}
-
-👋 Goodbye @${number}
-
-We'll miss you ❤️`,
-                            mentions: [
-                                jid
-                            ]
-                        }
-                    );
-
-
-                }
-
-            }
-
-
-        } catch(error) {
-
-
-            logger.error(
-                error,
-                "Group participant update error"
-            );
-
-
-        }
-
-    }
+logger.error(
+    error,
+    "Message engine error"
 );
 
-    return socket;
+
 
 }
+
+
+
+}
+
+
 
 
 

@@ -46,7 +46,7 @@ async function startBot() {
         );
 
 
-        await startWhatsApp();
+        await startWhatsApp("main");
 
 
 
