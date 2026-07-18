@@ -14,6 +14,7 @@ export function addBot(
 }
 
 
+
 export function getBot(
     deploymentId
 ){
@@ -23,6 +24,39 @@ export function getBot(
     );
 
 }
+
+
+
+export function updateBot(
+    deploymentId,
+    updates
+){
+
+    const bot =
+        runningBots.get(deploymentId);
+
+
+    if(!bot){
+        return null;
+    }
+
+
+    const updated = {
+        ...bot,
+        ...updates
+    };
+
+
+    runningBots.set(
+        deploymentId,
+        updated
+    );
+
+
+    return updated;
+
+}
+
 
 
 export function removeBot(
@@ -58,6 +92,7 @@ export function removeBot(
 }
 
 
+
 export function getAllBots(){
 
     return Array.from(
@@ -65,6 +100,7 @@ export function getAllBots(){
     );
 
 }
+
 
 
 export function isRunning(
@@ -76,6 +112,7 @@ export function isRunning(
     );
 
 }
+
 
 
 export function getRunningCount(){

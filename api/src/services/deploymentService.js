@@ -350,3 +350,20 @@ export async function deleteDeployment(id) {
 
 
 }
+
+export async function updateDeploymentPairing(
+    id,
+    data
+){
+
+    return await prisma.deployment.update({
+
+        where:{
+            id
+        },
+
+        data
+
+    });
+
+}

@@ -15,6 +15,11 @@ import { handleCommand } from "../core/commandHandler.js";
 
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antiLink.js";
+import {
+    setDeployment
+} from "../system/deploymentStore.js";
+import { updateBot } from "../../api/src/services/deploymentManager.js";
+import { updateDeploymentPairing } from "../../api/src/services/deploymentService.js";
 
 
 
@@ -118,42 +123,50 @@ const sessionPath =
 
             if(qr){
 
-
-                logger.info(
-                    `QR generated for deployment ${deploymentId}`
-                );
-
-
-                /*
-                    Temporary terminal QR
-
-                    Later replaced by:
-                    Dashboard QR API
-                */
+    logger.info(
+        `QR generated for deployment ${deploymentId}`
+    );
 
 
-                qrcode.generate(
-                    qr,
-                    {
-                        small:true
-                    }
-                );
+    updateBot(
+        deploymentId,
+        {
+            qrCode: qr,
+            connectionStatus:"WAITING_SCAN"
+        }
+    );
 
 
-            }
+    qrcode.generate(
+        qr,
+        {
+            small:true
+        }
+    );
 
+}
 
 
 
-            if(connection==="open"){
+
+            if(connection === "open"){
+
+    logger.info(
+        "✅ WhatsApp connected"
+    );
 
 
-                logger.info(
-                    `✅ Deployment ${deploymentId} connected`
-                );
+    updateBot(
+        deploymentId,
+        {
+            qrCode:null,
+            sessionReady:true,
+            connectionStatus:"CONNECTED",
+            lastConnected:new Date()
+        }
+    );
 
-
-            }
+}
 
 
 
@@ -546,15 +559,25 @@ if(chat.endsWith("@g.us")){
 
 
         const participant =
-            metadata.participants.find(
-                p =>
-                p.id===sender
-            );
+    metadata.participants.find(
+        p =>
+            p.id === sender ||
+            p.lid === sender ||
+            p.phoneNumber === sender
+    );
 
 
 
         const isAdmin =
-            participant?.admin;
+    participant?.admin === "admin" ||
+    participant?.admin === "superadmin";
+
+
+    logger.info({
+    sender,
+    participant,
+    isAdmin
+}, "Anti-link admin check");
 
 
 
