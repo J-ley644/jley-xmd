@@ -1,7 +1,8 @@
 import makeWASocket, {
     useMultiFileAuthState,
     DisconnectReason,
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    delay
 } from "@whiskeysockets/baileys";
 
 import qrcode from "qrcode-terminal";
@@ -17,435 +18,404 @@ import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antiLink.js";
 
 
-
-const __filename = fileURLToPath(import.meta.url);
-
-const __dirname = path.dirname(__filename);
+const __filename =
+fileURLToPath(import.meta.url);
 
 
+const __dirname =
+path.dirname(__filename);
 
 
 
 /*
-    JLEY WhatsApp Engine
+================================================
 
-    Every deployment receives:
-    - own session
-    - own socket
-    - own identity
+        JLEY-XMD WHATSAPP ENGINE
+
+================================================
+
+Features:
+
+✓ Multi deployment support
+✓ QR pairing
+✓ Session auth
+✓ Dashboard integration
+✓ Safe database updates
+✓ Reconnect handling
+
+================================================
 */
 
 
-async function startWhatsApp(deploymentId) {
+
+const sockets =
+new Map();
 
 
-    const sessionName =
-    deploymentId || "main";
+
+
+
+async function safeDeploymentUpdate(
+    deploymentId,
+    data
+){
+
+    logger.info(
+        {
+            deploymentId,
+            data
+        },
+        "Deployment update skipped (legacy mode)"
+    );
+
+}
+
+
+
+
+
+
+async function startWhatsApp(
+    deploymentId="main"
+){
+
+
+
+console.log(
+    "🔥 WHATSAPP START DEPLOYMENT ID:",
+    deploymentId
+);
+
 
 
 const sessionPath =
-    path.join(
-        __dirname,
-        "../sessions",
-        sessionName
-    );
+path.join(
+    __dirname,
+    "../sessions",
+    deploymentId
+);
 
 
 
-    const { state, saveCreds } =
-        await useMultiFileAuthState(
-            sessionPath
-        );
 
 
+const {
+    state,
+    saveCreds
+}
+=
+await useMultiFileAuthState(
+    sessionPath
+);
 
-    const { version } =
-        await fetchLatestBaileysVersion();
 
 
 
 
-    const socket =
-        makeWASocket({
+const {
+    version
+}
+=
+await fetchLatestBaileysVersion();
 
-            version,
 
-            auth: state,
 
 
-            browser:[
-                "JLEY-XMD",
-                "Dashboard",
-                config.version
-            ]
 
-        });
 
+const socket =
+makeWASocket({
 
+    version,
 
+    auth:state,
 
-    /*
-        Save WhatsApp credentials
-    */
 
+    browser:[
+        "JLEY-XMD",
+        "Dashboard",
+        config.version
+    ]
 
-    socket.ev.on(
-        "creds.update",
-        saveCreds
-    );
+});
 
+/*
+=========================================
+SESSION ID PAIRING
+=========================================
+*/
 
 
 
-    /*
-        Connection handler
-    */
+sockets.set(
+    deploymentId,
+    socket
+);
 
 
-    socket.ev.on(
-        "connection.update",
-        async(update)=>{
 
 
-            const {
-                connection,
-                lastDisconnect,
-                qr
-            } = update;
 
+socket.ev.on(
+"creds.update",
+saveCreds
+);
 
 
 
-            if(qr){
 
 
-                logger.info(
-                    `QR generated for deployment ${deploymentId}`
-                );
+socket.ev.on(
+"connection.update",
+async(update)=>{
 
 
-                /*
-                    Temporary terminal QR
+const {
+    connection,
+    qr,
+    lastDisconnect
+}
+=
+update;
 
-                    Later replaced by:
-                    Dashboard QR API
-                */
 
 
-                qrcode.generate(
-                    qr,
-                    {
-                        small:true
-                    }
-                );
 
 
-            }
+if(qr){
 
 
+logger.info(
+{
+deploymentId
+},
+"QR Generated"
+);
 
 
-            if(connection==="open"){
 
 
-                logger.info(
-                    `✅ Deployment ${deploymentId} connected`
-                );
+await safeDeploymentUpdate(
+deploymentId,
+{
 
+qrCode:qr,
 
-            }
+sessionReady:false,
 
+status:"PENDING"
 
+}
+);
 
 
 
-            if(connection==="close"){
+try{
 
+await safeDeploymentUpdate(
+    deploymentId,
+    {
+        qrCode: qr,
+        sessionReady:false,
+        status:"PENDING"
+    }
+);
 
-                const reconnect =
-                    lastDisconnect
-                    ?.error
-                    ?.output
-                    ?.statusCode
-                    !== DisconnectReason.loggedOut;
 
+}catch{}
 
 
-                logger.warn(
-                    `Deployment ${deploymentId} disconnected`
-                );
 
 
 
-                if(reconnect){
+qrcode.generate(
+qr,
+{
+small:true
+}
+);
 
 
-                    logger.info(
-                        "Restarting connection..."
-                    );
 
+}
 
-                    startWhatsApp(
-                        deploymentId
-                    );
 
 
-                }
 
+if(connection==="open"){
 
-            }
 
 
-        }
-    );
+logger.info(
+{
+deploymentId
+},
+"✅ WhatsApp Connected"
+);
 
 
 
 
-    /*
-        Message Engine
+await safeDeploymentUpdate(
+deploymentId,
+{
 
-        All incoming messages enter here
+qrCode:null,
 
-        Later:
-        Dashboard logs
-        AI engine
-        Plugin engine
-        Analytics
-    */
+sessionReady:true,
 
+status:"RUNNING",
 
-    socket.ev.on(
-        "messages.upsert",
-        async({messages})=>{
+lastConnected:new Date()
 
+}
+);
 
-            const message =
-                messages[0];
 
 
 
-            if(!message.message)
-                return;
+try{
 
+await safeDeploymentUpdate(
+    deploymentId,
+    {
+        qrCode:null,
+        sessionReady:true,
+        status:"RUNNING",
+        lastConnected:new Date()
+    }
+);
 
 
-            message.chat =
-                message.key.remoteJid;
+}catch{}
 
 
 
+}
 
-            await processMessage(
-                socket,
-                message
-            );
 
 
 
-        }
-    );
+if(connection==="close"){
 
 
 
+const code =
+lastDisconnect
+?.error
+?.output
+?.statusCode;
+
+
+
+logger.warn(
+{
+deploymentId,
+code
+},
+"WhatsApp disconnected"
+);
+
+
+
+
+
+const reconnect =
+code !== DisconnectReason.loggedOut;
+
+
+
+
+if(reconnect){
+
+
+setTimeout(
+()=>{
+
+startWhatsApp(
+deploymentId
+);
+
+},
+3000
+);
+
+
+}else{
+
+
+sockets.delete(
+deploymentId
+);
+
+
+}
+
+
+
+}
+
+
+
+});
 
 
 
 /*
-    Group Events Engine
+================================================
 
-    Handles:
-    - welcome
-    - goodbye
-    - future group automation
+        MESSAGE EVENT ENGINE
+
+================================================
 */
 
 
 socket.ev.on(
-"group-participants.update",
-async(update)=>{
+"messages.upsert",
+async({messages})=>{
 
 
-    try{
+try{
+    console.log("📩 MESSAGE RECEIVED", messages[0]?.key);
 
 
-        const {
-            id,
-            participants,
-            action
-        } = update;
+for(const message of messages){
 
 
 
-        const settings =
-            groupSettings.get(id);
+if(!message.message)
+    continue;
 
 
 
-        if(!settings)
-            return;
+message.chat =
+message.key.remoteJid;
 
 
 
+await processMessage(
+socket,
+message
+);
 
-        /*
-            Get group name
 
-            Instead of:
-            "Welcome to the group"
 
-            We now get:
-            "Welcome to JLEY Developers"
-        */
+}
 
 
-        const metadata =
-            await socket.groupMetadata(id);
 
+}catch(error){
 
 
-        const groupName =
-            metadata.subject;
+logger.error(
+error,
+"Message event failed"
+);
 
 
 
+}
 
-
-        if(
-            action==="add"
-            &&
-            settings.welcome
-        ){
-
-
-
-            for(const user of participants){
-
-
-
-                const jid =
-                    typeof user==="string"
-                    ? user
-                    : user.id;
-
-
-
-                const number =
-                    jid.split("@")[0];
-
-
-
-
-                await socket.sendMessage(
-
-                    id,
-
-                    {
-
-
-text:
-`🤖 ${config.botName}
-
-👋 Welcome @${number}
-
-You joined:
-📌 ${groupName}
-
-Enjoy your stay ❤️`,
-
-
-
-mentions:[
-    jid
-]
-
-
-                    }
-
-                );
-
-
-            }
-
-
-        }
-
-
-
-
-
-        if(
-            action==="remove"
-            &&
-            settings.goodbye
-        ){
-
-
-
-            for(const user of participants){
-
-
-
-                const jid =
-                    typeof user==="string"
-                    ? user
-                    : user.id;
-
-
-
-
-                const number =
-                    jid.split("@")[0];
-
-
-
-
-                await socket.sendMessage(
-
-                    id,
-
-                    {
-
-text:
-`🤖 ${config.botName}
-
-👋 Goodbye @${number}
-
-Left:
-📌 ${groupName}
-
-We'll miss you ❤️`,
-
-
-mentions:[
-    jid
-]
-
-
-                    }
-
-                );
-
-
-
-            }
-
-
-        }
-
-
-
-
-    }catch(error){
-
-
-        logger.error(
-            error,
-            "Group event error"
-        );
-
-
-    }
 
 
 });
@@ -454,19 +424,185 @@ mentions:[
 
 
 
+
 /*
-    Return socket
+================================================
 
-    DeploymentManager will store this
+        GROUP AUTOMATION ENGINE
 
-    Future:
-
-    deploymentManager.addBot(
-        id,
-        socket
-    )
-
+================================================
 */
+
+
+socket.ev.on(
+"group-participants.update",
+async(update)=>{
+
+
+try{
+
+
+const {
+id,
+participants,
+action
+}
+=
+update;
+
+
+
+
+const settings =
+groupSettings.get(id);
+
+
+
+if(!settings)
+    return;
+
+
+
+
+
+const metadata =
+await socket.groupMetadata(id);
+
+
+
+const groupName =
+metadata.subject;
+
+
+
+
+
+for(const participant of participants){
+
+
+
+const jid =
+typeof participant === "string"
+?
+participant
+:
+participant.id;
+
+
+
+const number =
+jid.split("@")[0];
+
+
+
+
+
+
+
+if(
+action==="add"
+&&
+settings.welcome
+){
+
+
+
+await socket.sendMessage(
+id,
+{
+
+
+text:
+`🤖 ${config.botName}
+
+👋 Welcome @${number}
+
+📌 Group:
+${groupName}
+
+Enjoy your stay ❤️`,
+
+
+mentions:[
+jid
+]
+
+
+}
+
+);
+
+
+
+}
+
+
+
+
+
+if(
+action==="remove"
+&&
+settings.goodbye
+){
+
+
+
+await socket.sendMessage(
+id,
+{
+
+
+text:
+`🤖 ${config.botName}
+
+👋 Goodbye @${number}
+
+📌 Left:
+${groupName}
+
+We'll miss you ❤️`,
+
+
+mentions:[
+jid
+]
+
+
+}
+
+);
+
+
+
+}
+
+
+
+}
+
+
+
+}catch(error){
+
+
+logger.error(
+error,
+"Group automation failed"
+);
+
+
+
+}
+
+
+
+});
+
+
+
+
+
 
 
 return socket;
@@ -481,18 +617,17 @@ return socket;
 
 
 /*
-    Message Processing Layer
+================================================
 
-    This keeps whatsapp.js clean
+        MESSAGE PROCESSOR
 
-    Later this becomes:
-    JLEY Engine
+================================================
 */
 
 
 async function processMessage(
-    socket,
-    message
+socket,
+message
 ){
 
 
@@ -502,111 +637,167 @@ try{
 
 
 const chat =
-    message.key.remoteJid;
+message.key.remoteJid;
 
 
 
 const sender =
-    message.key.participant ||
-    message.key.remoteJid;
+message.key.participant ||
+message.participant ||
+message.key.remoteJid;
+
+
+const botJid = socket.user.id;
+const botLid = socket.user.lid;
+
+const normalize = (id = "") =>
+    id
+        .replace(/:\d+@/, "@")
+        .replace(/lid$/, "s.whatsapp.net")
+        .toLowerCase();
+
+if (
+    normalize(sender) === normalize(botJid)
+) {
+    return;
+}
+
+logger.info(
+{
+    chat,
+    sender
+},
+"Message identity check"
+);
+
+
 
 
 
 const text =
-    message.message?.conversation ||
-    message.message?.extendedTextMessage?.text ||
-    "";
 
+message.message?.conversation
+
+||
+
+message.message
+?.extendedTextMessage
+?.text
+
+||
+
+message.message
+?.imageMessage
+?.caption
+
+||
+
+"";
 
 
 
 
 /*
-    Anti-Link System
+================================================
+
+        ANTI LINK SYSTEM
+
+================================================
 */
 
 
-if(chat.endsWith("@g.us")){
-
-
-    const settings =
-        groupSettings.get(chat);
-
-
-
-    if(
-        settings?.antilink
-    ){
+if(
+chat.endsWith("@g.us")
+){
 
 
 
-        const metadata =
-            await socket.groupMetadata(chat);
+const settings =
+groupSettings.get(chat);
 
 
 
-        const participant =
-            metadata.participants.find(
-                p =>
-                p.id===sender
-            );
+if(settings?.antilink){
 
 
 
-        const isAdmin =
-            participant?.admin;
-
-
-
-        if(
-            containsLink(text)
-            &&
-            !isAdmin
-        ){
-
-
-
-            await socket.sendMessage(
-
-                chat,
-
-                {
-                    delete:
-                    message.key
-                }
-
-            );
+const metadata =
+await socket.groupMetadata(chat);
 
 
 
 
-            await socket.sendMessage(
 
-                chat,
+const member =
+metadata.participants.find(
+    p =>
+        normalize(p.id) === normalize(sender) ||
+        normalize(p.lid) === normalize(sender)
+);
 
-                {
+
+
+
+
+const isAdmin =
+    member?.admin === "admin" ||
+    member?.admin === "superadmin";
+
+const isBot =
+    normalize(sender) === normalize(botJid) ||
+    (botLid && normalize(sender) === normalize(botLid)) ||
+    message.key.fromMe;
+
+
+if (
+    containsLink(text) &&
+    !isAdmin &&
+    !isBot
+) {
+
+
+
+await socket.sendMessage(
+chat,
+{
+delete:
+message.key
+}
+);
+
+
+
+
+
+await socket.sendMessage(
+chat,
+{
 
 text:
-`🚫 Links are not allowed here.
+`🚫 Links are not allowed.
 
-@${sender.split("@")[0]} please remove the link.`,
+@${sender.split("@")[0]} remove the link.`,
 
 mentions:[
-    sender
+sender
 ]
 
-                }
 
-            );
+}
 
-
-
-            return;
-
-        }
+);
 
 
-    }
+
+return;
+
+
+}
+
+
+
+}
+
 
 
 }
@@ -614,17 +805,18 @@ mentions:[
 
 
 
-
 /*
-    JLEY Command Engine
+================================================
 
-    Every command/plugin enters here
+        COMMAND ENGINE
+
+================================================
 */
 
 
 await handleCommand(
-    socket,
-    message
+socket,
+message
 );
 
 
@@ -632,9 +824,10 @@ await handleCommand(
 }catch(error){
 
 
+
 logger.error(
-    error,
-    "Message engine error"
+error,
+"Message processing error"
 );
 
 
@@ -645,7 +838,179 @@ logger.error(
 
 }
 
+/*
+================================================
 
+        SOCKET MANAGEMENT
+
+================================================
+*/
+
+
+function getSocket(
+deploymentId
+){
+
+return sockets.get(
+deploymentId
+);
+
+}
+
+
+
+
+
+function removeSocket(
+deploymentId
+){
+
+sockets.delete(
+deploymentId
+);
+
+}
+
+
+
+
+
+
+
+function getActiveSockets()
+{
+
+return [
+...sockets.keys()
+];
+
+}
+
+
+
+
+
+
+/*
+================================================
+
+        DEPLOYMENT STARTER
+
+================================================
+
+Used by:
+
+- Dashboard deploy system
+- Main bot
+- Future worker manager
+
+================================================
+*/
+
+
+async function launchWhatsApp(
+deploymentId="main"
+){
+
+
+
+const existing =
+getSocket(
+deploymentId
+);
+
+
+
+if(existing){
+
+
+logger.warn(
+{
+deploymentId
+},
+"Deployment already running"
+);
+
+
+
+return existing;
+
+
+}
+
+
+
+
+
+const socket =
+await startWhatsApp(
+deploymentId
+);
+
+
+
+return socket;
+
+
+
+}
+
+
+
+
+
+
+
+/*
+================================================
+
+        HEALTH CHECK
+
+================================================
+*/
+
+
+function isConnected(
+deploymentId
+){
+
+
+
+const socket =
+getSocket(
+deploymentId
+);
+
+
+
+return Boolean(
+socket?.user
+);
+
+
+
+}
+
+
+
+
+/*
+================================================
+
+        EXPORTS
+
+================================================
+*/
+
+
+export {
+    startWhatsApp,
+    launchWhatsApp,
+    getSocket,
+    removeSocket,
+    getActiveSockets,
+    isConnected,
+};
 
 
 
