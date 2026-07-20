@@ -24,7 +24,9 @@ const config = {
     },
 
 
-    status: "online"
+    status: "online",
+
+    repo: "https://github.com/J-ley644/jley-xmd"
 
 };
 
