@@ -1,10 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const DB_PATH = path.join(
-    process.cwd(),
-    "bot",
-    "database",
+    __dirname,
     "groupSettings.json"
 );
 
@@ -121,10 +123,9 @@ function set(group, key, value) {
 
 
 
-function getValue(group, key){
+function getValue(group, key) {
 
-    const settings =
-        get(group);
+    const settings = get(group);
 
     return settings[key];
 

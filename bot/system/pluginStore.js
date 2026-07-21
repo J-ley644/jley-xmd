@@ -11,6 +11,7 @@ class PluginStore {
         this.plugins = new Map();
     }
 
+
     /**
      * Replace all loaded plugins.
      */
@@ -18,12 +19,43 @@ class PluginStore {
         this.plugins = plugins;
     }
 
+
     /**
-     * Get all plugins.
+     * Get all registered commands including aliases.
+     * Used by command execution.
      */
     getAll() {
         return this.plugins;
     }
+
+
+    /**
+     * Get only unique main commands.
+     * Used by menu/help systems.
+     */
+    getCommands() {
+
+        const commands = new Map();
+
+
+        for (const plugin of this.plugins.values()) {
+
+            if (!commands.has(plugin.name)) {
+
+                commands.set(
+                    plugin.name,
+                    plugin
+                );
+
+            }
+
+        }
+
+
+        return commands;
+
+    }
+
 
     /**
      * Get a plugin by name.
@@ -32,6 +64,7 @@ class PluginStore {
         return this.plugins.get(name);
     }
 
+
     /**
      * Check if plugin exists.
      */
@@ -39,12 +72,14 @@ class PluginStore {
         return this.plugins.has(name);
     }
 
+
     /**
      * Number of loaded plugins.
      */
     size() {
         return this.plugins.size;
     }
+
 
     /**
      * Return plugins as array.
@@ -54,5 +89,6 @@ class PluginStore {
     }
 
 }
+
 
 export default new PluginStore();

@@ -109,8 +109,19 @@ plugins.set(
     command
 );
 
+if (Array.isArray(command.aliases)) {
 
-// Register aliases
+    for (const alias of command.aliases) {
+
+        if (!plugins.has(alias)) {
+
+            plugins.set(alias, command);
+
+        }
+
+    }
+
+}
 
 logger.info(
     `Loaded plugin: ${command.name}`

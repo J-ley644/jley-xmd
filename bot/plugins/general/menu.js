@@ -19,7 +19,7 @@ export default {
 
     async execute(ctx) {
 
-    const plugins = pluginStore.getAll();
+    const plugins = pluginStore.getCommands();
 
     console.log("PLUGIN COUNT:", plugins.size);
 
