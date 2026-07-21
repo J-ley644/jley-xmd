@@ -45,33 +45,33 @@ Features:
 
 ================================================
 */
-
-
-
 const sockets =
 new Map();
 
 
+import prisma from "../../api/src/config/prisma.js";
 
+async function safeDeploymentUpdate(deploymentId, data) {
 
+    try {
 
-async function safeDeploymentUpdate(
-    deploymentId,
-    data
-){
+        await prisma.deployment.update({
 
-    logger.info(
-        {
-            deploymentId,
+            where: {
+                id: deploymentId
+            },
+
             data
-        },
-        "Deployment update skipped (legacy mode)"
-    );
+
+        });
+
+    } catch (error) {
+
+        console.log("Deployment update failed:", error.message);
+
+    }
 
 }
-
-
-
 
 
 
@@ -693,6 +693,8 @@ message.message
 ||
 
 "";
+
+console.log("MESSAGE TEXT:", text);
 
 
 

@@ -9,43 +9,21 @@ import {
 
 
 
-
-export async function getDeployments() {
-
+export async function getDeployments(ownerId) {
 
     return await prisma.deployment.findMany({
 
-        include: {
-
-            owner: {
-
-                select: {
-
-                    id:true,
-
-                    name:true,
-
-                    email:true
-
-                }
-
-            }
-
+        where: {
+            ownerId
         },
 
-
         orderBy: {
-
-            createdAt:"desc"
-
+            createdAt: "desc"
         }
-
 
     });
 
-
 }
-
 
 
 
@@ -53,38 +31,23 @@ export async function getDeployments() {
 
 export async function createDeployment(data) {
 
+    return await prisma.deployment.create({
 
-    const deployment =
-        await prisma.deployment.create({
+        data: {
 
-            data:{
+            botName: data.botName,
 
+            ownerId: data.ownerId,
 
-                botName:data.botName,
+            jlCost: 50,
 
+            status: "PENDING"
 
-                ownerId:data.ownerId,
+        }
 
-
-                jlCost:50,
-
-
-                status:"PENDING"
-
-
-            }
-
-
-        });
-
-
-
-    return deployment;
-
+    });
 
 }
-
-
 
 
 
@@ -93,11 +56,10 @@ export async function createDeployment(data) {
 export async function startDeployment(id) {
 
 
-
     const deployment =
         await prisma.deployment.findUnique({
 
-            where:{
+            where: {
                 id
             }
 
@@ -105,31 +67,14 @@ export async function startDeployment(id) {
 
 
 
-
-
-    if(!deployment){
-
+    if (!deployment) {
 
         throw new Error(
             "Deployment not found"
         );
 
-
     }
 
-
-
-
-
-    /*
-        Start real WhatsApp engine
-
-        Creates:
-        - Baileys socket
-        - Session
-        - QR
-        - Running instance
-    */
 
 
     const botInstance =
@@ -139,43 +84,25 @@ export async function startDeployment(id) {
 
 
 
-
-
-
-
     await prisma.deployment.update({
 
-
-        where:{
-
+        where: {
             id
-
         },
 
+        data: {
 
-        data:{
-
-
-            status:"RUNNING"
-
+            status: "RUNNING"
 
         }
-
 
     });
 
 
 
-
-
     return botInstance;
 
-
 }
-
-
-
-
 
 
 
@@ -184,50 +111,25 @@ export async function startDeployment(id) {
 export async function stopDeployment(id) {
 
 
-
-    /*
-        Stop WhatsApp engine
-    */
-
-
     stopBotEngine(id);
-
-
-
 
 
 
     return await prisma.deployment.update({
 
-
-        where:{
-
-
+        where: {
             id
-
-
         },
 
+        data: {
 
-        data:{
-
-
-            status:"STOPPED"
-
+            status: "STOPPED"
 
         }
 
-
-
     });
 
-
-
 }
-
-
-
-
 
 
 
@@ -236,38 +138,15 @@ export async function stopDeployment(id) {
 export async function getDeployment(id) {
 
 
-
     return await prisma.deployment.findUnique({
 
-
-        where:{
-
-
+        where: {
             id
-
-
-        },
-
-
-        include:{
-
-
-            owner:true
-
-
         }
-
-
 
     });
 
-
-
 }
-
-
-
-
 
 
 
@@ -279,74 +158,39 @@ export async function updateDeploymentStatus(
 ) {
 
 
-
     return await prisma.deployment.update({
 
-
-        where:{
-
-
+        where: {
             id
-
-
         },
 
-
-        data:{
-
+        data: {
 
             status
 
-
         }
-
-
 
     });
 
-
-
 }
-
-
-
-
-
-
-
 
 
 export async function deleteDeployment(id) {
 
 
-
     stopBotEngine(id);
 
 
-
-    deploymentManager.removeBot(
-        id
-    );
-
-
+    deploymentManager.removeBot(id);
 
 
 
     return await prisma.deployment.delete({
 
-
-        where:{
-
-
+        where: {
             id
-
-
         }
 
-
-
     });
-
-
 
 }

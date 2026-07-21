@@ -1,5 +1,7 @@
 import startWhatsApp from "../../../bot/lib/whatsapp.js";
+import prisma from "../config/prisma.js";
 import * as deploymentManager from "./deploymentManager.js";
+
 
 
 export async function startBotEngine(deployment){
@@ -9,6 +11,7 @@ export async function startBotEngine(deployment){
         await startWhatsApp(
             deployment.id
         );
+
 
 
     const botInstance = {
@@ -51,6 +54,22 @@ export async function startBotEngine(deployment){
 
 
 
+    await prisma.deployment.update({
+
+        where:{
+            id: deployment.id
+        },
+
+        data:{
+
+            status:"RUNNING"
+
+        }
+
+    });
+
+
+
     return botInstance;
 
 }
@@ -60,7 +79,7 @@ export async function startBotEngine(deployment){
 
 
 
-export function stopBotEngine(id){
+export async function stopBotEngine(id){
 
 
     const bot =
@@ -71,14 +90,40 @@ export function stopBotEngine(id){
     if(bot?.socket){
 
 
-        bot.socket.end();
+        try{
 
+            await bot.socket.logout();
+
+        }catch(error){
+
+            console.log(
+                "Socket logout failed",
+                error.message
+            );
+
+        }
 
     }
 
 
 
     deploymentManager.removeBot(id);
+
+
+
+    await prisma.deployment.update({
+
+        where:{
+            id
+        },
+
+        data:{
+
+            status:"STOPPED"
+
+        }
+
+    });
 
 
 }

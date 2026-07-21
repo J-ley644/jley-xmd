@@ -1,60 +1,37 @@
 import { Routes, Route } from "react-router-dom";
 
-import DashboardLayout from "../layouts/DashboardLayout";
-
-import Dashboard from "../pages/Dashboard";
-
-import Login from "../pages/Login";
-import Deployments from "../pages/Deployments";
+import Home from "../pages/Home";
+import Deploy from "../pages/Deploy";
 
 
-function AppRoutes() {
+function AppRoutes(){
+
+    return (
+
+        <Routes>
 
 
-  return (
+            <Route
 
-    <Routes>
+                path="/"
 
+                element={<Home />}
 
-      <Route
-
-        path="/login"
-
-        element={<Login />}
-
-      />
+            />
 
 
+            <Route
 
-      <Route
+                path="/deploy"
 
-        path="/"
+                element={<Deploy />}
 
-        element={
-
-          <DashboardLayout>
-
-            <Dashboard />
-
-          </DashboardLayout>
-
-        }
-
-      />
-
-      <Route
-    path="/deployments"
-    element={
-        <DashboardLayout>
-            <Deployments />
-        </DashboardLayout>
-    }
-/>
+            />
 
 
-    </Routes>
+        </Routes>
 
-  );
+    );
 
 }
 

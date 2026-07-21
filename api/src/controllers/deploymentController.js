@@ -6,19 +6,21 @@ export async function getDeployments(req, res) {
     try {
 
         const deployments =
-            await deploymentService.getDeployments();
+            await deploymentService.getDeployments(
+                req.user.id
+            );
 
 
         res.json({
 
-            success: true,
+            success:true,
 
             deployments
 
         });
 
 
-    } catch (error) {
+    } catch(error){
 
         console.log(error);
 
@@ -105,12 +107,10 @@ export async function pairDeployment(req,res){
 
     try {
 
-
         const deployment =
             await deploymentService.getDeployment(
                 req.params.id
             );
-
 
 
         if(!deployment){
@@ -126,21 +126,23 @@ export async function pairDeployment(req,res){
         }
 
 
+        await deploymentService.startDeployment(
+            deployment.id
+        );
+
 
         res.json({
 
             success:true,
 
-            message:"Pairing request received.",
+            message:"Pairing started.",
 
             deploymentId:deployment.id
 
         });
 
 
-
     } catch(error){
-
 
         console.log(error);
 
@@ -162,31 +164,30 @@ export async function pairDeployment(req,res){
 
 export async function startDeployment(req,res){
 
-    try {
+    console.log("🚀 START DEPLOYMENT CALLED:", req.params.id);
 
+    try {
 
         const bot =
             await deploymentService.startDeployment(
                 req.params.id
             );
 
-
         res.json({
 
-            success:true,
+    success: true,
 
-            message:"Bot started.",
+    message: "Bot started.",
 
-            bot
+    deploymentId: req.params.id,
 
-        });
+    status: "RUNNING"
 
+});
 
     } catch(error){
 
-
         console.log(error);
-
 
         res.status(500).json({
 
@@ -195,7 +196,6 @@ export async function startDeployment(req,res){
             message:error.message
 
         });
-
 
     }
 
