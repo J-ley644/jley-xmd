@@ -116,11 +116,14 @@ export default async function createContext(client, message) {
 
 
     const sender =
-        message.key.participant ||
-        message.key.remoteJid;
+    message.key.participantAlt ||
+    message.key.remoteJidAlt ||
+    message.key.participant ||
+    message.key.remoteJid;
 
     const chat =
-        message.key.remoteJid;
+    message.key.remoteJidAlt ||
+    message.key.remoteJid;
 
 
 
@@ -387,13 +390,35 @@ prefix:
 
         async reply(text, options = {}) {
 
-    return client.sendMessage(
+    console.log("========== REPLY DEBUG ==========");
+    console.log({
+        bot: client.user?.id,
+        botLid: client.user?.lid,
         chat,
-        {
-            text,
-            ...options
-        }
-    );
+        fromMe: message.key.fromMe
+    });
+
+    try {
+
+        const result = await client.sendMessage(
+            chat,
+            {
+                text,
+                ...options
+            }
+        );
+
+        console.log("========== REPLY SUCCESS ==========");
+        console.log(result.key);
+
+        return result;
+
+    } catch(error) {
+
+        console.log("========== REPLY ERROR ==========");
+        console.log(error);
+
+    }
 
 },
 

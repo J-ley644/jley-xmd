@@ -127,6 +127,7 @@ logger.info(
     `Loaded plugin: ${command.name}`
 );
 
+
             } catch (error) {
 
                 logger.error(

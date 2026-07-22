@@ -16,6 +16,8 @@ import { handleCommand } from "../core/commandHandler.js";
 
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antiLink.js";
+import loadPlugins from "../core/pluginLoader.js";
+import pluginStore from "../system/pluginStore.js";
 
 
 const __filename =
@@ -86,7 +88,9 @@ console.log(
     deploymentId
 );
 
-
+if (pluginStore.size() === 0) {
+    await loadPlugins();
+}
 
 const sessionPath =
 path.join(
@@ -814,7 +818,13 @@ return;
 
 ================================================
 */
-
+console.log({
+    deployment: socket.user.id,
+    fromMe: message.key.fromMe,
+    remoteJid: message.key.remoteJid,
+    participant: message.key.participant,
+    remoteJidAlt: message.key.remoteJidAlt
+});
 
 await handleCommand(
 socket,

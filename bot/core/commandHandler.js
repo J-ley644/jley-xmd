@@ -11,6 +11,8 @@ async function handleCommand(
     message
 ){
 
+    console.log("🔥 HANDLE COMMAND REACHED");
+
     try{
 
 
@@ -41,10 +43,22 @@ async function handleCommand(
             args.shift()
             .toLowerCase();
 
+            console.log(
+    "PLUGIN STORE CURRENT SIZE:",
+    pluginStore.size()
+);
+
 
 
         const command =
     pluginStore.get(commandName);
+
+    console.log("COMMAND DEBUG:", {
+    text,
+    commandName,
+    found: Boolean(command),
+    command: command?.name
+});
 
 
 

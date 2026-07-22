@@ -16,8 +16,14 @@ class PluginStore {
      * Replace all loaded plugins.
      */
     set(plugins) {
-        this.plugins = plugins;
-    }
+
+    console.log(
+        "PLUGIN STORE SET SIZE:",
+        plugins.size
+    );
+
+    this.plugins = plugins;
+}
 
 
     /**
