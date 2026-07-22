@@ -50,6 +50,8 @@ Features:
 const sockets =
 new Map();
 
+const pairingRequests =
+new Map();
 
 import prisma from "../../api/src/config/prisma.js";
 
@@ -869,7 +871,66 @@ deploymentId
 
 }
 
+async function generatePairingCode(
+    deploymentId,
+    phoneNumber
+){
 
+    console.log("Requested deployment:", deploymentId);
+console.log("Running sockets:", getActiveSockets());
+
+const socket =
+    getSocket(deploymentId);
+
+
+    if(!socket){
+
+        throw new Error(
+            "Deployment socket not running"
+        );
+
+    }
+
+
+    if(!phoneNumber){
+
+        throw new Error(
+            "Phone number required"
+        );
+
+    }
+
+
+    const cleanNumber =
+        phoneNumber
+        .replace(/\D/g,"");
+
+
+    const code =
+        await socket.requestPairingCode(
+            cleanNumber
+        );
+
+
+    await safeDeploymentUpdate(
+        deploymentId,
+        {
+            pairingCode: code,
+            phoneNumber: cleanNumber,
+            status:"PENDING"
+        }
+    );
+
+
+    pairingRequests.set(
+        deploymentId,
+        code
+    );
+
+
+    return code;
+
+}
 
 
 
@@ -1022,8 +1083,8 @@ export {
     removeSocket,
     getActiveSockets,
     isConnected,
+    generatePairingCode
 };
-
 
 
 export default startWhatsApp;
