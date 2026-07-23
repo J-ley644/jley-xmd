@@ -3,6 +3,7 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import AppRoutes from "./routes/AppRoutes";
+import Footer from "./components/Footer";
 
 function App() {
 
@@ -18,15 +19,26 @@ function App() {
 
             </div>
 
+
             <Sidebar />
+
 
             <div className="main-content">
 
                 <Navbar />
 
-                <AppRoutes />
+                <div className="page-content">
+
+                    <AppRoutes />
+
+                </div>
+
+
+                <Footer />
+
 
             </div>
+
 
         </div>
 

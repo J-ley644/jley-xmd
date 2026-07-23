@@ -4,31 +4,61 @@
     box-sizing:border-box;
 }
 
+
 html,
 body,
 #root{
+
     width:100%;
-    height:100%;
-    font-family:Inter,Segoe UI,sans-serif;
+    min-height:100%;
+    
+    font-family:
+    Inter,
+    Segoe UI,
+    sans-serif;
+
     overflow-x:hidden;
+
 }
+
 
 body{
+
     background:#050816;
+
 }
+
+
+/* MAIN DASHBOARD WRAPPER */
 
 .app-shell{
+
     min-height:100vh;
+
+    display:flex;
+
     position:relative;
-    overflow:hidden;
+
     color:white;
+
+    overflow:hidden;
+
 }
 
+
+
+/* ANIMATED BACKGROUND */
+
 .animated-bg{
+
     position:fixed;
+
     inset:0;
+
     overflow:hidden;
+
     z-index:-1;
+
 
     background:
     linear-gradient(
@@ -37,66 +67,207 @@ body{
         #0d1d45,
         #111827
     );
+
 }
+
+
 
 .blob{
+
     position:absolute;
+
     border-radius:50%;
+
     filter:blur(90px);
+
     opacity:.45;
-    animation:float 15s infinite ease-in-out;
+
+    animation:
+    float 15s infinite ease-in-out;
+
 }
+
+
 
 .blob1{
+
     width:500px;
+
     height:500px;
+
     background:#00f7ff;
+
     top:-150px;
+
     left:-120px;
+
 }
+
+
 
 .blob2{
+
     width:450px;
+
     height:450px;
+
     background:#6a5cff;
+
     right:-120px;
+
     top:25%;
+
 }
 
+
+
 .blob3{
+
     width:420px;
+
     height:420px;
+
     background:#00ff95;
+
     bottom:-150px;
+
     left:35%;
+
 }
+
+
+
+
 
 @keyframes float{
 
+
 0%{
-transform:translate(0,0);
+
+    transform:translate(0,0);
+
 }
+
 
 25%{
-transform:translate(80px,-60px);
+
+    transform:
+    translate(80px,-60px);
+
 }
+
 
 50%{
-transform:translate(-70px,40px);
+
+    transform:
+    translate(-70px,40px);
+
 }
+
 
 75%{
-transform:translate(50px,80px);
+
+    transform:
+    translate(50px,80px);
+
 }
+
 
 100%{
-transform:translate(0,0);
-}
+
+    transform:
+    translate(0,0);
 
 }
+
+
+}
+
+
+
+
+
+/* CONTENT AREA */
 
 .main-content{
 
-    margin-left:250px;
+
+    flex:1;
+
+    min-width:0;
+
+    min-height:100vh;
+
+
+    display:flex;
+
+    flex-direction:column;
+
+
+    margin-left:260px;
+
+
+}
+
+
+
+/* ROUTE CONTENT */
+
+.page-content{
+
+
+    flex:1;
+
+    width:100%;
+
+    min-width:0;
+
+
+}
+
+
+
+
+/* FOOTER POSITION SUPPORT */
+
+.footer{
+
+    flex-shrink:0;
+
+}
+
+
+
+
+
+/* TABLET */
+
+@media(max-width:900px){
+
+
+    .main-content{
+
+        margin-left:80px;
+
+    }
+
+
+}
+
+
+
+
+
+/* MOBILE */
+
+@media(max-width:600px){
+
+
+    .main-content{
+
+        margin-left:0;
+
+    }
+
 
 }
