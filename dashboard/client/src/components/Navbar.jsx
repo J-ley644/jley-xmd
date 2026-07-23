@@ -1,45 +1,38 @@
+import "./Navbar.css";
+
 function Navbar() {
+    return (
+        <nav className="navbar">
 
-  return (
+            <div className="logo">
 
-    <header className="navbar">
+                <div className="logo-icon">
+                    J
+                </div>
 
-      <div>
+                <div>
+                    <h2>JLEY-XMD</h2>
+                    <p>WhatsApp Automation Platform</p>
+                </div>
 
-        <h2>
-          JLEY-XMD Control Panel
-        </h2>
+            </div>
 
-        <p>
-          Manage your WhatsApp deployments
-        </p>
+            <div className="nav-links">
 
-      </div>
+                <a href="/">Dashboard</a>
 
+                <a href="/deploy">Deploy</a>
 
-      <div className="navbar-right">
+                <a href="/bots">Bots</a>
 
-        <div className="status-pill">
+                <a href="/pricing">Pricing</a>
 
-          🟢 System Online
+                <a href="/profile">Profile</a>
 
-        </div>
+            </div>
 
-
-        <div className="profile">
-
-          J.LEY
-
-        </div>
-
-      </div>
-
-
-    </header>
-
-  );
-
+        </nav>
+    );
 }
-
 
 export default Navbar;

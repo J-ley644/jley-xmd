@@ -1,38 +1,20 @@
+import Hero from "../components/Hero";
+import Stats from "../components/Stats";
+
 function Home(){
 
-    function deploy(){
+    return(
 
-        window.location.href="/deploy";
+        <>
 
-    }
+            <Hero/>
 
+            <Stats/>
 
-    return (
-
-        <div className="home">
-
-            <h1>
-                JLEY-XMD
-            </h1>
-
-
-            <p>
-                Deploy your WhatsApp bot easily.
-            </p>
-
-
-            <button onClick={deploy}>
-
-                Deploy Your Bot
-
-            </button>
-
-
-        </div>
+        </>
 
     );
 
 }
-
 
 export default Home;

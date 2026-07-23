@@ -1,771 +1,102 @@
-/* =====================================
-   JLEY-XMD CLIENT DASHBOARD
-===================================== */
-
-
-* {
-  box-sizing: border-box;
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
-
-body {
-
-  margin: 0;
-
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-
-  background: #070b16;
-
-  color: #f8fafc;
-
+html,
+body,
+#root{
+    width:100%;
+    height:100%;
+    font-family:Inter,Segoe UI,sans-serif;
+    overflow-x:hidden;
 }
 
-
-
-/* =====================================
-   LAYOUT
-===================================== */
-
-
-.dashboard-layout {
-
-  display: flex;
-
-  min-height: 100vh;
-
+body{
+    background:#050816;
 }
 
-
-
-.main-area {
-
-  flex: 1;
-
-  display: flex;
-
-  flex-direction: column;
-
-  min-width: 0;
-
+.app-shell{
+    min-height:100vh;
+    position:relative;
+    overflow:hidden;
+    color:white;
 }
 
+.animated-bg{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    z-index:-1;
 
-
-/* =====================================
-   SIDEBAR
-===================================== */
-
-
-.sidebar {
-
-  width:260px;
-
-  min-width:260px;
-
-  min-height:100vh;
-
-  display:flex;
-
-  flex-direction:column;
-
-
-  background:
+    background:
     linear-gradient(
-      180deg,
-      #0f172a,
-      #020617
+        135deg,
+        #07142f,
+        #0d1d45,
+        #111827
     );
+}
 
+.blob{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(90px);
+    opacity:.45;
+    animation:float 15s infinite ease-in-out;
+}
 
-  border-right:
-    1px solid rgba(255,255,255,.08);
+.blob1{
+    width:500px;
+    height:500px;
+    background:#00f7ff;
+    top:-150px;
+    left:-120px;
+}
 
+.blob2{
+    width:450px;
+    height:450px;
+    background:#6a5cff;
+    right:-120px;
+    top:25%;
+}
 
-  padding:28px 22px;
+.blob3{
+    width:420px;
+    height:420px;
+    background:#00ff95;
+    bottom:-150px;
+    left:35%;
+}
+
+@keyframes float{
+
+0%{
+transform:translate(0,0);
+}
+
+25%{
+transform:translate(80px,-60px);
+}
+
+50%{
+transform:translate(-70px,40px);
+}
+
+75%{
+transform:translate(50px,80px);
+}
+
+100%{
+transform:translate(0,0);
+}
 
 }
 
+.main-content{
 
-
-.brand {
-
-  display:flex;
-
-  flex-direction:column;
-
-  margin-bottom:45px;
-
-  font-size:24px;
-
-  font-weight:800;
-
-  color:#38bdf8;
-
-}
-
-
-
-.brand span {
-
-  margin-top:6px;
-
-  font-size:13px;
-
-  font-weight:400;
-
-  color:#94a3b8;
-
-}
-
-
-
-.sidebar nav {
-
-  display:flex;
-
-  flex-direction:column;
-
-  gap:12px;
-
-}
-
-
-
-.sidebar a {
-
-  text-decoration:none;
-
-  color:#94a3b8;
-
-  padding:14px 16px;
-
-  border-radius:14px;
-
-  transition:.3s;
-
-}
-
-
-
-.sidebar a:hover,
-.sidebar a.active {
-
-  background:
-    rgba(56,189,248,.15);
-
-  color:#38bdf8;
-
-}
-
-
-
-.sidebar-footer {
-
-  margin-top:auto;
-
-  padding:18px;
-
-  border-radius:18px;
-
-  background:
-    rgba(255,255,255,.06);
-
-}
-
-
-
-.sidebar-footer p {
-
-  margin:0;
-
-  color:#94a3b8;
-
-}
-
-
-
-.sidebar-footer h3 {
-
-  margin:8px 0 0;
-
-  font-size:25px;
-
-}
-
-
-
-/* =====================================
-   NAVBAR
-===================================== */
-
-
-.navbar {
-
-  height:70px;
-
-  display:flex;
-
-  justify-content:space-between;
-
-  align-items:center;
-
-  padding:0 35px;
-
-
-  background:
-    rgba(15,23,42,.75);
-
-
-  backdrop-filter:
-    blur(15px);
-
-
-  border-bottom:
-    1px solid rgba(255,255,255,.08);
-
-}
-
-
-
-.navbar h2 {
-
-  margin:0;
-
-  font-size:22px;
-
-}
-
-
-
-.navbar p {
-
-  margin:5px 0 0;
-
-  color:#94a3b8;
-
-  font-size:14px;
-
-}
-
-
-
-.navbar-right {
-
-  display:flex;
-
-  align-items:center;
-
-  gap:15px;
-
-}
-
-
-
-.status-pill {
-
-  padding:8px 16px;
-
-  border-radius:20px;
-
-  background:
-    rgba(34,197,94,.15);
-
-  color:#4ade80;
-
-  font-size:14px;
-
-}
-
-
-
-.profile {
-
-  width:42px;
-
-  height:42px;
-
-  border-radius:50%;
-
-
-  display:flex;
-
-  align-items:center;
-
-  justify-content:center;
-
-
-  background:
-    linear-gradient(
-      135deg,
-      #38bdf8,
-      #8b5cf6
-    );
-
-
-  font-weight:700;
-
-}
-
-
-
-/* =====================================
-   CONTENT
-===================================== */
-
-
-.content {
-
-  padding:35px;
-
-}
-
-
-
-/* =====================================
-   STAT CARDS
-===================================== */
-
-
-.cards {
-
-  display:grid;
-
-  grid-template-columns:
-    repeat(3,1fr);
-
-  gap:22px;
-
-  margin-top:30px;
-
-}
-
-
-
-.card {
-
-  padding:25px;
-
-  border-radius:22px;
-
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255,255,255,.08),
-      rgba(255,255,255,.03)
-    );
-
-
-  border:
-    1px solid rgba(255,255,255,.1);
-
-
-  backdrop-filter:
-    blur(20px);
-
-
-  transition:.3s;
-
-}
-
-
-
-.card:hover {
-
-  transform:
-    translateY(-5px);
-
-}
-
-
-
-.card h3 {
-
-  color:#94a3b8;
-
-}
-
-
-
-.card p {
-
-  font-size:32px;
-
-  font-weight:800;
-
-}
-
-
-
-/* =====================================
-   BOT CARDS
-===================================== */
-
-
-.bot-grid {
-
-  display:flex;
-
-  flex-wrap:wrap;
-
-  gap:25px;
-
-  margin-top:25px;
-
-}
-
-
-
-.bot-card {
-
-  width:280px;
-
-  padding:25px;
-
-  border-radius:25px;
-
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255,255,255,.12),
-      rgba(255,255,255,.03)
-    );
-
-
-  border:
-    1px solid rgba(255,255,255,.15);
-
-
-  backdrop-filter:
-    blur(20px);
-
-
-  box-shadow:
-    0 20px 50px rgba(0,0,0,.35);
-
-
-  transition:.3s;
-
-}
-
-
-
-.bot-card:hover {
-
-  transform:
-    translateY(-8px);
-
-}
-
-
-
-.bot-header {
-
-  display:flex;
-
-  justify-content:space-between;
-
-  align-items:center;
-
-}
-
-
-
-.online,
-.offline {
-
-  padding:6px 12px;
-
-  border-radius:20px;
-
-  font-size:12px;
-
-}
-
-
-
-.online {
-
-  background:
-    rgba(34,197,94,.2);
-
-  color:#4ade80;
-
-}
-
-
-
-.offline {
-
-  background:
-    rgba(239,68,68,.2);
-
-  color:#f87171;
-
-}
-
-
-
-.bot-info p {
-
-  display:flex;
-
-  justify-content:space-between;
-
-  color:#94a3b8;
-
-}
-
-
-
-.bot-info strong {
-
-  color:white;
-
-}
-
-
-
-/* =====================================
-   WALLET
-===================================== */
-
-
-.balance-card {
-
-  margin:35px 0;
-
-  padding:30px;
-
-  border-radius:25px;
-
-
-  background:
-    linear-gradient(
-      135deg,
-      rgba(56,189,248,.2),
-      rgba(167,139,250,.2)
-    );
-
-
-  border:
-    1px solid rgba(255,255,255,.15);
-
-
-  backdrop-filter:
-    blur(20px);
-
-}
-
-
-
-.balance-card h1 {
-
-  font-size:45px;
-
-}
-
-
-
-/* =====================================
-   ACTIVITY
-===================================== */
-
-
-.activity-card {
-
-  margin-top:35px;
-
-  padding:25px;
-
-  border-radius:25px;
-
-
-  background:
-    rgba(255,255,255,.07);
-
-
-  backdrop-filter:
-    blur(20px);
-
-}
-
-
-
-.activity-item {
-
-  display:flex;
-
-  gap:15px;
-
-  padding:12px 0;
-
-
-  border-bottom:
-    1px solid rgba(255,255,255,.08);
-
-}
-
-
-
-.activity-item span {
-
-  color:#4ade80;
-
-}
-
-
-
-/* =====================================
-   RESPONSIVE
-===================================== */
-
-
-@media(max-width:900px){
-
-
-  .sidebar {
-
-    width:80px;
-
-    min-width:80px;
-
-    padding:20px 10px;
-
-  }
-
-
-  .brand span,
-  .sidebar-footer {
-
-    display:none;
-
-  }
-
-
-  .sidebar a {
-
-    font-size:0;
-
-    text-align:center;
-
-  }
-
-
-  .cards {
-
-    grid-template-columns:1fr;
-
-  }
-
-
-}
-
-/* =========================
-   WELCOME HEADER
-========================= */
-
-
-.welcome-section {
-
-    margin-bottom:35px;
-
-}
-
-
-.welcome-section h1 {
-
-    font-size:36px;
-
-    margin:0 0 10px;
-
-}
-
-
-.welcome-section p {
-
-    color:#94a3b8;
-
-    font-size:16px;
-
-}
-
-/* =========================
-   STAT CARDS
-========================= */
-
-
-.stat-card {
-
-  padding:25px;
-
-  border-radius:22px;
-
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(56,189,248,.12),
-      rgba(255,255,255,.04)
-    );
-
-
-  border:
-    1px solid rgba(255,255,255,.1);
-
-
-  backdrop-filter:
-    blur(20px);
-
-
-  transition:.3s;
-
-}
-
-
-
-.stat-card:hover {
-
-  transform:
-    translateY(-6px);
-
-
-  border-color:
-    rgba(56,189,248,.5);
-
-}
-
-
-
-.stat-header h3 {
-
-  margin:0;
-
-  font-size:15px;
-
-  font-weight:500;
-
-  color:#94a3b8;
-
-}
-
-
-
-.stat-value {
-
-  margin-top:20px;
-
-  margin-bottom:0;
-
-  font-size:36px;
-
-  font-weight:800;
+    margin-left:250px;
 
 }

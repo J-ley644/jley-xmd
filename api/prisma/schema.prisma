@@ -8,217 +8,141 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-
-  name String
-
-  email String @unique
-
-  password String
-
-  role Role @default(CLIENT)
-
-  bots Bot[]
-
-  tickets Ticket[]
-
-  wallet Wallet?
-
+  id          String       @id @default(uuid())
+  name        String
+  email       String       @unique
+  password    String
+  role        Role         @default(CLIENT)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  bots        Bot[]
   deployments Deployment[]
-
-  payments Payment[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
+  payments    Payment[]
+  tickets     Ticket[]
+  wallet      Wallet?
 }
 
 model Bot {
-  id String @id @default(uuid())
-
-  name String
-
-  status BotStatus @default(OFFLINE)
-
-  session String?
-
-  ownerId String
-
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  logs Log[]
-
-  settings BotSetting[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
+  id        String       @id @default(uuid())
+  name      String
+  status    BotStatus    @default(OFFLINE)
+  session   String?
+  ownerId   String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  settings  BotSetting[]
+  logs      Log[]
 }
 
 model BotSetting {
-  id String @id @default(uuid())
-
-  key String
-
+  id    String @id @default(uuid())
+  key   String
   value String
-
   botId String
-
-  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
 
 model Log {
-  id String @id @default(uuid())
-
-  event String
-
-  type String
-
-  botId String
-
-  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(uuid())
+  event     String
+  type      String
+  botId     String
   createdAt DateTime @default(now())
+  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
 
 model Ticket {
-  id String @id @default(uuid())
-
-  subject String
-
-  message String
-
-  status TicketStatus @default(OPEN)
-
-  userId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  id        String       @id @default(uuid())
+  subject   String
+  message   String
+  status    TicketStatus @default(OPEN)
+  userId    String
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
-// JL wallet owned by each user
 
 model Wallet {
-  id String @id @default(uuid())
-
-  balance Int @default(0)
-
-  userId String @unique
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(uuid())
+  balance   Int      @default(0)
+  userId    String   @unique
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
-// Every bot deployment consumes JL
 
 model Deployment {
-  id String @id @default(uuid())
-
-  botName String
-
-  jlCost Int
-
-  status DeploymentStatus @default(PENDING)
-
-  ownerId String
-
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
+  id               String           @id @default(uuid())
+  botName          String
+  status           DeploymentStatus @default(PENDING)
+  ownerId          String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  jlCost           Int              @default(0)
+  lastConnected    DateTime?
+  qrCode           String?
+  sessionReady     Boolean          @default(false)
+  connectionStatus String           @default("OFFLINE")
+  pairingCode      String?
+  phoneNumber      String?
+  sessionId        String?
+  owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
-
-// Payment history
 
 model Payment {
-  id String @id @default(uuid())
-
-  amount Float
-
-  currency String @default("KES")
-
-  provider String
-
+  id            String        @id @default(uuid())
+  amount        Float
+  currency      String        @default("KES")
+  provider      String
   transactionId String?
-
-  status PaymentStatus @default(PENDING)
-
-  userId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  status        PaymentStatus @default(PENDING)
+  userId        String
+  createdAt     DateTime      @default(now())
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
-// Admin-created JL packages
 
 model JLPackage {
-  id String @id @default(uuid())
-
-  price Int
-
-  currency String @default("KES")
-
-  jlAmount Int
-
-  active Boolean @default(true)
-
+  id        String   @id @default(uuid())
+  price     Int
+  currency  String   @default("KES")
+  jlAmount  Int
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 
-// Global admin settings
-
 model SystemSetting {
-  id String @id @default(uuid())
-
-  key String @unique
-
-  value String
-
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
   createdAt DateTime @default(now())
 }
 
 enum Role {
   CLIENT
-
   ADMIN
 }
 
 enum BotStatus {
   ONLINE
-
   OFFLINE
-
   ERROR
 }
 
 enum TicketStatus {
   OPEN
-
   REPLIED
-
   CLOSED
 }
 
 enum DeploymentStatus {
   PENDING
-
   RUNNING
-
   STOPPED
-
   FAILED
 }
 
 enum PaymentStatus {
   PENDING
-
   SUCCESS
-
   FAILED
 }

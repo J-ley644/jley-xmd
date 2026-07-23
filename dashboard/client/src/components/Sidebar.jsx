@@ -1,77 +1,41 @@
-import { NavLink } from "react-router-dom";
+import "./Sidebar.css";
 
-
-function Sidebar(){
+function Sidebar() {
 
     return (
 
         <aside className="sidebar">
 
+            <div className="sidebar-logo">
 
-            <div className="brand">
+                <div className="sidebar-icon">
+                    J
+                </div>
 
-                JLEY-XMD
-
-                <span>
-                    Client Panel
-                </span>
+                <h2>JLEY-XMD</h2>
 
             </div>
-
-
 
             <nav>
 
+                <a href="/">🏠 Dashboard</a>
 
-                <NavLink to="/">
-                    🏠 Dashboard
-                </NavLink>
+                <a href="/deploy">🚀 Deploy</a>
 
+                <a href="/bots">🤖 My Bots</a>
 
-                <NavLink to="/deployments">
-                    🤖 My Bots
-                </NavLink>
+                <a href="/wallet">💎 Wallet</a>
 
+                <a href="/analytics">📊 Analytics</a>
 
-                <NavLink to="/deploy">
-                    🚀 Deploy Bot
-                </NavLink>
-
-
-                <NavLink to="/wallet">
-                    💰 JL Wallet
-                </NavLink>
-
-
-                <NavLink to="/settings">
-                    ⚙ Settings
-                </NavLink>
-
+                <a href="/settings">⚙ Settings</a>
 
             </nav>
-
-
-
-            <div className="sidebar-footer">
-
-                <p>
-                    JL Credits
-                </p>
-
-
-                <h3>
-                    0 JL
-                </h3>
-
-
-            </div>
-
 
         </aside>
 
     );
 
 }
-
 
 export default Sidebar;

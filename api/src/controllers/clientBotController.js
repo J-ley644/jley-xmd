@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import * as deploymentService from "../services/deploymentService.js";
+import { startBotEngine } from "../services/botEngineService.js";
 
 
 
@@ -31,6 +32,8 @@ export async function createClientBot(req, res){
                 ownerId:"0e5a21f7-98bb-43b1-a082-3b67e7749671"
 
             });
+
+            await startBotEngine(deployment);
 
 
 
