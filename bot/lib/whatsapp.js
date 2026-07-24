@@ -15,7 +15,7 @@ import config from "../config/config.js";
 import { handleCommand } from "../core/commandHandler.js";
 
 import groupSettings from "../system/groupSettings.js";
-import { containsLink } from "./antiLink.js";
+import { containsLink } from "./antilink.js";
 import loadPlugins from "../core/pluginLoader.js";
 import pluginStore from "../system/pluginStore.js";
 
