@@ -10,6 +10,8 @@
 
     top:0;
 
+    z-index:1000;
+
     backdrop-filter:blur(25px);
 
     background:rgba(255,255,255,.05);
@@ -17,6 +19,8 @@
     border-right:1px solid rgba(255,255,255,.08);
 
     padding:35px 25px;
+
+    transition:.35s;
 
 }
 
@@ -51,6 +55,8 @@
     font-size:24px;
 
     font-weight:bold;
+
+    color:white;
 
 }
 
@@ -89,5 +95,87 @@
     background:rgba(0,217,255,.15);
 
     color:white;
+
+}
+
+/* Desktop */
+
+@media (min-width:901px){
+
+.main-content{
+
+    margin-left:250px;
+
+}
+
+}
+
+/* Tablet */
+
+@media (max-width:900px){
+
+.sidebar{
+
+    width:220px;
+
+}
+
+.main-content{
+
+    margin-left:220px;
+
+}
+
+}
+
+/* Phone */
+
+@media (max-width:768px){
+
+.sidebar{
+
+    width:100%;
+
+    height:auto;
+
+    position:relative;
+
+    min-height:auto;
+
+    padding:20px;
+
+    border-right:none;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.sidebar-logo{
+
+    margin-bottom:25px;
+
+}
+
+.sidebar nav{
+
+    flex-direction:row;
+
+    flex-wrap:wrap;
+
+    justify-content:center;
+
+}
+
+.sidebar a{
+
+    padding:10px 14px;
+
+}
+
+.main-content{
+
+    margin-left:0;
+
+}
 
 }

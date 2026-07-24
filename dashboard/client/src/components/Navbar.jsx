@@ -1,8 +1,10 @@
 import "./Navbar.css";
 
 function Navbar() {
+
     return (
-        <nav className="navbar">
+
+        <header className="navbar">
 
             <div className="logo">
 
@@ -11,8 +13,11 @@ function Navbar() {
                 </div>
 
                 <div>
+
                     <h2>JLEY-XMD</h2>
+
                     <p>WhatsApp Automation Platform</p>
+
                 </div>
 
             </div>
@@ -31,8 +36,10 @@ function Navbar() {
 
             </div>
 
-        </nav>
+        </header>
+
     );
+
 }
 
 export default Navbar;
