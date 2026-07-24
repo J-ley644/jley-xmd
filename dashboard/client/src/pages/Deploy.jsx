@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import "./Deploy.css";
 import QRCode from "react-qr-code";
+import "./Deploy.css";
 
-
+const API_URL = import.meta.env.VITE_API_URL;
 
 function Deploy() {
-
 
     const [botName, setBotName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
@@ -15,343 +14,175 @@ function Deploy() {
 
     const [loading, setLoading] = useState(false);
 
+    async function deployBot() {
 
-
-    async function deployBot(){
-
-
-        try{
-
+        try {
 
             setLoading(true);
 
-
-            const response =
-                await axios.post(
-                    "http://localhost:5000/api/client/deploy",
-                    {
-                        botName,
-                        phoneNumber
-                    }
-                );
-
-
-
-            console.log(
-                "DEPLOY RESPONSE:",
-                response.data
+            const response = await axios.post(
+                `${API_URL}/api/client/deploy`,
+                {
+                    botName,
+                    phoneNumber
+                }
             );
 
+            console.log("DEPLOY RESPONSE:", response.data);
 
+            setDeployment(response.data.deployment);
 
-            setDeployment(
-                response.data.deployment
-            );
-
-
-
-        }catch(error){
-
+        } catch (error) {
 
             console.log(
                 "DEPLOY ERROR:",
                 error.response?.data || error.message
             );
 
-
-        }finally{
-
+        } finally {
 
             setLoading(false);
 
-
         }
-
 
     }
 
-    useEffect(()=>{
+    useEffect(() => {
 
+        if (!deployment?.id) return;
 
-    if(!deployment?.id)
-        return;
+        const interval = setInterval(async () => {
 
+            try {
 
-
-    const interval =
-        setInterval(async()=>{
-
-
-            try{
-
-
-                const response =
-                    await axios.get(
-                        `http://localhost:5000/api/client/deploy/${deployment.id}`
-                    );
-
+                const response = await axios.get(
+                    `${API_URL}/api/client/deploy/${deployment.id}`
+                );
 
                 console.log(
                     "DEPLOYMENT UPDATE:",
                     response.data
                 );
 
+                setDeployment(response.data.deployment);
 
-                setDeployment(
-                    response.data.deployment
-                );
-
-
-
-                if(
-                    response.data.deployment.qrCode
-                ){
+                if (response.data.deployment.qrCode) {
 
                     clearInterval(interval);
 
                 }
 
-
-            }catch(error){
-
+            } catch (error) {
 
                 console.log(
                     "QR CHECK ERROR:",
                     error.message
                 );
 
-
             }
 
+        }, 3000);
 
-        },3000);
+        return () => clearInterval(interval);
 
-
-
-    return ()=>clearInterval(interval);
-
-
-
-},[deployment?.id]);
-
-
-
-
+    }, [deployment?.id]);
 
     return (
 
         <div className="deploy-page">
 
-
             <div className="deploy-header">
 
-
-                <h1>
-                    🚀 Deploy WhatsApp Bot
-                </h1>
-
+                <h1>🚀 Deploy WhatsApp Bot</h1>
 
                 <p>
                     Create a new deployment and connect your WhatsApp account.
                 </p>
 
-
             </div>
-
-
-
-
 
             <div className="deploy-grid">
 
-
-
-
-
                 <div className="deploy-form">
 
+                    <h2>Deployment Details</h2>
 
-                    <h2>
-                        Deployment Details
-                    </h2>
-
-
-
-                    <label>
-                        Bot Name
-                    </label>
-
+                    <label>Bot Name</label>
 
                     <input
-
-                        value={botName}
-
-                        onChange={
-                            e=>setBotName(e.target.value)
-                        }
-
                         type="text"
-
                         placeholder="My WhatsApp Bot"
-
+                        value={botName}
+                        onChange={(e) => setBotName(e.target.value)}
                     />
 
-
-
-
-
-                    <label>
-                        Phone Number
-                    </label>
-
+                    <label>Phone Number</label>
 
                     <input
-
-                        value={phoneNumber}
-
-                        onChange={
-                            e=>setPhoneNumber(e.target.value)
-                        }
-
                         type="text"
-
                         placeholder="+2547XXXXXXXX"
-
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
                     />
-
-
-
-
 
                     <button
                         onClick={deployBot}
                         disabled={loading}
                     >
-
-                        {
-                            loading
-                            ?
-                            "Starting..."
-                            :
-                            "🚀 Deploy Bot"
-                        }
-
+                        {loading ? "Starting..." : "🚀 Deploy Bot"}
                     </button>
 
-
-
                 </div>
-
-
-
-
-
-
 
                 <div className="deploy-status">
 
-
-                    <h2>
-                        Connection Status
-                    </h2>
-
-
-
+                    <h2>Connection Status</h2>
 
                     <div className="status waiting">
-
-
                         🟡 Waiting for deployment
-
-
                     </div>
-
-
-
-
-
 
                     <div className="qr-box">
 
+                        {deployment?.qrCode ? (
 
-                    {
-                        deployment?.qrCode
+                            <QRCode
+                                value={deployment.qrCode}
+                                size={220}
+                            />
 
-                        ?
+                        ) : (
 
-                        <QRCode
+                            <div className="qr-loading">
 
-                            value={
-                                deployment.qrCode
-                            }
+                                <div className="spinner"></div>
 
-                            size={220}
+                                <p>Waiting for QR Code...</p>
 
-                        />
+                            </div>
 
-
-                        :
-
-
-                        <div className="qr-loading">
-
-
-                            <div className="spinner"></div>
-
-
-                            <p>
-                                Waiting for QR Code...
-                            </p>
-
-
-                        </div>
-
-
-                    }
-
+                        )}
 
                     </div>
-
-
-
-
-
-
 
                     <div className="pair-card">
 
-
                         Pairing Code
 
-
                         <h1>
-                            {
-                                deployment?.pairingCode
-                                ||
-                                "------"
-                            }
+                            {deployment?.pairingCode || "------"}
                         </h1>
-
 
                     </div>
 
-
-
                 </div>
-
-
 
             </div>
 
-
-
         </div>
-
 
     );
 
-
 }
-
 
 export default Deploy;
