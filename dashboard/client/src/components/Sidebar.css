@@ -1,16 +1,15 @@
 .sidebar{
 
-    width:250px;
-
-    min-height:100vh;
-
     position:fixed;
 
     left:0;
-
     top:0;
 
-    z-index:1000;
+    width:260px;
+    height:100vh;
+
+    display:flex;
+    flex-direction:column;
 
     backdrop-filter:blur(25px);
 
@@ -18,9 +17,11 @@
 
     border-right:1px solid rgba(255,255,255,.08);
 
-    padding:35px 25px;
+    padding:30px 20px;
 
-    transition:.35s;
+    z-index:1000;
+
+    transition:.3s;
 
 }
 
@@ -32,7 +33,7 @@
 
     gap:15px;
 
-    margin-bottom:60px;
+    margin-bottom:50px;
 
 }
 
@@ -42,21 +43,23 @@
 
     height:55px;
 
-    border-radius:16px;
-
-    background:linear-gradient(135deg,#00d9ff,#6a5cff);
-
     display:flex;
 
     align-items:center;
 
     justify-content:center;
 
+    border-radius:16px;
+
+    background:linear-gradient(
+        135deg,
+        #00d9ff,
+        #6a5cff
+    );
+
     font-size:24px;
 
     font-weight:bold;
-
-    color:white;
 
 }
 
@@ -72,110 +75,80 @@
 
     flex-direction:column;
 
-    gap:12px;
+    gap:10px;
 
 }
 
-.sidebar a{
+.sidebar nav a{
 
     color:#cbd5e1;
 
     text-decoration:none;
 
-    padding:15px;
+    padding:14px 16px;
 
     border-radius:12px;
 
-    transition:.3s;
+    transition:.25s;
 
 }
 
-.sidebar a:hover{
+.sidebar nav a:hover{
 
-    background:rgba(0,217,255,.15);
+    background:rgba(0,217,255,.12);
 
     color:white;
 
 }
 
-/* Desktop */
+.sidebar nav a.active{
 
-@media (min-width:901px){
+    background:#00d9ff;
 
-.main-content{
+    color:#07142f;
 
-    margin-left:250px;
-
-}
+    font-weight:700;
 
 }
 
 /* Tablet */
 
-@media (max-width:900px){
+@media(max-width:900px){
 
-.sidebar{
+    .sidebar{
 
-    width:220px;
+        width:80px;
 
-}
+        padding:25px 10px;
 
-.main-content{
+    }
 
-    margin-left:220px;
+    .sidebar h2{
 
-}
+        display:none;
+
+    }
+
+    .sidebar nav a{
+
+        text-align:center;
+
+        padding:14px 8px;
+
+        font-size:20px;
+
+    }
 
 }
 
 /* Phone */
 
-@media (max-width:768px){
+@media(max-width:768px){
 
-.sidebar{
+    .sidebar{
 
-    width:100%;
+        display:none;
 
-    height:auto;
-
-    position:relative;
-
-    min-height:auto;
-
-    padding:20px;
-
-    border-right:none;
-
-    border-bottom:1px solid rgba(255,255,255,.08);
-
-}
-
-.sidebar-logo{
-
-    margin-bottom:25px;
-
-}
-
-.sidebar nav{
-
-    flex-direction:row;
-
-    flex-wrap:wrap;
-
-    justify-content:center;
-
-}
-
-.sidebar a{
-
-    padding:10px 14px;
-
-}
-
-.main-content{
-
-    margin-left:0;
-
-}
+    }
 
 }

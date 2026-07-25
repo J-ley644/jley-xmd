@@ -1,3 +1,4 @@
+import { NavLink } from "react-router-dom";
 import "./Sidebar.css";
 
 function Sidebar() {
@@ -18,17 +19,29 @@ function Sidebar() {
 
             <nav>
 
-                <a href="/">🏠 Dashboard</a>
+                <NavLink to="/">
+                    🏠 Dashboard
+                </NavLink>
 
-                <a href="/deploy">🚀 Deploy</a>
+                <NavLink to="/deploy">
+                    🚀 Deploy
+                </NavLink>
 
-                <a href="/bots">🤖 My Bots</a>
+                <NavLink to="/bots">
+                    🤖 My Bots
+                </NavLink>
 
-                <a href="/wallet">💎 Wallet</a>
+                <NavLink to="/wallet">
+                    💎 Wallet
+                </NavLink>
 
-                <a href="/analytics">📊 Analytics</a>
+                <NavLink to="/analytics">
+                    📊 Analytics
+                </NavLink>
 
-                <a href="/settings">⚙ Settings</a>
+                <NavLink to="/settings">
+                    ⚙ Settings
+                </NavLink>
 
             </nav>
 

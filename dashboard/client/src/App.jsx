@@ -1,15 +1,12 @@
 import "./App.css";
 
-import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
-import AppRoutes from "./routes/AppRoutes";
-import Footer from "./components/Footer";
+import Layout from "./components/Layout";
 
 function App() {
 
     return (
 
-        <div className="app-shell">
+        <>
 
             <div className="animated-bg">
 
@@ -19,28 +16,9 @@ function App() {
 
             </div>
 
+            <Layout />
 
-            <Sidebar />
-
-
-            <div className="main-content">
-
-                <Navbar />
-
-                <div className="page-content">
-
-                    <AppRoutes />
-
-                </div>
-
-
-                <Footer />
-
-
-            </div>
-
-
-        </div>
+        </>
 
     );
 
