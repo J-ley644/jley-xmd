@@ -53,17 +53,18 @@ export async function createDeployment(data) {
 
 
 
-export async function startDeployment(id) {
+export async function startDeployment(id, ownerId) {
 
 
     const deployment =
-        await prisma.deployment.findUnique({
+    await prisma.deployment.findFirst({
 
-            where: {
-                id
-            }
+        where: {
+            id,
+            ownerId
+        }
 
-        });
+    });
 
 
 
@@ -108,40 +109,57 @@ export async function startDeployment(id) {
 
 
 
-export async function stopDeployment(id) {
+export async function stopDeployment(id, ownerId) {
 
 
     stopBotEngine(id);
 
 
 
-    return await prisma.deployment.update({
+    const deployment =
+    await prisma.deployment.findFirst({
 
         where: {
-            id
-        },
-
-        data: {
-
-            status: "STOPPED"
-
+            id,
+            ownerId
         }
 
     });
+
+if (!deployment) {
+
+    throw new Error(
+        "Deployment not found"
+    );
+
+}
+
+return await prisma.deployment.update({
+
+    where: {
+        id
+    },
+
+    data: {
+
+        status: "STOPPED"
+
+    }
+
+});
 
 }
 
 
 
 
+export async function getDeployment(id, ownerId) {
 
-export async function getDeployment(id) {
-
-
-    return await prisma.deployment.findUnique({
+    return await prisma.deployment.findFirst({
 
         where: {
-            id
+            id,
+            ownerId
         }
 
     });
@@ -154,9 +172,27 @@ export async function getDeployment(id) {
 
 export async function updateDeploymentStatus(
     id,
-    status
+    status,
+    ownerId
 ) {
 
+    const deployment =
+        await prisma.deployment.findFirst({
+
+            where: {
+                id,
+                ownerId
+            }
+
+        });
+
+    if (!deployment) {
+
+        throw new Error(
+            "Deployment not found"
+        );
+
+    }
 
     return await prisma.deployment.update({
 
@@ -165,9 +201,7 @@ export async function updateDeploymentStatus(
         },
 
         data: {
-
             status
-
         }
 
     });

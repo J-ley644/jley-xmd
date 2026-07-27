@@ -108,9 +108,10 @@ export async function pairDeployment(req,res){
     try {
 
         const deployment =
-            await deploymentService.getDeployment(
-                req.params.id
-            );
+    await deploymentService.getDeployment(
+        req.params.id,
+        req.user.id
+    );
 
 
         if(!deployment){
@@ -127,8 +128,9 @@ export async function pairDeployment(req,res){
 
 
         await deploymentService.startDeployment(
-            deployment.id
-        );
+    deployment.id,
+    req.user.id
+);
 
 
         res.json({
@@ -168,10 +170,10 @@ export async function startDeployment(req,res){
 
     try {
 
-        const bot =
-            await deploymentService.startDeployment(
-                req.params.id
-            );
+        await deploymentService.startDeployment(
+    req.params.id,
+    req.user.id
+);
 
         res.json({
 
@@ -211,8 +213,9 @@ export async function getDeployment(req,res){
 
         const deployment =
             await deploymentService.getDeployment(
-                req.params.id
-            );
+    req.params.id,
+    req.user.id
+);
 
 
 

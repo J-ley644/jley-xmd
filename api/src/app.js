@@ -56,4 +56,14 @@ app.use(
     clientBotRoutes
 );
 
+console.log(
+    "REGISTERED DEPLOYMENT ROUTES:",
+    app._router?.stack
+        ?.filter(layer => layer.route)
+        .map(layer => ({
+            path: layer.route.path,
+            methods: layer.route.methods
+        }))
+);
+
 export default app;

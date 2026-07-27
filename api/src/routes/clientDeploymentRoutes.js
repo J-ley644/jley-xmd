@@ -109,8 +109,9 @@ router.post("/:id/start", auth, async(req,res)=>{
 
         const bot =
             await startDeployment(
-                req.params.id
-            );
+    req.params.id,
+    req.user.id
+);
 
 
         res.json({
@@ -146,19 +147,10 @@ router.post("/:id/stop", auth, async(req,res)=>{
     try {
 
 
-        const bot =
-            await stopDeployment(
-                req.params.id
-            );
-
-
-        res.json({
-
-            success:true,
-
-            bot
-
-        });
+        await stopDeployment(
+    req.params.id,
+    req.user.id
+);
 
 
     }catch(error){
