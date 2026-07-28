@@ -12,7 +12,6 @@ import {
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 
-
 export default {
 
     name: "play",
@@ -29,6 +28,9 @@ export default {
 
 
     async execute(ctx) {
+
+        let input = null;
+        let output = null;
 
         try {
 
@@ -48,8 +50,20 @@ export default {
             await ctx.react("⏳");
 
 
+            console.log(
+                "[PLAY] Searching:",
+                query
+            );
+
+
             const video =
                 await searchYouTube(query);
+
+
+            console.log(
+                "[PLAY] Found:",
+                video.title
+            );
 
 
 
@@ -65,26 +79,31 @@ export default {
                 fs.mkdirSync(
                     tempDir,
                     {
-                        recursive:true
+                        recursive: true
                     }
                 );
 
             }
 
 
-            const input =
+            const fileId =
+                `${Date.now()}-${Math.random()
+                    .toString(36)
+                    .slice(2, 8)}`;
+
+
+            const template =
                 path.join(
                     tempDir,
-                    `${Date.now()}.webm`
+                    `${fileId}.%(ext)s`
                 );
 
 
-            const output =
-                input.replace(
-                    ".webm",
-                    ".mp3"
+            output =
+                path.join(
+                    tempDir,
+                    `${fileId}.mp3`
                 );
-
 
 
             console.log(
@@ -93,51 +112,164 @@ export default {
             );
 
 
-
             await ytdlp(
                 video.url,
                 {
-                    format:"bestaudio",
-                    output:input,
-                    quiet:true
+                    format: "bestaudio",
+                    output: template,
+                    noWarnings: true
                 }
             );
 
+
+            /*
+            ========================================
+            FIND DOWNLOADED AUDIO
+            ========================================
+            */
+
+            const downloadedFiles =
+                fs.readdirSync(tempDir)
+                    .filter(file =>
+                        file.startsWith(fileId + ".")
+                    );
+
+
+            if (!downloadedFiles.length) {
+
+                throw new Error(
+                    "yt-dlp completed but no audio file was created."
+                );
+
+            }
+
+
+            const downloadedFile =
+                downloadedFiles[0];
+
+
+            input =
+                path.join(
+                    tempDir,
+                    downloadedFile
+                );
+
+
+            const inputStats =
+                fs.statSync(input);
+
+
+            if (inputStats.size < 10000) {
+
+                throw new Error(
+                    `Downloaded audio file is unexpectedly small (${inputStats.size} bytes).`
+                );
+
+            }
 
 
             console.log(
-                "[PLAY] Converting..."
+                "[PLAY] Downloaded:",
+                input,
+                inputStats.size,
+                "bytes"
             );
 
 
+            /*
+            ========================================
+            FFMPEG CONVERSION
+            ========================================
+            */
+
+            console.log(
+                "[PLAY] Converting to MP3..."
+            );
+
 
             await new Promise(
-                (resolve,reject)=>{
+                (resolve, reject) => {
 
                     ffmpeg(input)
 
-                    .audioCodec(
-                        "libmp3lame"
-                    )
+                        .audioCodec(
+                            "libmp3lame"
+                        )
 
-                    .audioBitrate(128)
+                        .audioBitrate(128)
 
-                    .save(output)
+                        .format("mp3")
 
-                    .on(
-                        "end",
-                        resolve
-                    )
+                        .on(
+                            "start",
+                            command => {
 
-                    .on(
-                        "error",
-                        reject
-                    );
+                                console.log(
+                                    "[PLAY] FFmpeg:",
+                                    command
+                                );
+
+                            }
+                        )
+
+                        .on(
+                            "end",
+                            resolve
+                        )
+
+                        .on(
+                            "error",
+                            reject
+                        )
+
+                        .save(output);
 
                 }
             );
 
 
+            /*
+            ========================================
+            VERIFY MP3
+            ========================================
+            */
+
+            if (
+                !fs.existsSync(output)
+            ) {
+
+                throw new Error(
+                    "FFmpeg completed but MP3 file was not created."
+                );
+
+            }
+
+
+            const outputStats =
+                fs.statSync(output);
+
+
+            if (outputStats.size < 10000) {
+
+                throw new Error(
+                    `Generated MP3 is unexpectedly small (${outputStats.size} bytes).`
+                );
+
+            }
+
+
+            console.log(
+                "[PLAY] MP3 ready:",
+                outputStats.size,
+                "bytes"
+            );
+
+
+            /*
+            ========================================
+            SEND AUDIO
+            ========================================
+            */
 
             await ctx.send({
 
@@ -153,31 +285,76 @@ export default {
             });
 
 
-
-            fs.unlinkSync(input);
-
-            fs.unlinkSync(output);
-
-
-
             await ctx.react("✅");
 
 
-        } catch(error) {
+            console.log(
+                "[PLAY] Completed:",
+                video.title
+            );
+
+
+        } catch (error) {
 
 
             console.error(
                 "[PLAY ERROR]",
+                error?.stderr ||
+                error?.message ||
                 error
             );
 
 
-            await ctx.react("❌");
+            try {
+
+                await ctx.react("❌");
+
+            } catch {}
 
 
-            await ctx.reply(
-                "❌ Failed to download audio."
-            );
+            try {
+
+                await ctx.reply(
+                    "❌ Failed to download audio.\nPlease try another song or search again."
+                );
+
+            } catch {}
+
+
+        } finally {
+
+
+            /*
+            ========================================
+            CLEANUP TEMP FILES
+            ========================================
+            */
+
+            for (
+                const file of [input, output]
+            ) {
+
+                if (
+                    file &&
+                    fs.existsSync(file)
+                ) {
+
+                    try {
+
+                        fs.unlinkSync(file);
+
+                    } catch (cleanupError) {
+
+                        console.log(
+                            "[PLAY] Cleanup failed:",
+                            cleanupError.message
+                        );
+
+                    }
+
+                }
+
+            }
 
         }
 

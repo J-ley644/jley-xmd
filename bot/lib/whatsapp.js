@@ -303,6 +303,20 @@ await safeDeploymentUpdate(
 
 
 if(connection==="close"){
+    console.log("========================================");
+console.log("🔴 WHATSAPP CONNECTION CLOSED");
+console.log("Deployment:", deploymentId);
+console.log("Connection:", connection);
+console.log("Last disconnect:", lastDisconnect);
+console.log(
+    "Disconnect error:",
+    lastDisconnect?.error
+);
+console.log(
+    "Disconnect status code:",
+    lastDisconnect?.error?.output?.statusCode
+);
+console.log("========================================");
 
 
 
