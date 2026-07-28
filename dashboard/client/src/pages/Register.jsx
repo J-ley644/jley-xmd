@@ -4,8 +4,9 @@ import { apiRequest } from "../services/api";
 import "./Auth.css";
 
 
-function Login() {
+function Register() {
 
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -14,7 +15,7 @@ function Login() {
     const navigate = useNavigate();
 
 
-    async function handleLogin(e) {
+    async function handleRegister(e) {
 
         e.preventDefault();
 
@@ -22,34 +23,29 @@ function Login() {
 
         try {
 
-            const response = await apiRequest(
-                "/api/auth/login",
+            await apiRequest(
+                "/api/auth/register",
                 {
                     method: "POST",
 
                     body: JSON.stringify({
+                        name,
                         email,
                         password
                     })
                 }
             );
 
+            alert("Account created successfully. Please login.");
 
-            localStorage.setItem(
-                "token",
-                response.token
-            );
-
-
-            navigate("/");
-
+            navigate("/login");
 
         } catch (error) {
 
             console.error(error);
 
             alert(
-                error.message || "Login failed"
+                error.message || "Registration failed"
             );
 
         } finally {
@@ -71,12 +67,27 @@ function Login() {
 
                     <h1>JLEY-XMD</h1>
 
-                    <p>Welcome back</p>
+                    <p>Create your account</p>
 
                 </div>
 
 
-                <form onSubmit={handleLogin}>
+                <form onSubmit={handleRegister}>
+
+                    <div className="auth-field">
+
+                        <label>Name</label>
+
+                        <input
+                            type="text"
+                            placeholder="Your name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                        />
+
+                    </div>
+
 
                     <div className="auth-field">
 
@@ -99,7 +110,7 @@ function Login() {
 
                         <input
                             type="password"
-                            placeholder="Your password"
+                            placeholder="Create a password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
@@ -115,8 +126,8 @@ function Login() {
                     >
 
                         {loading
-                            ? "Signing in..."
-                            : "Login"
+                            ? "Creating account..."
+                            : "Create account"
                         }
 
                     </button>
@@ -127,11 +138,11 @@ function Login() {
                 <div className="auth-footer">
 
                     <span>
-                        Don't have an account?
+                        Already have an account?
                     </span>
 
-                    <Link to="/register">
-                        Create account
+                    <Link to="/login">
+                        Login
                     </Link>
 
                 </div>
@@ -145,4 +156,4 @@ function Login() {
 }
 
 
-export default Login;
+export default Register;

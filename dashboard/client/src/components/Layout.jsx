@@ -1,12 +1,14 @@
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
-import AppRoutes from "../routes/AppRoutes";
 
 import "./Layout.css";
 
-function Layout() {
+
+function Layout({ children }) {
+
     return (
+
         <div className="layout">
 
             <Sidebar />
@@ -16,7 +18,9 @@ function Layout() {
                 <Navbar />
 
                 <main className="layout-content">
-                    <AppRoutes />
+
+                    {children}
+
                 </main>
 
                 <Footer />
@@ -24,7 +28,10 @@ function Layout() {
             </div>
 
         </div>
+
     );
+
 }
+
 
 export default Layout;

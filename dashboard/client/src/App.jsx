@@ -1,6 +1,7 @@
 import "./App.css";
 
-import Layout from "./components/Layout";
+import AppRoutes from "./routes/AppRoutes";
+
 
 function App() {
 
@@ -16,12 +17,13 @@ function App() {
 
             </div>
 
-            <Layout />
+            <AppRoutes />
 
         </>
 
     );
 
 }
+
 
 export default App;
