@@ -1,65 +1,63 @@
+
 import "./Stats.css";
 
-const stats = [
+function Stats({ stats = {} }) {
 
-    {
-        title: "Active Bots",
-        value: "0",
-        icon: "🤖"
-    },
+    const cards = [
 
-    {
-        title: "Deployments",
-        value: "0",
-        icon: "🚀"
-    },
+        {
+            title: "Active Bots",
+            value: stats.activeBots ?? 0,
+            icon: "🤖"
+        },
 
-    {
-        title: "JL Wallet",
-        value: "0 JL",
-        icon: "💎"
-    },
+        {
+            title: "Deployments",
+            value: stats.deployments ?? 0,
+            icon: "🚀"
+        },
 
-    {
-        title: "Platform Health",
-        value: "100%",
-        icon: "⚡"
-    }
+        {
+            title: "JL Wallet",
+            value: `${stats.jlBalance ?? 0} JL`,
+            icon: "💎"
+        },
 
-];
+        {
+            title: "Connected",
+            value: stats.connectedBots ?? 0,
+            icon: "⚡"
+        }
 
-function Stats(){
+    ];
 
-    return(
+
+    return (
 
         <section className="stats">
 
-            {
+            {cards.map((card, index) => (
 
-                stats.map((card,index)=>(
+                <div
+                    key={index}
+                    className="stat-card"
+                >
 
-                    <div
-                        key={index}
-                        className="stat-card"
-                    >
-
-                        <div className="stat-icon">
-                            {card.icon}
-                        </div>
-
-                        <h2>
-                            {card.value}
-                        </h2>
-
-                        <p>
-                            {card.title}
-                        </p>
-
+                    <div className="stat-icon">
+                        {card.icon}
                     </div>
 
-                ))
+                    <h2>
+                        {card.value}
+                    </h2>
 
-            }
+                    <p>
+                        {card.title}
+                    </p>
+
+                </div>
+
+            ))}
 
         </section>
 
@@ -68,3 +66,4 @@ function Stats(){
 }
 
 export default Stats;
+

@@ -8,25 +8,21 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(uuid())
-  name     String
-  email    String @unique
-  password String
-  role     Role   @default(CLIENT)
-
-  suspended Boolean @default(false)
-  blocked   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  bots        Bot[]
-  deployments Deployment[]
-  payments    Payment[]
-  tickets     Ticket[]
-  wallet      Wallet?
-
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(CLIENT)
+  suspended    Boolean       @default(false)
+  blocked      Boolean       @default(false)
   adminActions AdminAction[] @relation("AdminActions")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bots         Bot[]
+  deployments  Deployment[]
+  payments     Payment[]
+  tickets      Ticket[]
+  wallet       Wallet?
 }
 
 model Bot {
