@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000";
+const API_URL = "https://jley-xmd-api.onrender.com";
 
 
 export async function apiRequest(endpoint, options = {}) {

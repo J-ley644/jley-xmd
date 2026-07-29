@@ -175,6 +175,11 @@ socket.ev.on(
 "connection.update",
 async(update)=>{
 
+    console.log(
+    "🔎 CONNECTION UPDATE:",
+    JSON.stringify(update, null, 2)
+);
+
 
 const {
     connection,

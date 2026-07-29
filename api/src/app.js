@@ -1,13 +1,53 @@
+
 import express from "express";
 import cors from "cors";
 
 import authRoutes from "./routes/authRoutes.js";
 import deploymentRoutes from "./routes/deploymentRoutes.js";
 import clientBotRoutes from "./routes/clientBotRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
-app.use(cors());
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+*/
+
+const allowedOrigins = [
+    "https://jley-xmd.netlify.app",
+    "http://localhost:5173",
+    "http://localhost:5174"
+];
+
+app.use(
+    cors({
+        origin: function (origin, callback) {
+
+            // Allow requests without an Origin header
+            // such as server-to-server requests.
+            if (!origin) {
+                return callback(null, true);
+            }
+
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(
+                new Error("Not allowed by CORS")
+            );
+
+        }
+    })
+);
+
+/*
+|--------------------------------------------------------------------------
+| Middleware
+|--------------------------------------------------------------------------
+*/
 
 app.use(express.json());
 
@@ -56,14 +96,20 @@ app.use(
     clientBotRoutes
 );
 
+app.use(
+    "/api/admin",
+    adminRoutes
+);
+
+/*
+|--------------------------------------------------------------------------
+| Server Diagnostics
+|--------------------------------------------------------------------------
+*/
+
 console.log(
-    "REGISTERED DEPLOYMENT ROUTES:",
-    app._router?.stack
-        ?.filter(layer => layer.route)
-        .map(layer => ({
-            path: layer.route.path,
-            methods: layer.route.methods
-        }))
+    "JLEY-XMD API routes loaded."
 );
 
 export default app;
+
