@@ -13,16 +13,20 @@ model User {
   email        String        @unique
   password     String
   role         Role          @default(CLIENT)
+
   suspended    Boolean       @default(false)
   blocked      Boolean       @default(false)
-  adminActions AdminAction[] @relation("AdminActions")
+
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
   bots         Bot[]
   deployments  Deployment[]
   payments     Payment[]
   tickets      Ticket[]
   wallet       Wallet?
+
+  adminActions AdminAction[] @relation("AdminActions")
 }
 
 model Bot {
@@ -33,7 +37,9 @@ model Bot {
   ownerId   String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+
   owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
   settings  BotSetting[]
   logs      Log[]
 }
@@ -43,7 +49,8 @@ model BotSetting {
   key   String
   value String
   botId String
-  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  bot   Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
 
 model Log {
@@ -52,7 +59,8 @@ model Log {
   type      String
   botId     String
   createdAt DateTime @default(now())
-  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
 
 model Ticket {
@@ -62,7 +70,8 @@ model Ticket {
   status    TicketStatus @default(OPEN)
   userId    String
   createdAt DateTime     @default(now())
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Wallet {
@@ -71,7 +80,8 @@ model Wallet {
   userId    String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Deployment {
@@ -81,6 +91,7 @@ model Deployment {
   ownerId          String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+
   jlCost           Int              @default(0)
   lastConnected    DateTime?
   qrCode           String?
@@ -89,7 +100,8 @@ model Deployment {
   pairingCode      String?
   phoneNumber      String?
   sessionId        String?
-  owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
@@ -101,7 +113,8 @@ model Payment {
   status        PaymentStatus @default(PENDING)
   userId        String
   createdAt     DateTime      @default(now())
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model JLPackage {
