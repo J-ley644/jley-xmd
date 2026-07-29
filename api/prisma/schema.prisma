@@ -8,18 +8,25 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  name        String
-  email       String       @unique
-  password    String
-  role        Role         @default(CLIENT)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(CLIENT)
+
+  suspended Boolean @default(false)
+  blocked   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   bots        Bot[]
   deployments Deployment[]
   payments    Payment[]
   tickets     Ticket[]
   wallet      Wallet?
+
+  adminActions AdminAction[] @relation("AdminActions")
 }
 
 model Bot {
@@ -115,6 +122,18 @@ model SystemSetting {
   key       String   @unique
   value     String
   createdAt DateTime @default(now())
+}
+
+model AdminAction {
+  id           String   @id @default(uuid())
+  adminId      String
+  action       String
+  targetUserId String?
+  amount       Int?
+  description  String?
+  createdAt    DateTime @default(now())
+
+  admin User @relation("AdminActions", fields: [adminId], references: [id], onDelete: Cascade)
 }
 
 enum Role {

@@ -1,4 +1,7 @@
+
 import { useEffect, useState } from "react";
+import AdminLayout from "../components/AdminLayout";
+import StatCard from "../components/StatCard";
 import { getAdminDashboard } from "../services/api";
 
 function Dashboard() {
@@ -16,20 +19,18 @@ function Dashboard() {
                 const response =
                     await getAdminDashboard();
 
-                setStats(
-                    response.stats || {}
-                );
+                setStats(response.stats);
 
-            } catch (error) {
+            } catch (err) {
 
                 console.error(
                     "ADMIN DASHBOARD ERROR:",
-                    error
+                    err
                 );
 
                 setError(
-                    error.message ||
-                    "Failed to load dashboard."
+                    err.message ||
+                    "Unable to load dashboard."
                 );
 
             } finally {
@@ -44,118 +45,401 @@ function Dashboard() {
 
     }, []);
 
+
     if (loading) {
 
         return (
-            <div className="admin-page">
-                <h1>Admin Dashboard</h1>
-                <p>Loading dashboard...</p>
-            </div>
+
+            <AdminLayout>
+
+                <div className="admin-loading">
+
+                    <div className="loading-spinner"></div>
+
+                    <p>
+                        Loading administration centre...
+                    </p>
+
+                </div>
+
+            </AdminLayout>
+
         );
 
     }
+
 
     if (error) {
 
         return (
-            <div className="admin-page">
 
-                <h1>Admin Dashboard</h1>
+            <AdminLayout>
 
                 <div className="admin-error">
-                    {error}
+
+                    <div className="error-icon">
+                        !
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Dashboard unavailable
+                        </strong>
+
+                        <p>
+                            {error}
+                        </p>
+
+                    </div>
+
                 </div>
 
-            </div>
+            </AdminLayout>
+
         );
 
     }
 
+
+    const deploymentTotal =
+        stats.totalDeployments || 0;
+
+    const runningPercentage =
+        deploymentTotal > 0
+            ? Math.round(
+                (stats.runningDeployments /
+                    deploymentTotal) * 100
+            )
+            : 0;
+
+
     return (
 
-        <div className="admin-page">
+        <AdminLayout>
 
-            <div className="page-header">
+            <section className="dashboard-header">
 
                 <div>
-                    <h1>Admin Dashboard</h1>
+
+                    <span className="eyebrow">
+                        PLATFORM OVERVIEW
+                    </span>
+
+                    <h2>
+                        Good to see you, Administrator.
+                    </h2>
 
                     <p>
-                        JLEY-XMD platform overview
+                        Monitor clients, deployments,
+                        payments and JL activity from
+                        one central control centre.
                     </p>
+
                 </div>
 
-            </div>
+                <div className="system-status">
 
-            <div className="stats-grid">
+                    <span className="status-dot"></span>
 
-                <Stat
+                    <span>
+                        System operational
+                    </span>
+
+                </div>
+
+            </section>
+
+
+            <section className="stats-grid">
+
+                <StatCard
                     title="Total Clients"
-                    value={stats?.totalClients ?? 0}
+                    value={stats.totalClients}
+                    icon="◎"
+                    description="Registered client accounts"
                 />
 
-                <Stat
-                    title="Total Deployments"
-                    value={stats?.totalDeployments ?? 0}
+                <StatCard
+                    title="Deployments"
+                    value={stats.totalDeployments}
+                    icon="◈"
+                    description="Total bot deployments"
                 />
 
-                <Stat
-                    title="Running Deployments"
-                    value={stats?.runningDeployments ?? 0}
+                <StatCard
+                    title="Running Bots"
+                    value={stats.runningDeployments}
+                    icon="●"
+                    description={`${runningPercentage}% of deployments active`}
                 />
 
-                <Stat
-                    title="Pending Deployments"
-                    value={stats?.pendingDeployments ?? 0}
+                <StatCard
+                    title="JL Wallet"
+                    value={`${stats.totalJLBalance} JL`}
+                    icon="◇"
+                    description="Combined client balance"
                 />
 
-                <Stat
-                    title="Stopped Deployments"
-                    value={stats?.stoppedDeployments ?? 0}
-                />
+            </section>
 
-                <Stat
-                    title="Failed Deployments"
-                    value={stats?.failedDeployments ?? 0}
-                />
 
-                <Stat
-                    title="Total Payments"
-                    value={stats?.totalPayments ?? 0}
-                />
+            <section className="dashboard-grid">
 
-                <Stat
-                    title="Successful Payments"
-                    value={stats?.successfulPayments ?? 0}
-                />
+                <div className="admin-panel deployment-panel">
 
-                <Stat
-                    title="JL Wallet Balance"
-                    value={`${stats?.totalJLBalance ?? 0} JL`}
-                />
+                    <div className="panel-heading">
 
-            </div>
+                        <div>
 
-        </div>
+                            <span className="panel-label">
+                                DEPLOYMENT HEALTH
+                            </span>
 
-    );
+                            <h3>
+                                Deployment overview
+                            </h3>
 
-}
+                        </div>
 
-function Stat({ title, value }) {
+                        <span className="panel-live">
+                            LIVE
+                        </span>
 
-    return (
+                    </div>
 
-        <div className="stat-card">
 
-            <p>{title}</p>
+                    <div className="deployment-overview">
 
-            <h2>{value}</h2>
+                        <div
+    className="health-ring"
+    style={{
+        "--health": runningPercentage
+    }}
+>
 
-        </div>
+                            <div className="health-ring-inner">
+
+                                <strong>
+                                    {runningPercentage}%
+                                </strong>
+
+                                <span>
+                                    Running
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div className="deployment-list">
+
+                            <div className="deployment-row">
+
+                                <span>
+                                    <i className="indicator running"></i>
+                                    Running
+                                </span>
+
+                                <strong>
+                                    {stats.runningDeployments}
+                                </strong>
+
+                            </div>
+
+
+                            <div className="deployment-row">
+
+                                <span>
+                                    <i className="indicator pending"></i>
+                                    Pending
+                                </span>
+
+                                <strong>
+                                    {stats.pendingDeployments}
+                                </strong>
+
+                            </div>
+
+
+                            <div className="deployment-row">
+
+                                <span>
+                                    <i className="indicator stopped"></i>
+                                    Stopped
+                                </span>
+
+                                <strong>
+                                    {stats.stoppedDeployments}
+                                </strong>
+
+                            </div>
+
+
+                            <div className="deployment-row">
+
+                                <span>
+                                    <i className="indicator failed"></i>
+                                    Failed
+                                </span>
+
+                                <strong>
+                                    {stats.failedDeployments}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div className="admin-panel platform-panel">
+
+                    <div className="panel-heading">
+
+                        <div>
+
+                            <span className="panel-label">
+                                PLATFORM ACTIVITY
+                            </span>
+
+                            <h3>
+                                Payments
+                            </h3>
+
+                        </div>
+
+                        <span className="activity-icon">
+                            ↗
+                        </span>
+
+                    </div>
+
+
+                    <div className="payment-summary">
+
+                        <div>
+
+                            <span>
+                                Total payments
+                            </span>
+
+                            <strong>
+                                {stats.totalPayments}
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Successful
+                            </span>
+
+                            <strong className="success-text">
+                                {stats.successfulPayments}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="payment-progress">
+
+                        <div className="progress-track">
+
+                            <div
+                                className="progress-value"
+                                style={{
+                                    width:
+                                        stats.totalPayments > 0
+                                            ? `${Math.round(
+                                                (stats.successfulPayments /
+                                                    stats.totalPayments) *
+                                                100
+                                            )}%`
+                                            : "0%"
+                                }}
+                            ></div>
+
+                        </div>
+
+                        <span>
+                            {stats.totalPayments > 0
+                                ? Math.round(
+                                    (stats.successfulPayments /
+                                        stats.totalPayments) *
+                                    100
+                                )
+                                : 0
+                            }% success rate
+                        </span>
+
+                    </div>
+
+
+                    <div className="platform-note">
+
+                        <span className="note-icon">
+                            ✓
+                        </span>
+
+                        <p>
+                            Payment monitoring is active
+                            across the platform.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <section className="admin-panel quick-panel">
+
+                <div>
+
+                    <span className="panel-label">
+                        ADMINISTRATION
+                    </span>
+
+                    <h3>
+                        Control centre
+                    </h3>
+
+                    <p>
+                        Use the administration tools to
+                        monitor clients and platform
+                        activity.
+                    </p>
+
+                </div>
+
+
+                <div className="quick-actions">
+
+                    <a href="/clients">
+                        <span>◎</span>
+                        Manage clients
+                        <b>→</b>
+                    </a>
+
+                </div>
+
+            </section>
+
+        </AdminLayout>
 
     );
 
 }
 
 export default Dashboard;
+

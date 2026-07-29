@@ -1,3 +1,4 @@
+
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
@@ -15,7 +16,11 @@ function AdminLayout({ children }) {
 
                 <main className="admin-content">
 
-                    {children}
+                    <div className="admin-page">
+
+                        {children}
+
+                    </div>
 
                 </main>
 
@@ -28,3 +33,4 @@ function AdminLayout({ children }) {
 }
 
 export default AdminLayout;
+

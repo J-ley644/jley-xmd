@@ -1,21 +1,49 @@
-function StatCard({ title, value }) {
+
+function StatCard({
+    title,
+    value,
+    icon,
+    description
+}) {
 
     return (
 
-        <div className="stat-card">
+        <article className="stat-card">
 
-            <p>
-                {title}
-            </p>
+            <div className="stat-card-top">
 
-            <h2>
-                {value}
-            </h2>
+                <div className="stat-icon">
+                    {icon}
+                </div>
 
-        </div>
+                <span className="stat-indicator">
+                    ●
+                </span>
+
+            </div>
+
+
+            <div className="stat-card-body">
+
+                <span className="stat-title">
+                    {title}
+                </span>
+
+                <strong className="stat-value">
+                    {value}
+                </strong>
+
+                <span className="stat-description">
+                    {description}
+                </span>
+
+            </div>
+
+        </article>
 
     );
 
 }
 
 export default StatCard;
+
