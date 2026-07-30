@@ -1,10 +1,11 @@
 
-import { useEffect, useState } from "react";
 import {
     Routes,
     Route,
     Navigate
 } from "react-router-dom";
+
+import { useEffect, useState } from "react";
 
 import Home from "../pages/Home";
 import Deploy from "../pages/Deploy";
@@ -119,10 +120,12 @@ function ProtectedRoute({ children }) {
     if (!authenticated) {
 
         return (
+
             <Navigate
                 to="/login"
                 replace
             />
+
         );
 
     }
@@ -134,6 +137,21 @@ function ProtectedRoute({ children }) {
 
 
 function DashboardLayout({ children }) {
+
+    return (
+
+        <Layout>
+
+            {children}
+
+        </Layout>
+
+    );
+
+}
+
+
+function ProtectedDashboardLayout({ children }) {
 
     return (
 
@@ -161,19 +179,6 @@ function AppRoutes() {
             {/* PUBLIC */}
 
             <Route
-                path="/login"
-                element={<Login />}
-            />
-
-            <Route
-                path="/register"
-                element={<Register />}
-            />
-
-
-            {/* PROTECTED */}
-
-            <Route
                 path="/"
                 element={
                     <DashboardLayout>
@@ -182,12 +187,27 @@ function AppRoutes() {
                 }
             />
 
+
+            <Route
+                path="/login"
+                element={<Login />}
+            />
+
+
+            <Route
+                path="/register"
+                element={<Register />}
+            />
+
+
+            {/* ACCOUNT REQUIRED */}
+
             <Route
                 path="/deploy"
                 element={
-                    <DashboardLayout>
+                    <ProtectedDashboardLayout>
                         <Deploy />
-                    </DashboardLayout>
+                    </ProtectedDashboardLayout>
                 }
             />
 
