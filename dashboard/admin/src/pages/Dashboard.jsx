@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import AdminLayout from "../components/AdminLayout";
 import StatCard from "../components/StatCard";
 import { getAdminDashboard } from "../services/api";
 
@@ -50,19 +49,15 @@ function Dashboard() {
 
         return (
 
-            <AdminLayout>
+            <div className="admin-loading">
 
-                <div className="admin-loading">
+                <div className="loading-spinner"></div>
 
-                    <div className="loading-spinner"></div>
+                <p>
+                    Loading administration centre...
+                </p>
 
-                    <p>
-                        Loading administration centre...
-                    </p>
-
-                </div>
-
-            </AdminLayout>
+            </div>
 
         );
 
@@ -73,29 +68,25 @@ function Dashboard() {
 
         return (
 
-            <AdminLayout>
+            <div className="admin-error">
 
-                <div className="admin-error">
+                <div className="error-icon">
+                    !
+                </div>
 
-                    <div className="error-icon">
-                        !
-                    </div>
+                <div>
 
-                    <div>
+                    <strong>
+                        Dashboard unavailable
+                    </strong>
 
-                        <strong>
-                            Dashboard unavailable
-                        </strong>
-
-                        <p>
-                            {error}
-                        </p>
-
-                    </div>
+                    <p>
+                        {error}
+                    </p>
 
                 </div>
 
-            </AdminLayout>
+            </div>
 
         );
 
@@ -116,7 +107,7 @@ function Dashboard() {
 
     return (
 
-        <AdminLayout>
+        <>
 
             <section className="dashboard-header">
 
@@ -212,11 +203,11 @@ function Dashboard() {
                     <div className="deployment-overview">
 
                         <div
-    className="health-ring"
-    style={{
-        "--health": runningPercentage
-    }}
->
+                            className="health-ring"
+                            style={{
+                                "--health": runningPercentage
+                            }}
+                        >
 
                             <div className="health-ring-inner">
 
@@ -426,20 +417,23 @@ function Dashboard() {
                 <div className="quick-actions">
 
                     <a href="/clients">
+
                         <span>◎</span>
+
                         Manage clients
+
                         <b>→</b>
+
                     </a>
 
                 </div>
 
             </section>
 
-        </AdminLayout>
+        </>
 
     );
 
 }
 
 export default Dashboard;
-

@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import deploymentRoutes from "./routes/deploymentRoutes.js";
 import clientBotRoutes from "./routes/clientBotRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import clientDashboardRoutes from "./routes/clientDashboardRoutes.js";
 
 const app = express();
 
@@ -94,6 +95,11 @@ app.use(
 app.use(
     "/api/client",
     clientBotRoutes
+);
+
+app.use(
+    "/api/client",
+    clientDashboardRoutes
 );
 
 app.use(

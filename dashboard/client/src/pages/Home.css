@@ -1,0 +1,402 @@
+
+/* =========================================
+   CLIENT DASHBOARD DEPLOYMENTS
+========================================= */
+
+.client-deployments {
+
+    width: 100%;
+
+    max-width: 1400px;
+
+    margin: 0 auto;
+
+    padding: 0 40px 60px;
+
+}
+
+
+/* =========================================
+   SECTION HEADER
+========================================= */
+
+.client-section-header {
+
+    display: flex;
+
+    align-items: flex-end;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 22px;
+
+}
+
+.client-section-eyebrow {
+
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: #8de8ff;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.14em;
+
+}
+
+.client-section-header h2 {
+
+    margin: 0;
+
+    color: white;
+
+    font-size: 26px;
+
+    line-height: 1.2;
+
+}
+
+.client-section-header p {
+
+    margin: 7px 0 0;
+
+    color: #9ca3af;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+
+}
+
+.deployment-count {
+
+    padding: 8px 12px;
+
+    border-radius: 10px;
+
+    background: rgba(0,217,255,.08);
+
+    border: 1px solid rgba(0,217,255,.16);
+
+    color: #8de8ff;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+}
+
+
+/* =========================================
+   DEPLOYMENT GRID
+========================================= */
+
+.deployment-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(250px, 1fr)
+        );
+
+    gap: 16px;
+
+}
+
+
+/* =========================================
+   DEPLOYMENT CARD
+========================================= */
+
+.client-deployments .card {
+
+    min-width: 0;
+
+    padding: 20px;
+
+    border-radius: 16px;
+
+    background: rgba(255,255,255,.05);
+
+    backdrop-filter: blur(18px);
+
+    -webkit-backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 12px 30px rgba(0,0,0,.16);
+
+    /* Cards remain completely stationary */
+
+    transform: none;
+
+    animation: none;
+
+}
+
+
+/* No movement on hover */
+
+.client-deployments .card:hover {
+
+    transform: none;
+
+    border-color:
+        rgba(0,217,255,.25);
+
+    box-shadow:
+        0 14px 34px rgba(0,0,0,.20);
+
+}
+
+
+/* =========================================
+   CARD TITLE
+========================================= */
+
+.client-deployments .card h3 {
+
+    margin: 0 0 14px;
+
+    color: white;
+
+    font-size: 17px;
+
+    font-weight: 700;
+
+    line-height: 1.3;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+/* =========================================
+   CARD INFORMATION
+========================================= */
+
+.client-deployments .card p {
+
+    margin: 7px 0;
+
+    color: #bfc9d4;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+
+}
+
+
+/* =========================================
+   CARD ACTIONS
+========================================= */
+
+.client-deployments .card > div {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 8px;
+
+    margin-top: 17px !important;
+
+}
+
+
+/* =========================================
+   CARD BUTTONS
+========================================= */
+
+.client-deployments .card button {
+
+    min-height: 36px;
+
+    padding: 8px 10px;
+
+    border: 1px solid rgba(255,255,255,.10);
+
+    border-radius: 9px;
+
+    background: rgba(255,255,255,.055);
+
+    color: #e2e8f0;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    transition:
+        background .2s ease,
+        border-color .2s ease,
+        color .2s ease;
+
+}
+
+
+/* No movement */
+
+.client-deployments .card button:hover {
+
+    transform: none;
+
+    background:
+        rgba(0,217,255,.10);
+
+    border-color:
+        rgba(0,217,255,.28);
+
+    color: white;
+
+}
+
+
+/* =========================================
+   EMPTY STATE
+========================================= */
+
+.empty-deployments {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-height: 190px;
+
+    padding: 30px;
+
+    text-align: center;
+
+    border-radius: 16px;
+
+    background: rgba(255,255,255,.04);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+}
+
+.empty-deployment-icon {
+
+    width: 48px;
+
+    height: 48px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    margin-bottom: 12px;
+
+    border-radius: 13px;
+
+    background: rgba(0,217,255,.08);
+
+    font-size: 22px;
+
+}
+
+.empty-deployments h3 {
+
+    margin: 0;
+
+    color: white;
+
+    font-size: 16px;
+
+}
+
+.empty-deployments p {
+
+    margin: 7px 0 0;
+
+    color: #9ca3af;
+
+    font-size: 12px;
+
+}
+
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 900px) {
+
+    .client-deployments {
+
+        padding:
+            0 25px 50px;
+
+    }
+
+    .deployment-grid {
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+    }
+
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+    .client-deployments {
+
+        padding:
+            0 16px 40px;
+
+    }
+
+    .client-section-header {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+    }
+
+    .client-section-header h2 {
+
+        font-size: 23px;
+
+    }
+
+    .deployment-grid {
+
+        grid-template-columns: 1fr;
+
+        gap: 12px;
+
+    }
+
+    .client-deployments .card {
+
+        padding: 17px;
+
+    }
+
+}

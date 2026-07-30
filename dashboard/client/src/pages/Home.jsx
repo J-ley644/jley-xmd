@@ -5,6 +5,7 @@ import Hero from "../components/Hero";
 import Stats from "../components/Stats";
 import DeploymentCard from "../components/DeploymentCard";
 import { apiRequest } from "../services/api";
+import "./Home.css";
 
 
 function Home() {

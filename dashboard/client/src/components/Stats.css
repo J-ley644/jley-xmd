@@ -1,69 +1,185 @@
-.stats{
 
-    max-width:1400px;
+.stats {
 
-    margin:20px auto 70px;
+    max-width: 1400px;
 
-    padding:0 60px;
+    margin: 20px auto 55px;
 
-    display:grid;
+    padding: 0 40px;
 
-    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    display: grid;
 
-    gap:25px;
+    grid-template-columns:
+        repeat(auto-fit, minmax(210px, 1fr));
 
-}
-
-.stat-card{
-
-    padding:30px;
-
-    border-radius:24px;
-
-    backdrop-filter:blur(20px);
-
-    background:rgba(255,255,255,.05);
-
-    border:1px solid rgba(255,255,255,.08);
-
-    transition:.35s;
-
-    cursor:pointer;
+    gap: 18px;
 
 }
 
-.stat-card:hover{
 
-    transform:translateY(-10px);
+/* =========================================
+   STAT CARD
+========================================= */
 
-    border-color:#00d9ff;
+.stat-card {
+
+    min-height: 135px;
+
+    padding: 20px 22px;
+
+    border-radius: 18px;
+
+    backdrop-filter: blur(20px);
+
+    background: rgba(255,255,255,.05);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    /* No movement / no hover animation */
+
+    transition:
+        border-color .25s ease,
+        box-shadow .25s ease;
+
+}
+
+
+/* Keep the card stationary */
+
+.stat-card:hover {
+
+    border-color: rgba(0,217,255,.35);
 
     box-shadow:
-
-    0 0 30px rgba(0,217,255,.25);
-
-}
-
-.stat-icon{
-
-    font-size:40px;
-
-    margin-bottom:20px;
+        0 0 22px rgba(0,217,255,.12);
 
 }
 
-.stat-card h2{
 
-    font-size:42px;
+/* =========================================
+   ICON
+========================================= */
 
-    color:#00d9ff;
+.stat-icon {
 
-    margin-bottom:10px;
+    font-size: 26px;
+
+    margin-bottom: 12px;
 
 }
 
-.stat-card p{
 
-    color:#bfc9d4;
+/* =========================================
+   VALUE
+========================================= */
+
+.stat-card h2 {
+
+    font-size: 30px;
+
+    line-height: 1.15;
+
+    color: #00d9ff;
+
+    margin: 0 0 6px;
+
+    font-weight: 700;
+
+}
+
+
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.stat-card p {
+
+    margin: 0;
+
+    color: #bfc9d4;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+
+}
+
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 900px) {
+
+    .stats {
+
+        padding: 0 25px;
+
+        gap: 15px;
+
+    }
+
+    .stat-card {
+
+        min-height: 125px;
+
+        padding: 18px 20px;
+
+    }
+
+    .stat-card h2 {
+
+        font-size: 28px;
+
+    }
+
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+    .stats {
+
+        margin-bottom: 40px;
+
+        padding: 0 16px;
+
+        grid-template-columns: 1fr;
+
+        gap: 12px;
+
+    }
+
+    .stat-card {
+
+        min-height: 115px;
+
+        padding: 17px 18px;
+
+    }
+
+    .stat-icon {
+
+        font-size: 23px;
+
+        margin-bottom: 9px;
+
+    }
+
+    .stat-card h2 {
+
+        font-size: 26px;
+
+    }
+
+    .stat-card p {
+
+        font-size: 12px;
+
+    }
 
 }
