@@ -8,6 +8,20 @@ import {
 } from "./botEngineService.js";
 
 
+/*
+|--------------------------------------------------------------------------
+| DEPLOYMENT LIFESPAN
+|--------------------------------------------------------------------------
+*/
+
+const DEPLOYMENT_LIFESPAN_DAYS = 32;
+
+
+/*
+|--------------------------------------------------------------------------
+| GET DEPLOYMENTS
+|--------------------------------------------------------------------------
+*/
 
 export async function getDeployments(ownerId) {
 
@@ -26,8 +40,18 @@ export async function getDeployments(ownerId) {
 }
 
 
-
-
+/*
+|--------------------------------------------------------------------------
+| CREATE DEPLOYMENT
+|--------------------------------------------------------------------------
+|
+| Creating a deployment does NOT start the 32-day clock.
+|
+| The clock begins when WhatsApp successfully connects for the
+| first time inside whatsapp.js.
+|
+|--------------------------------------------------------------------------
+*/
 
 export async function createDeployment(data) {
 
@@ -41,7 +65,15 @@ export async function createDeployment(data) {
 
             jlCost: 50,
 
-            status: "PENDING"
+            status: "PENDING",
+
+            activatedAt: null,
+
+            expiresAt: null,
+
+            connectionStatus: "OFFLINE",
+
+            sessionReady: false
 
         }
 
@@ -50,22 +82,26 @@ export async function createDeployment(data) {
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| START DEPLOYMENT
+|--------------------------------------------------------------------------
+*/
 
-
-
-export async function startDeployment(id, ownerId) {
-
+export async function startDeployment(
+    id,
+    ownerId
+) {
 
     const deployment =
-    await prisma.deployment.findFirst({
+        await prisma.deployment.findFirst({
 
-        where: {
-            id,
-            ownerId
-        }
+            where: {
+                id,
+                ownerId
+            }
 
-    });
-
+        });
 
 
     if (!deployment) {
@@ -77,6 +113,63 @@ export async function startDeployment(id, ownerId) {
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | EXPIRED DEPLOYMENT PROTECTION
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        deployment.expiresAt &&
+        deployment.expiresAt <= new Date()
+    ) {
+
+        await prisma.deployment.update({
+
+            where: {
+                id
+            },
+
+            data: {
+
+                status: "STOPPED",
+
+                connectionStatus: "OFFLINE",
+
+                sessionReady: false
+
+            }
+
+        });
+
+
+        throw new Error(
+            "Deployment has expired."
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PREVENT DUPLICATE START
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        deploymentManager.isRunning(id)
+    ) {
+
+        return deploymentManager.getBot(id);
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | START BOT
+    |--------------------------------------------------------------------------
+    */
 
     const botInstance =
         await startBotEngine(
@@ -84,6 +177,11 @@ export async function startDeployment(id, ownerId) {
         );
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | STATUS UPDATE
+    |--------------------------------------------------------------------------
+    */
 
     await prisma.deployment.update({
 
@@ -100,66 +198,85 @@ export async function startDeployment(id, ownerId) {
     });
 
 
-
     return botInstance;
 
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| STOP DEPLOYMENT
+|--------------------------------------------------------------------------
+*/
 
-
-
-export async function stopDeployment(id, ownerId) {
-
-
-    stopBotEngine(id);
-
-
+export async function stopDeployment(
+    id,
+    ownerId
+) {
 
     const deployment =
-    await prisma.deployment.findFirst({
+        await prisma.deployment.findFirst({
+
+            where: {
+                id,
+                ownerId
+            }
+
+        });
+
+
+    if (!deployment) {
+
+        throw new Error(
+            "Deployment not found"
+        );
+
+    }
+
+
+    await stopBotEngine(id);
+
+
+    return await prisma.deployment.update({
 
         where: {
-            id,
-            ownerId
+            id
+        },
+
+        data: {
+
+            status: "STOPPED",
+
+            connectionStatus: "OFFLINE",
+
+            sessionReady: false
+
         }
 
     });
 
-if (!deployment) {
-
-    throw new Error(
-        "Deployment not found"
-    );
-
-}
-
-return await prisma.deployment.update({
-
-    where: {
-        id
-    },
-
-    data: {
-
-        status: "STOPPED"
-
-    }
-
-});
-
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| GET SINGLE DEPLOYMENT
+|--------------------------------------------------------------------------
+*/
 
-
-export async function getDeployment(id, ownerId) {
+export async function getDeployment(
+    id,
+    ownerId
+) {
 
     return await prisma.deployment.findFirst({
 
         where: {
+
             id,
+
             ownerId
+
         }
 
     });
@@ -167,8 +284,11 @@ export async function getDeployment(id, ownerId) {
 }
 
 
-
-
+/*
+|--------------------------------------------------------------------------
+| UPDATE DEPLOYMENT STATUS
+|--------------------------------------------------------------------------
+*/
 
 export async function updateDeploymentStatus(
     id,
@@ -186,6 +306,7 @@ export async function updateDeploymentStatus(
 
         });
 
+
     if (!deployment) {
 
         throw new Error(
@@ -193,6 +314,26 @@ export async function updateDeploymentStatus(
         );
 
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | NEVER ALLOW EXPIRED DEPLOYMENT TO RUN
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        status === "RUNNING" &&
+        deployment.expiresAt &&
+        deployment.expiresAt <= new Date()
+    ) {
+
+        throw new Error(
+            "Deployment has expired."
+        );
+
+    }
+
 
     return await prisma.deployment.update({
 
@@ -209,15 +350,33 @@ export async function updateDeploymentStatus(
 }
 
 
-export async function deleteDeployment(id) {
+/*
+|--------------------------------------------------------------------------
+| DELETE DEPLOYMENT
+|--------------------------------------------------------------------------
+*/
+
+export async function deleteDeployment(
+    id
+) {
+
+    /*
+    Stop the WhatsApp engine first.
+    */
+
+    await stopBotEngine(id);
 
 
-    stopBotEngine(id);
-
+    /*
+    Remove from deployment manager.
+    */
 
     deploymentManager.removeBot(id);
 
 
+    /*
+    Delete database record.
+    */
 
     return await prisma.deployment.delete({
 
@@ -226,5 +385,18 @@ export async function deleteDeployment(id) {
         }
 
     });
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| LIFESPAN HELPERS
+|--------------------------------------------------------------------------
+*/
+
+export function getDeploymentLifespanDays() {
+
+    return DEPLOYMENT_LIFESPAN_DAYS;
 
 }

@@ -1,7 +1,15 @@
 import "dotenv/config";
+
 import app from "./app.js";
 
-const PORT = process.env.PORT || 5000;
+import {
+    startDeploymentExpiryChecker
+} from "./services/deploymentExpiryService.js";
+
+
+const PORT =
+    process.env.PORT || 5000;
+
 
 app.listen(PORT, () => {
 
@@ -13,5 +21,8 @@ Port   : ${PORT}
 Status : Running
 ==================================
 `);
+
+
+    startDeploymentExpiryChecker();
 
 });

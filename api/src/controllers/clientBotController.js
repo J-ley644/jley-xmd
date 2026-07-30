@@ -1,92 +1,109 @@
-
 import prisma from "../config/prisma.js";
 import * as deploymentService from "../services/deploymentService.js";
-import { startBotEngine } from "../services/botEngineService.js";
 
-
-/*
-|--------------------------------------------------------------------------
-| Client Dashboard
-|--------------------------------------------------------------------------
-*/
+/*                                                                         |
+| -------------------------------------------------------------------------- |
+| Client Dashboard                                                           |
+| -------------------------------------------------------------------------- |
+| */                                                                         
 
 export async function getClientDashboard(req, res) {
 
-    try {
 
-        const userId = req.user.id;
+try {
 
-        const client = await prisma.user.findUnique({
+    const userId = req.user.id;
 
-            where: {
-                id: userId
+    const client = await prisma.user.findUnique({
+
+        where: {
+            id: userId
+        },
+
+        select: {
+
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            suspended: true,
+            blocked: true,
+            createdAt: true,
+
+            wallet: {
+
+                select: {
+
+                    balance: true
+
+                }
+
             },
 
-            select: {
+            deployments: {
 
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                suspended: true,
-                blocked: true,
-                createdAt: true,
+                orderBy: {
 
-                wallet: {
-                    select: {
-                        balance: true
-                    }
+                    createdAt: "desc"
+
                 },
 
-                deployments: {
+                select: {
 
-                    orderBy: {
-                        createdAt: "desc"
-                    },
+                    id: true,
+                    botName: true,
+                    status: true,
+                    jlCost: true,
 
-                    select: {
+                    createdAt: true,
+                    updatedAt: true,
 
-                        id: true,
-                        botName: true,
-                        status: true,
-                        jlCost: true,
+                    activatedAt: true,
+                    expiresAt: true,
 
-                        createdAt: true,
-                        updatedAt: true,
+                    lastConnected: true,
 
-                        lastConnected: true,
-                        qrCode: true,
-                        sessionReady: true,
-                        connectionStatus: true,
-                        pairingCode: true,
-                        phoneNumber: true,
-                        sessionId: true
+                    qrCode: true,
+                    sessionReady: true,
+                    connectionStatus: true,
 
-                    }
+                    pairingCode: true,
+                    phoneNumber: true,
+                    sessionId: true
 
                 }
 
             }
 
-        });
-
-
-        if (!client) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Client account not found."
-
-            });
-
         }
 
+    });
 
-        const deployments = client.deployments || [];
+
+    if (!client) {
+
+        return res.status(404).json({
+
+            success: false,
+            message: "Client account not found."
+
+        });
+
+    }
 
 
-        const activeBots = deployments.filter(
+    const deployments =
+        client.deployments || [];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACTIVE BOTS
+    |--------------------------------------------------------------------------
+    */
+
+    const activeBots =
+        deployments.filter(
 
             deployment =>
                 deployment.status === "RUNNING"
@@ -94,7 +111,14 @@ export async function getClientDashboard(req, res) {
         ).length;
 
 
-        const connectedBots = deployments.filter(
+    /*
+    |--------------------------------------------------------------------------
+    | CONNECTED BOTS
+    |--------------------------------------------------------------------------
+    */
+
+    const connectedBots =
+        deployments.filter(
 
             deployment =>
                 deployment.connectionStatus === "CONNECTED" ||
@@ -103,7 +127,14 @@ export async function getClientDashboard(req, res) {
         ).length;
 
 
-        const runningDeployments = deployments.filter(
+    /*
+    |--------------------------------------------------------------------------
+    | RUNNING DEPLOYMENTS
+    |--------------------------------------------------------------------------
+    */
+
+    const runningDeployments =
+        deployments.filter(
 
             deployment =>
                 deployment.status === "RUNNING"
@@ -111,256 +142,372 @@ export async function getClientDashboard(req, res) {
         ).length;
 
 
-        const stats = {
+    /*
+    |--------------------------------------------------------------------------
+    | EXPIRING / EXPIRED INFORMATION
+    |--------------------------------------------------------------------------
+    */
 
-            activeBots,
-
-            deployments: deployments.length,
-
-            runningDeployments,
-
-            connectedBots,
-
-            jlBalance: client.wallet?.balance ?? 0
-
-        };
+    const now = new Date();
 
 
-        res.json({
+    const expiredDeployments =
+        deployments.filter(
 
-            success: true,
+            deployment =>
+                deployment.expiresAt &&
+                deployment.expiresAt <= now
 
-            client: {
-
-                id: client.id,
-                name: client.name,
-                email: client.email,
-                role: client.role,
-                suspended: client.suspended,
-                blocked: client.blocked,
-                createdAt: client.createdAt
-
-            },
-
-            stats,
-
-            deployments
-
-        });
+        ).length;
 
 
-    } catch (error) {
+    const stats = {
 
-        console.error(
-            "CLIENT DASHBOARD ERROR:",
-            error
-        );
+        activeBots,
+
+        deployments:
+            deployments.length,
+
+        runningDeployments,
+
+        connectedBots,
+
+        expiredDeployments,
+
+        jlBalance:
+            client.wallet?.balance ?? 0
+
+    };
 
 
-        res.status(500).json({
+    res.json({
 
-            success: false,
-            message: "Failed to load client dashboard."
+        success: true,
 
-        });
+        client: {
 
-    }
+            id: client.id,
+
+            name: client.name,
+
+            email: client.email,
+
+            role: client.role,
+
+            suspended: client.suspended,
+
+            blocked: client.blocked,
+
+            createdAt: client.createdAt
+
+        },
+
+        stats,
+
+        deployments
+
+    });
+
+
+} catch (error) {
+
+    console.error(
+        "CLIENT DASHBOARD ERROR:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        success: false,
+
+        message:
+            "Failed to load client dashboard."
+
+    });
 
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Create Deployment
-|--------------------------------------------------------------------------
-*/
+}
+
+ /*                                                                         |
+| -------------------------------------------------------------------------- |
+| CREATE DEPLOYMENT                                                          |
+| -------------------------------------------------------------------------- |
+| */                                                                         
 
 export async function createClientBot(req, res) {
 
-    try {
 
-        const { botName } = req.body;
+try {
 
-        if (!botName) {
-
-            return res.status(400).json({
-
-                success: false,
-                message: "Bot name required."
-
-            });
-
-        }
+    const { botName } = req.body;
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | IMPORTANT
-        |--------------------------------------------------------------------------
-        | Never trust ownerId from the frontend.
-        | The authenticated JWT determines the owner.
-        |--------------------------------------------------------------------------
-        */
+    if (!botName) {
 
-        const ownerId = req.user.id;
-
-
-        const deployment =
-            await deploymentService.createDeployment({
-
-                botName,
-                ownerId
-
-            });
-
-
-        await startBotEngine(deployment);
-
-
-        res.json({
-
-            success: true,
-            deployment
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            "CREATE CLIENT BOT ERROR:",
-            error
-        );
-
-
-        res.status(500).json({
+        return res.status(400).json({
 
             success: false,
-            message: error.message
+
+            message:
+                "Bot name required."
 
         });
 
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | NEVER TRUST ownerId FROM FRONTEND
+    |--------------------------------------------------------------------------
+    |
+    | The authenticated JWT determines the owner.
+    |
+    */
+
+    const ownerId =
+        req.user.id;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE DEPLOYMENT
+    |--------------------------------------------------------------------------
+    */
+
+    const deployment =
+        await deploymentService.createDeployment({
+
+            botName,
+
+            ownerId
+
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | START DEPLOYMENT THROUGH SERVICE
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | Do NOT call startBotEngine() directly here.
+    |
+    | deploymentService.startDeployment() is the controlled entry point.
+    |
+    */
+
+    const botInstance =
+        await deploymentService.startDeployment(
+
+            deployment.id,
+
+            ownerId
+
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RETURN FRESH DATABASE RECORD
+    |--------------------------------------------------------------------------
+    */
+
+    const updatedDeployment =
+        await deploymentService.getDeployment(
+
+            deployment.id,
+
+            ownerId
+
+        );
+
+
+    res.status(201).json({
+
+        success: true,
+
+        deployment:
+            updatedDeployment,
+
+        bot: {
+
+            deploymentId:
+                botInstance.deploymentId,
+
+            status:
+                botInstance.status
+
+        }
+
+    });
+
+
+} catch (error) {
+
+    console.error(
+        "CREATE CLIENT BOT ERROR:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        success: false,
+
+        message:
+            error.message ||
+            "Failed to create deployment."
+
+    });
+
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Get Client Deployments
-|--------------------------------------------------------------------------
-*/
+}
+
+ /*                                                                         |
+| -------------------------------------------------------------------------- |
+| GET CLIENT DEPLOYMENTS                                                     |
+| -------------------------------------------------------------------------- |
+| */                                                                         
 
 export async function getClientBots(req, res) {
 
-    try {
 
-        const bots =
-            await prisma.deployment.findMany({
+try {
 
-                where: {
+    const bots =
+        await deploymentService.getDeployments(
 
-                    ownerId: req.user.id
+            req.user.id
 
-                },
-
-                orderBy: {
-
-                    createdAt: "desc"
-
-                }
-
-            });
-
-
-        res.json({
-
-            success: true,
-            bots
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            "GET CLIENT BOTS ERROR:",
-            error
         );
 
 
-        res.status(500).json({
+    res.json({
 
-            success: false,
-            message: error.message
+        success: true,
 
-        });
+        bots
 
-    }
+    });
+
+
+} catch (error) {
+
+    console.error(
+        "GET CLIENT BOTS ERROR:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        success: false,
+
+        message:
+            error.message
+
+    });
 
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Get Single Client Deployment
-|--------------------------------------------------------------------------
-*/
+}
+
+/*                                                                         |
+| -------------------------------------------------------------------------- |
+| GET SINGLE CLIENT DEPLOYMENT                                               |
+| -------------------------------------------------------------------------- |
+| */                                                                         
 
 export async function getClientDeployment(req, res) {
 
-    try {
 
-        const deployment =
-            await prisma.deployment.findFirst({
+try {
 
-                where: {
+    const deployment =
+        await deploymentService.getDeployment(
 
-                    id: req.params.id,
+            req.params.id,
 
-                    ownerId: req.user.id
+            req.user.id
 
-                }
-
-            });
-
-
-        if (!deployment) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Deployment not found."
-
-            });
-
-        }
-
-
-        res.json({
-
-            success: true,
-            deployment
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            "GET CLIENT DEPLOYMENT ERROR:",
-            error
         );
 
 
-        res.status(500).json({
+    if (!deployment) {
+
+        return res.status(404).json({
 
             success: false,
-            message: error.message
+
+            message:
+                "Deployment not found."
 
         });
 
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXPIRY INFORMATION
+    |--------------------------------------------------------------------------
+    */
+
+    const now = new Date();
+
+
+    const expired =
+        deployment.expiresAt &&
+        deployment.expiresAt <= now;
+
+
+    res.json({
+
+        success: true,
+
+        deployment,
+
+        lifespan: {
+
+            activatedAt:
+                deployment.activatedAt,
+
+            expiresAt:
+                deployment.expiresAt,
+
+            expired
+
+        }
+
+    });
+
+
+} catch (error) {
+
+    console.error(
+        "GET CLIENT DEPLOYMENT ERROR:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        success: false,
+
+        message:
+            error.message
+
+    });
+
 }
 
+
+}
