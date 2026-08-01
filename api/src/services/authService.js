@@ -1,120 +1,121 @@
 import prisma from "../config/prisma.js";
-import {
-    hashPassword,
-    comparePassword
-} from "../utils/hash.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-import {
-    createToken
-} from "../utils/jwt.js";
+const JWT_SECRET = process.env.JWT_SECRET;
 
-
-
-export async function register(data) {
-
-    const exists =
-        await prisma.user.findUnique({
-            where: {
-                email: data.email
-            }
-        });
-
-    if (exists) {
-        throw new Error(
-            "Email already exists."
-        );
+export async function register({ name, email, password }) {
+    if (!name || !email || !password) {
+        throw new Error("Name, email and password are required.");
     }
 
-    const password =
-        await hashPassword(
-            data.password
-        );
+    if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters.");
+    }
 
-    const user =
-    await prisma.user.create({
+    const normalizedEmail = email.trim().toLowerCase();
 
-        data: {
-
-            name: data.name,
-
-            email: data.email,
-
-            password,
-
-            role: "CLIENT",
-
-            wallet: {
-
-                create: {
-
-                    balance: 500
-
-                }
-
-            }
-
-        }
-
+    const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail }
     });
 
-    return user;
+    if (existingUser) {
+        throw new Error("Email already exists.");
+    }
 
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+        data: {
+            name: name.trim(),
+            email: normalizedEmail,
+            password: hashedPassword,
+            role: "CLIENT",
+            wallet: {
+                create: {
+                    balance: 500
+                }
+            }
+        },
+        include: {
+            wallet: true
+        }
+    });
+
+    return sanitizeUser(user);
 }
 
+export async function login(email, password) {
+    if (!email || !password) {
+        throw new Error("Email and password are required.");
+    }
 
-
-export async function login(
-    email,
-    password
-) {
-
-    const user =
-        await prisma.user.findUnique({
-
-            where: {
-                email
-            }
-
-        });
+    const user = await prisma.user.findUnique({
+        where: {
+            email: email.trim().toLowerCase()
+        },
+        include: {
+            wallet: true
+        }
+    });
 
     if (!user) {
-
-        throw new Error(
-            "Invalid email or password."
-        );
-
+        throw new Error("Invalid email or password.");
     }
 
-    const valid =
-        await comparePassword(
-            password,
-            user.password
-        );
+    const validPassword = await bcrypt.compare(
+        password,
+        user.password
+    );
 
-    if (!valid) {
-
-        throw new Error(
-            "Invalid email or password."
-        );
-
+    if (!validPassword) {
+        throw new Error("Invalid email or password.");
     }
 
-    const token =
-        createToken(user);
-
-    return {
-
-        token,
-
-        user: {
-
+    const token = jwt.sign(
+        {
             id: user.id,
-            name: user.name,
             email: user.email,
             role: user.role
-
+        },
+        JWT_SECRET,
+        {
+            expiresIn: "7d"
         }
+    );
 
+    return {
+        token,
+        user: sanitizeUser(user)
     };
+}
 
+export async function getMe(id) {
+    const user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+            wallet: true
+        }
+    });
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    return sanitizeUser(user);
+}
+
+function sanitizeUser(user) {
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        wallet: user.wallet
+            ? {
+                balance: user.wallet.balance
+            }
+            : null,
+        createdAt: user.createdAt
+    };
 }

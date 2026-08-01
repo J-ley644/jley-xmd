@@ -1,68 +1,26 @@
 import prisma from "../config/prisma.js";
 
-
-export async function getWallet(userId){
-
-    let wallet = await prisma.wallet.findUnique({
-
-        where:{
+export async function getWallet(userId) {
+    const wallet = await prisma.wallet.findUnique({
+        where: {
             userId
         }
-
     });
 
-
-    if(!wallet){
-
-        wallet = await prisma.wallet.create({
-
-            data:{
-
-                userId,
-
-                balance:500
-
-            }
-
-        });
-
+    if (!wallet) {
+        throw new Error("Wallet not found.");
     }
-
 
     return wallet;
-
 }
 
-
-
-export async function deductJL(userId, amount){
-
-
-    const wallet = await getWallet(userId);
-
-
-    if(wallet.balance < amount){
-
-        throw new Error("Not enough JL");
-
-    }
-
-
-    return prisma.wallet.update({
-
-        where:{
+export async function getTransactions(userId) {
+    return prisma.payment.findMany({
+        where: {
             userId
         },
-
-        data:{
-
-            balance:{
-                decrement: amount
-            }
-
+        orderBy: {
+            createdAt: "desc"
         }
-
     });
-
-
 }

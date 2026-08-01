@@ -3,25 +3,16 @@ import { Router } from "express";
 import auth from "../middleware/auth.js";
 
 import {
-    create,
-    start,
-    getOne,
     list,
-    stop,
-    pair
-} from "../controllers/deploymentController.js";
+    getBot,
+    stop
+} from "../controllers/botController.js";
 
 
 const router = Router();
 
 
 router.use(auth);
-
-
-router.post(
-    "/",
-    create
-);
 
 
 router.get(
@@ -32,18 +23,7 @@ router.get(
 
 router.get(
     "/:id",
-    getOne
-);
-
-
-router.post(
-    "/:id/start",
-    start
-);
-
-router.post(
-    "/:id/pair",
-    pair
+    getBot
 );
 
 

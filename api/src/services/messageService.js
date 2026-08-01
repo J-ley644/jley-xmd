@@ -1,0 +1,47 @@
+import {
+    handleCommand
+} from "./commandService.js";
+
+export async function handleMessage(
+    sock,
+    message
+) {
+
+    if (!message?.message) {
+        return;
+    }
+
+    if (message.key?.fromMe) {
+        return;
+    }
+
+    const jid =
+        message.key?.remoteJid;
+
+    if (!jid) {
+        return;
+    }
+
+    const content =
+        message.message.conversation ||
+        message.message.extendedTextMessage?.text ||
+        "";
+
+    if (!content.trim()) {
+        return;
+    }
+
+    const response =
+        handleCommand(content);
+
+    if (!response) {
+        return;
+    }
+
+    await sock.sendMessage(
+        jid,
+        {
+            text: response
+        }
+    );
+}

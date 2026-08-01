@@ -1,352 +1,215 @@
 import prisma from "../config/prisma.js";
 
-import * as deploymentManager from "./deploymentManager.js";
-
 import {
-    startBotEngine,
-    stopBotEngine
-} from "./botEngineService.js";
+    startDeploymentSession,
+    getDeploymentStatus,
+    stopDeploymentSession
+} from "./whatsapp/index.js";;
 
 
+export async function createDeployment(
+    userId,
+    botName
+) {
 
-
-export async function getDeployments() {
-
-
-    return await prisma.deployment.findMany({
-
-        include: {
-
-            owner: {
-
-                select: {
-
-                    id:true,
-
-                    name:true,
-
-                    email:true
-
-                }
-
+    const wallet =
+        await prisma.wallet.findUnique({
+            where: {
+                userId
             }
-
-        },
-
-
-        orderBy: {
-
-            createdAt:"desc"
-
-        }
-
-
-    });
-
-
-}
-
-
-
-
-
-
-export async function createDeployment(data) {
-
-
-    const deployment =
-        await prisma.deployment.create({
-
-            data:{
-
-
-                botName:data.botName,
-
-
-                ownerId:data.ownerId,
-
-
-                jlCost:50,
-
-
-                status:"PENDING"
-
-
-            }
-
-
         });
 
+    if (!wallet) {
+        throw new Error("Wallet not found.");
+    }
 
+    const jlCost = 1;
 
-    return deployment;
+    if (wallet.balance < jlCost) {
+        throw new Error("Insufficient JL balance.");
+    }
 
+    const result =
+        await prisma.$transaction(
+            async (tx) => {
 
-}
+                const updatedWallet =
+                    await tx.wallet.update({
+                        where: {
+                            userId
+                        },
+                        data: {
+                            balance: {
+                                decrement: jlCost
+                            }
+                        }
+                    });
 
+                const deployment =
+                    await tx.deployment.create({
+                        data: {
+                            botName,
+                            jlCost,
+                            ownerId: userId,
+                            status: "PENDING"
+                        }
+                    });
 
-
-
-
-
-
-export async function startDeployment(id) {
-
-
-
-    const deployment =
-        await prisma.deployment.findUnique({
-
-            where:{
-                id
+                return {
+                    deployment,
+                    wallet: updatedWallet
+                };
             }
-
-        });
-
-
-
-
-
-    if(!deployment){
-
-
-        throw new Error(
-            "Deployment not found"
         );
 
+    return result;
+}
+
+
+export async function startDeployment(
+    userId,
+    deploymentId
+) {
+
+    const deployment =
+        await prisma.deployment.findFirst({
+            where: {
+                id: deploymentId,
+                ownerId: userId
+            }
+        });
+
+    if (!deployment) {
+        throw new Error("Deployment not found.");
+    }
+
+    const session =
+        await startDeploymentSession(
+            deployment.id
+        );
+
+    await prisma.deployment.update({
+        where: {
+            id: deployment.id
+        },
+        data: {
+            status:
+                session.status === "connected"
+                    ? "RUNNING"
+                    : "PENDING"
+        }
+    });
+
+    return {
+        deployment,
+        session
+    };
+}
+
+
+export async function getDeployment(
+    userId,
+    deploymentId
+) {
+
+    const deployment =
+        await prisma.deployment.findFirst({
+            where: {
+                id: deploymentId,
+                ownerId: userId
+            }
+        });
+
+    if (!deployment) {
+        throw new Error("Deployment not found.");
+    }
+
+    const session =
+        await getDeploymentStatus(
+            deployment.id
+        );
+
+    return {
+        deployment,
+        session
+    };
+}
+
+
+export async function listDeployments(
+    userId
+) {
+
+    const deployments =
+        await prisma.deployment.findMany({
+            where: {
+                ownerId: userId
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        });
+
+    const results = [];
+
+    for (const deployment of deployments) {
+
+        const session =
+            await getDeploymentStatus(
+                deployment.id
+            );
+
+        results.push({
+    id: deployment.id,
+    botName: deployment.botName,
+    status: deployment.status,
+
+    connectionStatus:
+        session.status?.toUpperCase() || "OFFLINE",
+
+    sessionReady:
+        session.status === "connected",
+
+    lastConnected:
+        session.lastConnected || null
+});
 
     }
 
-
-
-
-
-    /*
-        Start real WhatsApp engine
-
-        Creates:
-        - Baileys socket
-        - Session
-        - QR
-        - Running instance
-    */
-
-
-    const botInstance =
-        await startBotEngine(
-            deployment
-        );
-
-
-
-
-
-
-
-    await prisma.deployment.update({
-
-
-        where:{
-
-            id
-
-        },
-
-
-        data:{
-
-
-            status:"RUNNING"
-
-
-        }
-
-
-    });
-
-
-
-
-
-    return botInstance;
-
-
+    return results;
 }
 
 
-
-
-
-
-
-
-
-export async function stopDeployment(id) {
-
-
-
-    /*
-        Stop WhatsApp engine
-    */
-
-
-    stopBotEngine(id);
-
-
-
-
-
-
-    return await prisma.deployment.update({
-
-
-        where:{
-
-
-            id
-
-
-        },
-
-
-        data:{
-
-
-            status:"STOPPED"
-
-
-        }
-
-
-
-    });
-
-
-
-}
-
-
-
-
-
-
-
-
-
-export async function getDeployment(id) {
-
-
-
-    return await prisma.deployment.findUnique({
-
-
-        where:{
-
-
-            id
-
-
-        },
-
-
-        include:{
-
-
-            owner:true
-
-
-        }
-
-
-
-    });
-
-
-
-}
-
-
-
-
-
-
-
-
-
-export async function updateDeploymentStatus(
-    id,
-    status
+export async function stopDeployment(
+    userId,
+    deploymentId
 ) {
 
+    const deployment =
+        await prisma.deployment.findFirst({
+            where: {
+                id: deploymentId,
+                ownerId: userId
+            }
+        });
 
+    if (!deployment) {
+        throw new Error("Deployment not found.");
+    }
 
-    return await prisma.deployment.update({
-
-
-        where:{
-
-
-            id
-
-
-        },
-
-
-        data:{
-
-
-            status
-
-
-        }
-
-
-
-    });
-
-
-
-}
-
-
-
-
-
-
-
-
-
-export async function deleteDeployment(id) {
-
-
-
-    stopBotEngine(id);
-
-
-
-    deploymentManager.removeBot(
-        id
+    await stopDeploymentSession(
+        deployment.id
     );
 
+    const updated =
+        await prisma.deployment.update({
+            where: {
+                id: deployment.id
+            },
+            data: {
+                status: "STOPPED"
+            }
+        });
 
-
-
-
-    return await prisma.deployment.delete({
-
-
-        where:{
-
-
-            id
-
-
-        }
-
-
-
-    });
-
-
-
+    return updated;
 }

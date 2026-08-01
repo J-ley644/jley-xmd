@@ -1,27 +1,25 @@
 import jwt from "jsonwebtoken";
 
-const SECRET =
-    process.env.JWT_SECRET ||
-    "CHANGE_ME_IN_PRODUCTION";
+const SECRET = process.env.JWT_SECRET;
+
+if (!SECRET) {
+    throw new Error("JWT_SECRET is not configured.");
+}
 
 export function createToken(user) {
-
     return jwt.sign(
         {
             id: user.id,
-            role: user.role,
-            email: user.email
+            email: user.email,
+            role: user.role
         },
         SECRET,
         {
             expiresIn: "7d"
         }
     );
-
 }
 
 export function verifyToken(token) {
-
     return jwt.verify(token, SECRET);
-
 }

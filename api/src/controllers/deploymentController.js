@@ -1,384 +1,239 @@
 import * as deploymentService from "../services/deploymentService.js";
+import {
+    startDeploymentSession,
+    destroySocket
+} from "../services/whatsapp/index.js";
+
+export async function pair(req, res) {
+
+    try {
+
+        const {
+            phoneNumber
+        } = req.body;
 
 
-export async function getDeployments(req, res) {
+        if (!phoneNumber) {
+
+            return res.status(400).json({
+
+                success:false,
+
+                message:"Phone number is required."
+
+            });
+
+        }
+
+
+        const result =
+            await requestPairingCode(
+                req.params.id,
+                phoneNumber
+            );
+
+
+        res.json({
+
+            success:true,
+
+            message:"Pairing code generated.",
+
+            ...result
+
+        });
+
+
+    } catch(error) {
+
+
+        console.error(
+            "Pairing error:",
+            error
+        );
+
+
+        res.status(400).json({
+
+            success:false,
+
+            message:error.message
+
+        });
+
+
+    }
+
+}
+
+
+export async function create(req, res) {
+
+    try {
+
+        const {
+            botName
+        } = req.body;
+
+        if (!botName) {
+
+            return res.status(400).json({
+                success: false,
+                message: "Bot name is required."
+            });
+        }
+
+        const result =
+            await deploymentService.createDeployment(
+                req.user.id,
+                botName
+            );
+
+        res.status(201).json({
+
+            success: true,
+
+            message: "Deployment created successfully.",
+
+            deployment: result.deployment,
+
+            wallet: result.wallet
+        });
+
+    } catch (error) {
+
+        console.error("Create deployment error:", error);
+
+        res.status(400).json({
+
+            success: false,
+
+            message: error.message
+        });
+    }
+}
+
+
+export async function start(req, res) {
+
+    try {
+
+        const result =
+            await deploymentService.startDeployment(
+                req.user.id,
+                req.params.id
+            );
+
+        res.json({
+
+            success: true,
+
+            message: "Deployment session started.",
+
+            ...result
+        });
+
+    } catch (error) {
+
+        console.error("Start deployment error:", error);
+
+        res.status(400).json({
+
+            success: false,
+
+            message: error.message
+        });
+    }
+}
+
+
+export async function getOne(req, res) {
+
+    try {
+
+        const result =
+            await deploymentService.getDeployment(
+                req.user.id,
+                req.params.id
+            );
+
+        res.json({
+
+            success: true,
+
+            ...result
+        });
+
+    } catch (error) {
+
+        res.status(404).json({
+
+            success: false,
+
+            message: error.message
+        });
+    }
+}
+
+
+export async function list(req, res) {
 
     try {
 
         const deployments =
-            await deploymentService.getDeployments();
-
+            await deploymentService.listDeployments(
+                req.user.id
+            );
 
         res.json({
 
             success: true,
 
             deployments
-
         });
-
 
     } catch (error) {
 
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:"Failed to fetch deployments."
-
-        });
-
-    }
-
-}
-
-
-
-export async function createDeployment(req, res) {
-
-    try {
-
-
-        if (!req.user) {
-
-            return res.status(401).json({
-
-                success:false,
-
-                message:"Unauthorized."
-
-            });
-
-        }
-
-
-
-        const deployment =
-            await deploymentService.createDeployment({
-
-                botName:req.body.botName,
-
-                ownerId:req.user.id
-
-            });
-
-
-
-        res.status(201).json({
-
-            success:true,
-
-            message:"Deployment created successfully.",
-
-            deployment
-
-        });
-
-
-
-    } catch(error) {
-
-
-        console.log(error);
-
+        console.error("List deployments error:", error);
 
         res.status(500).json({
 
-            success:false,
+            success: false,
 
-            message:error.message
-
+            message: error.message
         });
-
-
     }
-
 }
 
 
-
-
-export async function pairDeployment(req,res){
+export async function stop(req, res) {
 
     try {
 
-
         const deployment =
-            await deploymentService.getDeployment(
+            await deploymentService.stopDeployment(
+                req.user.id,
                 req.params.id
-            );
-
-
-
-        if(!deployment){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Deployment not found."
-
-            });
-
-        }
-
-
-
-        res.json({
-
-            success:true,
-
-            message:"Pairing request received.",
-
-            deploymentId:deployment.id
-
-        });
-
-
-
-    } catch(error){
-
-
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-}
-
-
-
-
-export async function startDeployment(req,res){
-
-    try {
-
-
-        const bot =
-            await deploymentService.startDeployment(
-                req.params.id
-            );
-
-
-        res.json({
-
-            success:true,
-
-            message:"Bot started.",
-
-            bot
-
-        });
-
-
-    } catch(error){
-
-
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-
-    }
-
-}
-
-
-
-
-export async function getDeployment(req,res){
-
-    try {
-
-
-        const deployment =
-            await deploymentService.getDeployment(
-                req.params.id
-            );
-
-
-
-        if(!deployment){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Deployment not found."
-
-            });
-
-        }
-
-
-
-        res.json({
-
-            success:true,
-
-            deployment
-
-        });
-
-
-
-    } catch(error){
-
-
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-}
-
-
-
-
-export async function updateDeploymentStatus(req,res){
-
-    try {
-
-
-        const deployment =
-            await deploymentService.updateDeploymentStatus(
-
-                req.params.id,
-
-                req.body.status
-
-            );
-
-
-
-        res.json({
-
-            success:true,
-
-            deployment
-
-        });
-
-
-
-    } catch(error){
-
-
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-}
-
-
-
-
-export async function deleteDeployment(req,res){
-
-    try {
-
-
-        await deploymentService.deleteDeployment(
-            req.params.id
-        );
-
-
-
-        res.json({
-
-            success:true,
-
-            message:"Deployment deleted."
-
-        });
-
-
-
-    } catch(error){
-
-
-        console.log(error);
-
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-}
-
-export async function stopDeployment(req, res) {
-
-    try {
-
-        const deployment =
-            await deploymentService.updateDeploymentStatus(
-                req.params.id,
-                "STOPPED"
             );
 
         res.json({
 
             success: true,
 
-            message: "Bot stopped.",
+            message: "Deployment stopped.",
 
             deployment
-
         });
 
-    } catch(error) {
+    } catch (error) {
 
-        console.log(error);
+        console.error("Stop deployment error:", error);
 
-        res.status(500).json({
+        res.status(400).json({
 
-            success:false,
+            success: false,
 
-            message:error.message
-
+            message: error.message
         });
-
     }
-
 }

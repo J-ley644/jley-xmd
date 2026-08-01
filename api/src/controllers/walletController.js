@@ -1,29 +1,38 @@
-import { getWallet } from "../services/walletService.js";
+import * as walletService from "../services/walletService.js";
 
-
-export async function getMyWallet(req,res){
-
+export async function balance(req, res) {
     try {
+        const wallet =
+            await walletService.getWallet(req.user.id);
 
-        const wallet = await getWallet(
-            req.user.id
-        );
-
-
-        res.json(wallet);
-
-
-    } catch(error){
-
-        console.log(error.message);
-
-
-        res.status(500).json({
-
-            error:error.message
-
+        res.json({
+            success: true,
+            wallet: {
+                balance: wallet.balance,
+                currency: "JL"
+            }
         });
-
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: error.message
+        });
     }
+}
 
+export async function transactions(req, res) {
+    try {
+        const payments =
+            await walletService.getTransactions(req.user.id);
+
+        res.json({
+            success: true,
+            payments
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 }
