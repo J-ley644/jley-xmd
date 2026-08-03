@@ -15,6 +15,7 @@ import { handleCommand } from "../core/commandHandler.js";
 
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antiLink.js";
+import handleStatus from "./status/index.js";
 
 
 
@@ -234,12 +235,15 @@ const sessionPath =
                 message.key.remoteJid;
 
 
+                await handleStatus(
+    socket,
+    message
+);
 
-
-            await processMessage(
-                socket,
-                message
-            );
+await processMessage(
+    socket,
+    message
+);
 
 
 
