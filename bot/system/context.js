@@ -1,20 +1,37 @@
 /**
+ * =====================================================
  * JLEY-XMD Context Builder
- * Context API v3
- * Core + Media + Group Foundation
+ * Context API v4
+ *
+ * Core
+ * User
+ * Group
+ * Runtime
+ * Media Engine
+ * Helper API
+ * =====================================================
  */
 
 import config from "../config/config.js";
 import runtime from "./runtime.js";
-import { downloadMediaMessage } from "@whiskeysockets/baileys";
+
+import {
+    downloadMediaMessage
+} from "@whiskeysockets/baileys";
+
 import {
     jidMatch
 } from "../lib/jid.js";
 
 
 
-async function getGroupInfo(client, chat) {
+/*
+|--------------------------------------------------------------------------
+| Group Information
+|--------------------------------------------------------------------------
+*/
 
+async function getGroupInfo(client, chat) {
 
     if (!chat.endsWith("@g.us")) {
 
@@ -30,30 +47,37 @@ async function getGroupInfo(client, chat) {
 
     }
 
-
     const metadata =
         await client.groupMetadata(chat);
-
-
 
     const members =
         metadata.participants || [];
 
-
-
     const admins =
-members
-.filter(
-    member =>
-        member.admin === "admin" ||
-        member.admin === "superadmin"
-)
-.flatMap(member => [
-    member.id,
-    member.lid
-].filter(Boolean));
 
+        members
 
+        .filter(
+
+            member =>
+
+                member.admin === "admin" ||
+
+                member.admin === "superadmin"
+
+        )
+
+        .flatMap(
+
+            member => [
+
+                member.id,
+
+                member.lid
+
+            ].filter(Boolean)
+
+        );
 
     return {
 
@@ -65,14 +89,17 @@ members
 
     };
 
-
 }
 
 
 
+/*
+|--------------------------------------------------------------------------
+| Extract Text
+|--------------------------------------------------------------------------
+*/
 
 function getText(message) {
-
 
     return (
 
@@ -88,32 +115,143 @@ function getText(message) {
 
     );
 
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Normalize Media
+|
+| Handles:
+|
+| ✔ Normal Media
+| ✔ View Once
+| ✔ Future Wrappers
+|--------------------------------------------------------------------------
+*/
+
+function normalizeMedia(quoted) {
+
+    if (!quoted) {
+
+        return {
+
+            mediaMessage: null,
+
+            media: null,
+
+            isViewOnce: false
+
+        };
+
+    }
+
+    let mediaMessage = quoted;
+
+    let isViewOnce = false;
+
+
+
+    if (quoted.viewOnceMessage?.message) {
+
+        mediaMessage =
+            quoted.viewOnceMessage.message;
+
+        isViewOnce = true;
+
+    }
+
+    else if (quoted.viewOnceMessageV2?.message) {
+
+        mediaMessage =
+            quoted.viewOnceMessageV2.message;
+
+        isViewOnce = true;
+
+    }
+
+    else if (
+
+        quoted.viewOnceMessageV2Extension?.message
+
+    ) {
+
+        mediaMessage =
+            quoted.viewOnceMessageV2Extension.message;
+
+        isViewOnce = true;
+
+    }
+
+
+
+    const media =
+
+        mediaMessage?.imageMessage ||
+
+        mediaMessage?.videoMessage ||
+
+        mediaMessage?.audioMessage ||
+
+        mediaMessage?.stickerMessage ||
+
+        mediaMessage?.documentMessage ||
+
+        null;
+
+
+
+    return {
+
+        mediaMessage,
+
+        media,
+
+        isViewOnce
+
+    };
 
 }
 
 
 
+/*
+|--------------------------------------------------------------------------
+| Context Builder
+|--------------------------------------------------------------------------
+*/
 
-export default async function createContext(client, message) {
+export default async function createContext(
+    client,
+    message
+) {
 
+        /*
+    |--------------------------------------------------------------------------
+    | Message
+    |--------------------------------------------------------------------------
+    */
 
     const text =
         getText(message);
 
-
-
     const args =
         text
-        .slice(config.prefix.length)
-        .trim()
-        .split(/\s+/);
-
-
+            .slice(config.prefix.length)
+            .trim()
+            .split(/\s+/);
 
     const command =
         args.shift()?.toLowerCase() || "";
 
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sender & Chat
+    |--------------------------------------------------------------------------
+    */
 
     const sender =
         message.key.participant ||
@@ -124,53 +262,51 @@ export default async function createContext(client, message) {
 
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Identity
+    |--------------------------------------------------------------------------
+    */
 
-    // Identity
+    const realNumber =
 
-const realNumber =
-    sender.includes("@lid")
-    ? config.owner.number
-    : sender
-        .split(":")[0]
-        .replace("@s.whatsapp.net", "")
-        .replace("@lid", "");
+        sender
+            .split(":")[0]
+            .replace("@s.whatsapp.net", "")
+            .replace("@lid", "");
 
-        console.log({
-    sender,
-    realNumber
-});
-
-
-const pushName =
-    message.pushName ||
-    "Unknown";
+    const pushName =
+        message.pushName || "Unknown";
 
 
-    // Chat
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chat
+    |--------------------------------------------------------------------------
+    */
 
     const isGroup =
         chat.endsWith("@g.us");
 
-
-
     const chatType =
         isGroup
-        ? "group"
-        : "private";
+            ? "group"
+            : "private";
 
 
 
-
-
-    // Group foundation
+    /*
+    |--------------------------------------------------------------------------
+    | Group
+    |--------------------------------------------------------------------------
+    */
 
     const groupInfo =
         await getGroupInfo(
             client,
             chat
         );
-
-
 
     const isAdmin =
         groupInfo.admins.some(
@@ -181,89 +317,90 @@ const pushName =
                 )
         );
 
-
-
     const botPhoneJid =
-    client.user?.id || "";
+        client.user?.id || "";
 
-
-const botLid =
-    client.user?.lid || "";
-
-
+    const botLid =
+        client.user?.lid || "";
 
     const isBotAdmin =
         groupInfo.admins.some(
             admin =>
-                jidMatch(
-                    admin,
-                    botPhoneJid
-                )
-                ||
-                jidMatch(
-                    admin,
-                    botLid
-                )
+                jidMatch(admin, botPhoneJid) ||
+                jidMatch(admin, botLid)
         );
 
 
 
-
-
-    // Quoted message
+    /*
+    |--------------------------------------------------------------------------
+    | Quoted
+    |--------------------------------------------------------------------------
+    */
 
     const quoted =
         message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.quotedMessage ||
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.quotedMessage ||
         null;
 
-
-        const isReply =
-    Boolean(quoted);
-
-const target =
-
-    // Reply target
-    message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.participant ||
-
-    // Mention target
-    message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.mentionedJid?.[0] ||
-
-    null;
-
-
-    // Media
-
-    const media =
-        quoted?.imageMessage ||
-
-        quoted?.videoMessage ||
-
-        quoted?.audioMessage ||
-
-        quoted?.stickerMessage ||
-
-        quoted?.documentMessage ||
-
-        null;
+    const isReply =
+        Boolean(quoted);
 
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Target
+    |--------------------------------------------------------------------------
+    */
+
+    const target =
+
+        message.message
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.participant ||
+
+        message.message
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.mentionedJid?.[0] ||
+
+        sender;
 
 
-    const ctx = {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Media Engine
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+
+        mediaMessage,
+
+        media,
+
+        isViewOnce
+
+    } = normalizeMedia(
+        quoted
+    );
 
 
 
-        // Core
+
+
+        const ctx = {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Core
+        |--------------------------------------------------------------------------
+        */
 
         client,
 
@@ -280,7 +417,12 @@ const target =
         command,
 
 
-        // User
+
+        /*
+        |--------------------------------------------------------------------------
+        | User
+        |--------------------------------------------------------------------------
+        */
 
         number: realNumber,
 
@@ -290,9 +432,11 @@ const target =
 
 
 
-
-
-        // Chat
+        /*
+        |--------------------------------------------------------------------------
+        | Chat
+        |--------------------------------------------------------------------------
+        */
 
         isGroup,
 
@@ -300,108 +444,122 @@ const target =
 
 
 
-
-
-        // Group
+        /*
+        |--------------------------------------------------------------------------
+        | Group
+        |--------------------------------------------------------------------------
+        */
 
         groupMetadata:
             groupInfo.metadata,
 
-
         members:
             groupInfo.members,
-
 
         admins:
             groupInfo.admins,
 
-
         isAdmin,
-
 
         isBotAdmin,
 
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Runtime
+        |--------------------------------------------------------------------------
+        */
 
+        runtime,
 
-        // Runtime
+        config,
 
-runtime,
+        version:
+            runtime.version(),
 
+        botName:
+            runtime.botName(),
 
-config,
-
-
-version:
-    runtime.version(),
-
-
-botName:
-    runtime.botName(),
-
-
-prefix:
-    config.prefix,
-
+        prefix:
+            config.prefix,
 
 
 
-
-        // Media
+        /*
+        |--------------------------------------------------------------------------
+        | Media
+        |--------------------------------------------------------------------------
+        */
 
         quoted,
 
-
         media,
 
+        mediaMessage,
 
         isReply,
 
+        isViewOnce,
+
+
 
         isImage:
-            Boolean(quoted?.imageMessage),
-
+            Boolean(
+                mediaMessage?.imageMessage
+            ),
 
         isVideo:
-            Boolean(quoted?.videoMessage),
-
+            Boolean(
+                mediaMessage?.videoMessage
+            ),
 
         isAudio:
-            Boolean(quoted?.audioMessage),
-
+            Boolean(
+                mediaMessage?.audioMessage
+            ),
 
         isSticker:
-            Boolean(quoted?.stickerMessage),
-
+            Boolean(
+                mediaMessage?.stickerMessage
+            ),
 
         isDocument:
-            Boolean(quoted?.documentMessage),
+            Boolean(
+                mediaMessage?.documentMessage
+            ),
 
 
 
 
 
-        // Helpers
-
+                /*
+        |--------------------------------------------------------------------------
+        | Helpers
+        |--------------------------------------------------------------------------
+        */
 
         async reply(text, options = {}) {
 
-    return client.sendMessage(
-        chat,
-        {
-            text,
-            ...options
-        }
-    );
+            return client.sendMessage(
 
-},
+                chat,
 
+                {
+
+                    text,
+
+                    ...options
+
+                }
+
+            );
+
+        },
 
 
 
         async send(content) {
-
 
             return client.sendMessage(
 
@@ -411,14 +569,11 @@ prefix:
 
             );
 
-
         },
 
 
 
-
         async react(emoji) {
-
 
             return client.sendMessage(
 
@@ -438,54 +593,52 @@ prefix:
 
             );
 
-
         },
 
 
 
-
+        /*
+        |--------------------------------------------------------------------------
+        | Download Media
+        |--------------------------------------------------------------------------
+        */
 
         async download() {
 
-
             if (!isReply || !media) {
 
-
                 throw new Error(
-
                     "Reply to a media message."
-
                 );
-
 
             }
 
-
-
             return downloadMediaMessage(
 
-                {
-                    message: quoted
-                },
+    {
 
-                "buffer",
+        message: quoted
 
-                {},
+    },
 
-                {}
+    "buffer",
 
-            );
+    {},
 
+    {
+
+        logger: console
+
+    }
+
+);
 
         }
-
-
 
     };
 
 
 
     return ctx;
-
 
 }
