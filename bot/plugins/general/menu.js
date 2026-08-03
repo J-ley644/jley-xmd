@@ -1,6 +1,8 @@
+import fs from "fs";
+
 import generateMenu from "../../lib/menu.js";
 import pluginStore from "../../system/pluginStore.js";
-
+import menuStore from "../../system/menuStore.js";
 
 export default {
 
@@ -21,26 +23,33 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
-
 
         const plugins =
             pluginStore.getAll();
-
-
 
         const menu =
             generateMenu(
                 plugins
             );
 
+        if (menuStore.hasBanner()) {
 
+            return ctx.send({
 
-        await ctx.reply(
+                image: fs.readFileSync(
+                    menuStore.bannerPath()
+                ),
+
+                caption: menu
+
+            });
+
+        }
+
+        return ctx.reply(
             menu
         );
-
 
     }
 

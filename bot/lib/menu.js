@@ -1,5 +1,5 @@
 import config from "../config/config.js";
-
+import menuStore from "../system/menuStore.js";
 
 function getCategoryEmoji(category) {
 
@@ -12,10 +12,11 @@ function getCategoryEmoji(category) {
         admin: "🛡️",
         tools: "🛠️",
         fun: "🎮",
+        automation: "🤖",
+        media: "🎬",
         other: "📌"
 
     };
-
 
     return emojis[
         category.toLowerCase()
@@ -27,17 +28,12 @@ function getCategoryEmoji(category) {
 
 function generateMenu(plugins) {
 
-
     const categories = {};
-
-
 
     for (const [, command] of plugins) {
 
-
         const category =
             command.category || "other";
-
 
         if (!categories[category]) {
 
@@ -45,21 +41,15 @@ function generateMenu(plugins) {
 
         }
 
-
         categories[category].push(command);
 
     }
 
 
 
-
-
     let totalCommands = 0;
 
-
-    Object
-    .values(categories)
-    .forEach(list => {
+    Object.values(categories).forEach(list => {
 
         totalCommands += list.length;
 
@@ -67,91 +57,93 @@ function generateMenu(plugins) {
 
 
 
+    const announcement =
+        menuStore.getAnnouncement();
+
 
 
     let menu =
-`╭━━━〔 🤖 ${config.botName} 〕━━━╮
+`👋 Welcome to ${config.botName}
 
-📌 Version
-➜ ${config.version}
+╭━━━━━━━━━━━━━━━━━━━━╮
+│ 🤖 ${config.botName}
+╰━━━━━━━━━━━━━━━━━━━━╯
 
-🟢 Status
-➜ ${config.status}
-
-⚙️ Mode
-➜ ${config.mode}
-
-📚 Commands
-➜ ${totalCommands}
-
-╰━━━━━━━━━━━━━━━━━━╯
-
-
-╭━━━〔 📖 COMMAND CENTER 〕━━━╮
+📦 Version : ${config.version}
+🟢 Status  : ${config.status}
+⚙️ Mode    : ${config.mode}
+📚 Commands: ${totalCommands}
+📂 Categories: ${Object.keys(categories).length}
 
 `;
 
 
+
+    if (announcement.announcementEnabled) {
+
+        menu +=
+`━━━━━━━━━━━━━━━━━━━━
+
+📢 OFFICIAL ANNOUNCEMENT
+
+${announcement.announcement}
+
+━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    }
+
+
+
+    menu +=
+`📂 COMMAND CATEGORIES
+
+`;
 
 
 
     Object
-    .keys(categories)
-    .sort()
-    .forEach(category => {
+        .keys(categories)
+        .sort()
+        .forEach(category => {
 
+            const emoji =
+                getCategoryEmoji(category);
 
-        const emoji =
-            getCategoryEmoji(category);
-
-
-
-        menu +=
+            menu +=
 `${emoji} ${category.toUpperCase()}
 
 `;
 
+            categories[category]
+                .sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                )
+                .forEach(command => {
 
-
-        categories[category]
-        .sort((a,b)=>
-            a.name.localeCompare(b.name)
-        )
-        .forEach(command => {
-
-
-            menu +=
-`  ⚡ ${config.prefix}${command.name}
-
+                    menu +=
+`   • ${config.prefix}${command.name}
 `;
+
+                });
+
+            menu += "\n";
 
         });
 
 
 
-        menu +=
-`━━━━━━━━━━━━━━━━━━
-
-`;
-
-    });
-
-
-
-
-
     menu +=
-`╰━━━━━━━━━━━━━━━━━━╯
+`━━━━━━━━━━━━━━━━━━━━
 
-
-🚀 Powered by ${config.botName}
+💡 Tip:
+${config.prefix}help <command>
 
 👑 Owner
 ${config.owner.name}
 
-💡 Use:
-${config.prefix}help <command>
-
+🚀 Powered by ${config.botName}
 `;
 
 
@@ -159,7 +151,5 @@ ${config.prefix}help <command>
     return menu;
 
 }
-
-
 
 export default generateMenu;
