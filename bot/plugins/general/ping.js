@@ -4,30 +4,52 @@ export default {
 
     cooldown: 5,
 
-    aliases: ["p"],
+    aliases: [
+        "p"
+    ],
 
     category: "general",
 
-    description: "Check bot speed",
+    description: "Check bot response speed",
+
+    usage: ".ping",
 
     permissions: {},
 
+
     async execute(ctx) {
 
-        const start = Date.now();
+
+        const start =
+            Date.now();
+
+
 
         const latency =
             Date.now() - start;
 
+
+
         await ctx.reply(
 
-`🏓 Pong!
+`╭━━━〔 🏓 PONG 〕━━━╮
 
-⚡ ${latency} ms
+⚡ Response
+➜ ${latency} ms
 
-🤖 JLEY-XMD`
+🟢 Status
+➜ Online
+
+🤖 Engine
+➜ JLEY-XMD
+
+📦 Version
+➜ ${ctx.version}
+
+╰━━━━━━━━━━━━━━━━━━╯`
 
         );
+
 
     }
 

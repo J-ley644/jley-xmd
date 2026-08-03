@@ -2,27 +2,52 @@ export default {
 
     name: "runtime",
 
-    aliases: ["uptime"],
+    aliases: [
+        "uptime"
+    ],
 
     category: "general",
 
     description: "Show bot uptime",
 
+    usage: ".runtime",
+
     permissions: {},
+
 
     async execute(ctx) {
 
+
+        const uptime =
+            ctx.runtime?.formatUptime
+            ? ctx.runtime.formatUptime()
+            : "Unknown";
+
+
+
         await ctx.reply(
 
-`🤖 ${ctx.botName}
+`╭━━━〔 ⏱ RUNTIME 〕━━━╮
 
-⏱ Uptime:
-${ctx.runtime.formatUptime()}
+🤖 Bot
+➜ ${ctx.botName}
 
-📦 Version:
-${ctx.version}`
+🟢 Status
+➜ Online
+
+⏱ Uptime
+➜ ${uptime}
+
+📦 Version
+➜ ${ctx.version}
+
+⚡ Engine
+➜ Active
+
+╰━━━━━━━━━━━━━━━━━━╯`
 
         );
+
 
     }
 

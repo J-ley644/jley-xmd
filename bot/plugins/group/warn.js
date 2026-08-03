@@ -4,11 +4,13 @@ export default {
 
     name: "warn",
 
-    aliases: [],
+    aliases: [
+        "warning"
+    ],
 
     category: "group",
 
-    description: "Warn a group member.",
+    description: "Warn a group member",
 
     usage: ".warn [reason]",
 
@@ -19,44 +21,84 @@ export default {
 
     async execute(ctx) {
 
-        const target = ctx.target;
+        const target =
+            ctx.target;
+
 
         if (!target) {
 
             return ctx.reply(
-                "❌ Reply to or mention a user to warn."
+
+`⚠️ Usage Error
+
+Reply to or mention the member you want to warn.
+
+Example:
+.warn Spamming links`
+
             );
 
         }
 
+
         const reason =
             ctx.args.join(" ") ||
-            "No reason provided.";
+            "No reason provided";
+
 
         const result =
             warningStore.warn(
                 ctx.chat,
                 target,
-                ctx.number,
+                ctx.sender,
                 reason
             );
+
 
         const number =
             target
                 .split("@")[0]
                 .split(":")[0];
 
+
+        const text =
+
+`╭━━━〔 ⚠️ WARNING ISSUED 〕━━━╮
+
+👤 Member
+
+@${number}
+
+📊 Total Warnings
+
+${result.count}
+
+📝 Reason
+
+${reason}
+
+━━━━━━━━━━━━━━━━━━
+
+⚡ Issued By
+
+@${ctx.sender.split("@")[0]}
+
+🤖 ${ctx.botName}
+
+╰━━━━━━━━━━━━━━━━━━╯`;
+
+
         await ctx.reply(
-`🤖 ${ctx.botName}
 
-⚠️ Warning Issued
+            text,
 
-👤 User: @${number}
-📊 Warnings: ${result.count}
-📝 Reason: ${reason}`,
             {
-                mentions: [target]
+                mentions: [
+                    target,
+                    ctx.sender
+                ]
             }
+
         );
 
     }

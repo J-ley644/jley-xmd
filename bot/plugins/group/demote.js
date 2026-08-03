@@ -2,13 +2,15 @@ export default {
 
     name: "demote",
 
-    aliases: [],
+    aliases: [
+        "removeadmin"
+    ],
 
     category: "group",
 
-    description: "Demote an admin.",
+    description: "Remove admin privileges from a member",
 
-    usage: ".demote",
+    usage: ".demote @user",
 
     permissions: {
         group: true,
@@ -24,17 +26,69 @@ export default {
                 ?.contextInfo
                 ?.participant;
 
+
         if (!target) {
-            return ctx.reply("❌ Reply to the user's message.");
+
+            return ctx.reply(
+
+`⚠️ Usage Error
+
+Reply to the admin you want to demote.
+
+Example:
+.demote @user`
+
+            );
+
         }
 
-        await ctx.client.groupParticipantsUpdate(
-            ctx.chat,
-            [target],
-            "demote"
-        );
 
-        await ctx.reply("✅ Member demoted.");
+        if (target === ctx.client.user?.id) {
+
+            return ctx.reply(
+                "🤖 I cannot remove my own permissions."
+            );
+
+        }
+
+
+        try {
+
+            await ctx.client.groupParticipantsUpdate(
+                ctx.chat,
+                [target],
+                "demote"
+            );
+
+
+            await ctx.reply(
+
+`╭━━━〔 ⬇️ ADMIN REMOVED 〕━━━╮
+
+👤 Member
+
+@${target.split("@")[0]}
+
+🔻 New Role
+
+Group Member
+
+⚡ Action By
+
+${ctx.sender.split("@")[0]}
+
+╰━━━━━━━━━━━━━━━━━━╯`
+
+            );
+
+
+        } catch(error) {
+
+            await ctx.reply(
+                "❌ Failed to remove admin privileges."
+            );
+
+        }
 
     }
 

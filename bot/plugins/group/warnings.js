@@ -4,13 +4,15 @@ export default {
 
     name: "warnings",
 
-    aliases: ["warns"],
+    aliases: [
+        "warns"
+    ],
 
     category: "group",
 
-    description: "View a member's warnings.",
+    description: "View a member's warnings",
 
-    usage: ".warnings",
+    usage: ".warnings @user",
 
     permissions: {
         group: true,
@@ -19,15 +21,25 @@ export default {
 
     async execute(ctx) {
 
-        const target = ctx.target;
+        const target =
+            ctx.target;
+
 
         if (!target) {
 
             return ctx.reply(
-                "❌ Reply to or mention a user."
+
+`⚠️ Usage Error
+
+Reply to or mention a member to view warnings.
+
+Example:
+.warnings @user`
+
             );
 
         }
+
 
         const data =
             warningStore.getUser(
@@ -35,41 +47,81 @@ export default {
                 target
             );
 
+
         const number =
             target
                 .split("@")[0]
                 .split(":")[0];
 
+
         let text =
-`🤖 ${ctx.botName}
 
-⚠️ Warning Information
+`╭━━━〔 📋 WARNING HISTORY 〕━━━╮
 
-👤 User: @${number}
-📊 Total Warnings: ${data.count}
+👤 Member
+
+@${number}
+
+⚠️ Total Warnings
+
+${data.count}
+
+━━━━━━━━━━━━━━━━━━
 `;
+
 
         if (data.history.length) {
 
-            text += "\n📝 History\n\n";
+            text +=
+`\n📝 Records\n\n`;
 
-            data.history.forEach((warn, index) => {
 
-                text +=
-`${index + 1}. ${warn.reason}
+            data.history.forEach(
+                (warn, index) => {
+
+                    text +=
+
+`#${index + 1}
+📌 ${warn.reason}
 📅 ${new Date(warn.time).toLocaleString()}
 
 `;
 
-            });
+                }
+            );
+
+
+        } else {
+
+            text +=
+
+`\n✅ No warnings found
+
+This member has a clean record.`;
 
         }
 
+
+        text +=
+
+`
+━━━━━━━━━━━━━━━━━━
+
+🤖 ${ctx.botName}
+
+╰━━━━━━━━━━━━━━━━━━╯`;
+
+
         await ctx.reply(
+
             text,
+
             {
-                mentions: [target]
+                mentions: [
+                    target
+                ]
             }
+
         );
 
     }

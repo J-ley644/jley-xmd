@@ -6,25 +6,44 @@ export default {
 
     category: "general",
 
-    description: "Show current chat JID",
+    description: "Show current chat JID information",
 
     usage: ".jid",
 
     permissions: {},
 
+
     async execute(ctx) {
+
 
         await ctx.reply(
 
-`📌 Chat Information
+`╭━━━〔 🆔 CHAT INFO 〕━━━╮
 
-🆔 JID:
-${ctx.chat}
+💬 Chat ID
+➜ ${ctx.chat}
 
-👤 Sender:
-${ctx.sender}`
+━━━━━━━━━━━━━━━━━━
+
+👤 Sender ID
+➜ ${ctx.sender}
+
+━━━━━━━━━━━━━━━━━━
+
+📍 Type
+➜ ${
+    ctx.isGroup
+    ? "Group Chat"
+    : "Private Chat"
+}
+
+🤖 Bot
+➜ ${ctx.botName}
+
+╰━━━━━━━━━━━━━━━━━━╯`
 
         );
+
 
     }
 

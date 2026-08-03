@@ -4,17 +4,17 @@ import pluginStore from "../../system/pluginStore.js";
 
 export default {
 
-    name: "system",
+    name: "botinfo",
 
     aliases: [
-        "sys"
+        "info"
     ],
 
     category: "general",
 
-    description: "Show system information",
+    description: "Show detailed bot information",
 
-    usage: ".system",
+    usage: ".botinfo",
 
     permissions: {},
 
@@ -26,56 +26,54 @@ export default {
             process.memoryUsage().rss / 1024 / 1024;
 
 
-
         const uptime =
             ctx.runtime?.formatUptime
             ? ctx.runtime.formatUptime()
             : "Unknown";
 
 
+        const text =
 
-        await ctx.reply(
+`╭━━━〔 🤖 BOT INFORMATION 〕━━━╮
 
-`╭━━━〔 ⚙️ SYSTEM STATUS 〕━━━╮
-
-🤖 Bot
-➜ ${ctx.botName}
-
-🟢 Status
-➜ Online
+📌 Name
+${ctx.botName}
 
 📦 Version
-➜ ${ctx.version}
+${ctx.version}
+
+🟢 Status
+Online
+
+⚙️ Mode
+${ctx.config?.mode || "Public"}
 
 ━━━━━━━━━━━━━━━━━━
 
-🖥 Platform
-➜ ${os.platform()} ${os.arch()}
-
-🟢 Node.js
-➜ ${process.version}
+🧩 Plugins
+${pluginStore.size()}
 
 💾 Memory
-➜ ${memory.toFixed(2)} MB
+${memory.toFixed(2)} MB
 
-🧩 Plugins
-➜ ${pluginStore.size()}
-
-📚 Commands
-➜ ${pluginStore.size()}
+🖥 Platform
+${os.platform()} ${os.arch()}
 
 ⏱ Runtime
-➜ ${uptime}
+${uptime}
 
 ━━━━━━━━━━━━━━━━━━
 
 ⚡ Engine
-➜ JLEY-XMD Core
+JLEY-XMD Core
 
-╰━━━━━━━━━━━━━━━━━━╯`
+🚀 Architecture
+Plugin Based
 
-        );
+╰━━━━━━━━━━━━━━━━━━╯`;
 
+
+        await ctx.reply(text);
 
     }
 

@@ -2,31 +2,60 @@ export default {
 
     name: "alive",
 
-    aliases: ["online"],
+    aliases: [
+        "online"
+    ],
 
     category: "general",
 
-    description: "Check bot status",
+    description: "Check bot online status",
+
+    usage: ".alive",
+
+    permissions: {},
+
 
     async execute(ctx) {
 
-        const text = `
-╭━━━〔 🤖 JLEY-XMD 〕━━━╮
 
-🟢 Status   : Online
-⚡ Engine   : Running
-📦 Version  : ${ctx.version}
-⏱ Runtime  : ${ctx.runtime.formatUptime()}
+        const uptime =
+            ctx.runtime?.formatUptime
+            ? ctx.runtime.formatUptime()
+            : "Unknown";
+
+
+
+        await ctx.reply(
+
+`╭━━━〔 🟢 ${ctx.botName} ALIVE 〕━━━╮
+
+📡 Status
+➜ Online
+
+⚡ Engine
+➜ Running
+
+📦 Version
+➜ ${ctx.version}
+
+⏱ Runtime
+➜ ${uptime}
 
 ━━━━━━━━━━━━━━━━━━
 
-🚀 Powered by JLEY-XMD
-⚙️ Plugin-Based WhatsApp Bot
+🤖 WhatsApp Automation
+🧩 Plugin Architecture
+🚀 High Performance
 
-╰━━━━━━━━━━━━━━━━━━╯
-`;
+━━━━━━━━━━━━━━━━━━
 
-        await ctx.reply(text);
+👑 Owner
+➜ ${ctx.config.owner.name}
+
+╰━━━━━━━━━━━━━━━━━━╯`
+
+        );
+
 
     }
 

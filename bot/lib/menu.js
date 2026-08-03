@@ -1,71 +1,165 @@
 import config from "../config/config.js";
 
+
+function getCategoryEmoji(category) {
+
+    const emojis = {
+
+        general: "⚡",
+        group: "👥",
+        download: "📥",
+        owner: "👑",
+        admin: "🛡️",
+        tools: "🛠️",
+        fun: "🎮",
+        other: "📌"
+
+    };
+
+
+    return emojis[
+        category.toLowerCase()
+    ] || emojis.other;
+
+}
+
+
+
 function generateMenu(plugins) {
 
-    console.log("MENU SIZE:", plugins.size);
-
-for (const [key, command] of plugins) {
-    console.log(
-        "MENU ENTRY:",
-        key,
-        "=>",
-        command.name
-    );
-}
 
     const categories = {};
 
+
+
     for (const [, command] of plugins) {
 
-        const category = command.category || "other";
+
+        const category =
+            command.category || "other";
+
 
         if (!categories[category]) {
+
             categories[category] = [];
+
         }
+
 
         categories[category].push(command);
 
     }
 
+
+
+
+
+    let totalCommands = 0;
+
+
+    Object
+    .values(categories)
+    .forEach(list => {
+
+        totalCommands += list.length;
+
+    });
+
+
+
+
+
     let menu =
-`╭━━━〔 ${config.botName} 〕━━━╮
+`╭━━━〔 🤖 ${config.botName} 〕━━━╮
 
-🤖 Version : ${config.version}
-⚡ Status  : ${config.status}
+📌 Version
+➜ ${config.version}
 
-━━━━━━━━━━━━━━━━━━
+🟢 Status
+➜ ${config.status}
+
+⚙️ Mode
+➜ ${config.mode}
+
+📚 Commands
+➜ ${totalCommands}
+
+╰━━━━━━━━━━━━━━━━━━╯
+
+
+╭━━━〔 📖 COMMAND CENTER 〕━━━╮
 
 `;
 
-    for (const category in categories) {
 
-        menu += `📂 ${category.toUpperCase()} (${categories[category].length})\n\n`;
 
-        for (const command of categories[category]) {
 
-            menu += `• ${command.name}\n`;
 
-        }
+    Object
+    .keys(categories)
+    .sort()
+    .forEach(category => {
 
-        menu += "\n";
 
-    }
+        const emoji =
+            getCategoryEmoji(category);
 
-    menu +=
+
+
+        menu +=
+`${emoji} ${category.toUpperCase()}
+
+`;
+
+
+
+        categories[category]
+        .sort((a,b)=>
+            a.name.localeCompare(b.name)
+        )
+        .forEach(command => {
+
+
+            menu +=
+`  ⚡ ${config.prefix}${command.name}
+
+`;
+
+        });
+
+
+
+        menu +=
 `━━━━━━━━━━━━━━━━━━
 
-📖 Usage
+`;
 
-.help <category>
+    });
 
-Example
 
-.help general
 
-╰━━━━━━━━━━━━━━━━━━╯`;
+
+
+    menu +=
+`╰━━━━━━━━━━━━━━━━━━╯
+
+
+🚀 Powered by ${config.botName}
+
+👑 Owner
+${config.owner.name}
+
+💡 Use:
+${config.prefix}help <command>
+
+`;
+
+
 
     return menu;
 
 }
+
+
 
 export default generateMenu;

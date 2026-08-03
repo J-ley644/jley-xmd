@@ -1,4 +1,10 @@
+import config from "../../config/config.js";
 import pluginStore from "../../system/pluginStore.js";
+import {
+    categoryHelp,
+    commandHelp
+} from "../../lib/help.js";
+
 
 export default {
 
@@ -8,184 +14,182 @@ export default {
 
     category: "general",
 
-    description: "Show help menu",
+    description: "Show command information",
 
-    usage: ".help",
+    usage: ".help <command/category>",
 
     permissions: {},
 
+
     async execute(ctx) {
 
-    const plugins = pluginStore.getAll();
 
-    const query =
-        (ctx.args[0] || "").toLowerCase();
+        const plugins =
+            pluginStore.getAll();
 
-    // ---------------------------------
-    // .help
-    // ---------------------------------
 
-    if (!query) {
 
-        const categories = {};
+        const query =
+            (ctx.args[0] || "")
+            .toLowerCase();
 
-        for (const [, command] of plugins) {
 
-            const category =
-                command.category || "general";
 
-            if (!categories[category]) {
-                categories[category] = 0;
+        /*
+            .help
+        */
+
+        if (!query) {
+
+
+            const categories = {};
+
+
+            for (const [, command] of plugins) {
+
+
+                const category =
+                    command.category || "other";
+
+
+                if (!categories[category]) {
+
+                    categories[category] = 0;
+
+                }
+
+
+                categories[category]++;
+
             }
 
-            categories[category]++;
 
-        }
 
-        let text =
-`╭━━━〔 📚 HELP MENU 〕━━━╮
+            let text =
+`╭━━━〔 📖 ${config.botName} HELP 〕━━━╮
 
-Available Categories
+📚 Available Categories
 
 `;
 
-        for (const category of Object.keys(categories).sort()) {
 
-            text += `📂 ${category} (${categories[category]})\n`;
 
-        }
+            Object
+            .keys(categories)
+            .sort()
+            .forEach(category => {
 
-        text +=
-`
-━━━━━━━━━━━━━━━━━━
 
-Example
+                text +=
+`📂 ${category.toUpperCase()}
 
-.help general
+   └─ ${categories[category]} commands
+
+`;
+
+            });
+
+
+
+            text +=
+`━━━━━━━━━━━━━━━━━━
+
+Example:
+
+${config.prefix}help ping
+
+${config.prefix}help group
+
+🤖 ${config.botName}
 
 ╰━━━━━━━━━━━━━━━━━━╯`;
 
-        return ctx.reply(text);
 
-    }
 
-    // ---------------------------------
-    // .help <category>
-    // ---------------------------------
+            return ctx.reply(text);
 
-    const commands = [];
+        }
 
-    for (const [, command] of plugins) {
 
-        if (
-            (command.category || "general")
-            .toLowerCase() === query
-        ) {
 
-            if (
-                !commands.find(
-                    cmd => cmd.name === command.name
+
+        /*
+            .help category
+        */
+
+
+        const categoryExists =
+            [...plugins.values()]
+            .some(command =>
+                (command.category || "other")
+                .toLowerCase() === query
+            );
+
+
+
+        if (categoryExists) {
+
+
+            return ctx.reply(
+
+                categoryHelp(
+                    query,
+                    plugins
                 )
-            ) {
-                commands.push(command);
-            }
+
+            );
 
         }
 
-    }
 
-    if (commands.length) {
 
-        let text =
-`╭━━━〔 ${query.toUpperCase()} COMMANDS 〕━━━╮
 
-`;
+        /*
+            .help command
+        */
 
-        for (const command of commands) {
 
-            text += `• ${command.name}\n`;
+        const command =
+            plugins.get(query);
+
+
+
+        if (command) {
+
+
+            return ctx.reply(
+
+                commandHelp(
+                    command
+                )
+
+            );
 
         }
 
-        text +=
-`
-━━━━━━━━━━━━━━━━━━
 
-Example
 
-.help ${commands[0].name}
 
-╰━━━━━━━━━━━━━━━━━━╯`;
 
-        return ctx.reply(text);
+        return ctx.reply(
 
-    }
+`╭━━━〔 ❌ NOT FOUND 〕━━━╮
 
-    // ---------------------------------
-// .help <command>
-// ---------------------------------
+Command:
 
-const command = plugins.get(query);
+${config.prefix}${query}
 
-if (command) {
+does not exist.
 
-    const aliases =
-        command.aliases?.length
-            ? command.aliases.join(", ")
-            : "None";
+Try:
 
-    const permissions = [];
-
-    if (command.permissions?.owner)
-        permissions.push("Owner");
-
-    if (command.permissions?.admin)
-        permissions.push("Group Admin");
-
-    if (command.permissions?.botAdmin)
-        permissions.push("Bot Admin");
-
-    if (command.permissions?.group)
-        permissions.push("Group Only");
-
-    if (command.permissions?.private)
-        permissions.push("Private Chat");
-
-    const permissionText =
-        permissions.length
-            ? permissions.join(", ")
-            : "Everyone";
-
-    return ctx.reply(
-`╭━━━〔 📖 COMMAND HELP 〕━━━╮
-
-📌 Command
-${command.name}
-
-📝 Description
-${command.description || "No description"}
-
-⌨️ Usage
-${command.usage || "No usage"}
-
-📂 Category
-${command.category || "general"}
-
-🏷️ Aliases
-${aliases}
-
-🔒 Permissions
-${permissionText}
+${config.prefix}menu
 
 ╰━━━━━━━━━━━━━━━━━━╯`
-    );
 
-}
+        );
 
-    return ctx.reply(
-        `❌ No help found for "${query}".`
-    );
 
-}
+    }
 
 };

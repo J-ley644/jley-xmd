@@ -1,10 +1,10 @@
-import config from "../../config/config.js";
-
 export default {
 
     name: "about",
 
-    aliases: ["bot"],
+    aliases: [
+        "bot"
+    ],
 
     category: "general",
 
@@ -14,22 +14,48 @@ export default {
 
     permissions: {},
 
+
     async execute(ctx) {
 
+
         await ctx.reply(
-`🤖 ${config.botName}
 
-A next generation WhatsApp automation platform.
+`╭━━━〔 🤖 ${ctx.botName} 〕━━━╮
 
-⚡ Fast
-🧩 Plugin Based
-🚀 Scalable
+🚀 Identity
+➜ Next Generation
+WhatsApp Automation Platform
 
-📦 Version:
-${config.version}
+━━━━━━━━━━━━━━━━━━
 
-❤️ Developed by ${config.owner.name}`
+⚡ Performance
+➜ Fast & Reliable Engine
+
+🧩 Architecture
+➜ Plugin-Based System
+
+📡 Platform
+➜ Multi-Deployment Ready
+
+━━━━━━━━━━━━━━━━━━
+
+📦 Version
+➜ ${ctx.version}
+
+⚙️ Mode
+➜ ${ctx.config.mode}
+
+👑 Developer
+➜ ${ctx.config.owner.name}
+
+━━━━━━━━━━━━━━━━━━
+
+🔥 Powered by JLEY-XMD Engine
+
+╰━━━━━━━━━━━━━━━━━━╯`
+
         );
+
 
     }
 

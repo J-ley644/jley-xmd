@@ -2,7 +2,9 @@ export default {
 
     name: "profile",
 
-    aliases: ["me"],
+    aliases: [
+        "me"
+    ],
 
     category: "general",
 
@@ -12,36 +14,47 @@ export default {
 
     permissions: {},
 
+
     async execute(ctx) {
 
 
-        const user =
-            ctx.number;
+        const number =
+            ctx.number || "Unknown";
 
 
-        const text = `
-╭━━━〔 👤 PROFILE 〕━━━╮
 
-📱 Number:
-+${user}
+        const chatType =
+            ctx.isGroup
+            ? (ctx.groupMetadata?.subject || "Group Chat")
+            : "Private Chat";
 
-💬 Chat:
-${ctx.isGroup
-    ? (ctx.groupMetadata?.subject || "Group Chat")
-    : "Private Chat"}
 
-🤖 Bot:
-${ctx.botName}
+
+        await ctx.reply(
+
+`╭━━━〔 👤 PROFILE 〕━━━╮
+
+📱 WhatsApp ID
+➜ +${number}
+
+💬 Chat
+➜ ${chatType}
+
+🤖 Bot
+➜ ${ctx.botName}
 
 ━━━━━━━━━━━━━━━━━━
 
-Thank you for using JLEY-XMD ❤️
+🟢 Status
+➜ Active
 
-╰━━━━━━━━━━━━━━━━━━╯
-`;
+⚡ Engine
+➜ JLEY-XMD Core
 
+╰━━━━━━━━━━━━━━━━━━╯`
 
-        await ctx.reply(text);
+        );
+
 
     }
 

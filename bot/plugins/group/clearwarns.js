@@ -4,13 +4,15 @@ export default {
 
     name: "clearwarns",
 
-    aliases: ["resetwarns"],
+    aliases: [
+        "resetwarns"
+    ],
 
     category: "group",
 
-    description: "Clear all warnings for a member.",
+    description: "Clear all warnings for a member",
 
-    usage: ".clearwarns",
+    usage: ".clearwarns @user",
 
     permissions: {
         group: true,
@@ -19,37 +21,67 @@ export default {
 
     async execute(ctx) {
 
-        const target = ctx.target;
+        const target =
+            ctx.target;
+
 
         if (!target) {
 
             return ctx.reply(
-                "❌ Reply to or mention a user."
+
+`⚠️ Usage Error
+
+Reply to or mention the member whose warnings you want to clear.
+
+Example:
+.clearwarns @user`
+
             );
 
         }
+
 
         warningStore.clear(
             ctx.chat,
             target
         );
 
+
         const number =
             target
                 .split("@")[0]
                 .split(":")[0];
 
+
         await ctx.reply(
-`🤖 ${ctx.botName}
 
-✅ Warnings Cleared
+`╭━━━〔 🧹 WARNINGS CLEARED 〕━━━╮
 
-👤 User: @${number}
+👤 Member
 
-All warnings have been removed.`,
+@${number}
+
+✅ Status
+
+Warning records removed
+
+━━━━━━━━━━━━━━━━━━
+
+⚡ Cleared By
+
+@${ctx.sender.split("@")[0]}
+
+🤖 ${ctx.botName}
+
+╰━━━━━━━━━━━━━━━━━━╯`,
+
             {
-                mentions: [target]
+                mentions: [
+                    target,
+                    ctx.sender
+                ]
             }
+
         );
 
     }

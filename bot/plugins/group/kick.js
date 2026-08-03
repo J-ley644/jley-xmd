@@ -2,11 +2,13 @@ export default {
 
     name: "kick",
 
-    aliases: ["remove"],
+    aliases: [
+        "remove"
+    ],
 
     category: "group",
 
-    description: "Remove a member from the group.",
+    description: "Remove a member from the group",
 
     usage: ".kick @user",
 
@@ -24,29 +26,74 @@ export default {
                 ?.contextInfo
                 ?.participant;
 
+
         if (!target) {
 
             return ctx.reply(
-                "❌ Reply to a user's message to kick them."
+`⚠️ Usage Error
+
+Reply to the user's message you want to remove.
+
+Example:
+.kick @user`
             );
 
         }
+
 
         if (target === ctx.sender) {
 
             return ctx.reply(
-                "❌ You cannot kick yourself."
+                "❌ You cannot remove yourself from the group."
             );
 
         }
 
-        await ctx.client.groupParticipantsUpdate(
-            ctx.chat,
-            [target],
-            "remove"
-        );
 
-        await ctx.reply("✅ Member removed.");
+        if (target === ctx.client.user?.id) {
+
+            return ctx.reply(
+                "🤖 I cannot remove myself."
+            );
+
+        }
+
+
+        try {
+
+            await ctx.client.groupParticipantsUpdate(
+                ctx.chat,
+                [target],
+                "remove"
+            );
+
+
+            await ctx.reply(
+
+`╭━━━〔 👢 MEMBER REMOVED 〕━━━╮
+
+👤 User
+
+@${target.split("@")[0]}
+
+✅ Action
+Removed from group
+
+⚡ Executed by
+${ctx.sender.split("@")[0]}
+
+╰━━━━━━━━━━━━━━━━━━╯`
+
+            );
+
+
+        } catch(error) {
+
+            await ctx.reply(
+                "❌ Failed to remove member."
+            );
+
+        }
 
     }
 

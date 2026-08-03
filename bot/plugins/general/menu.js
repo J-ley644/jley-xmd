@@ -1,36 +1,47 @@
 import generateMenu from "../../lib/menu.js";
 import pluginStore from "../../system/pluginStore.js";
 
+
 export default {
 
     name: "menu",
 
     aliases: [
-        "help"
+        "commands",
+        "list"
     ],
 
     category: "general",
 
-    description: "Display command menu",
+    description: "Display all available bot commands.",
 
     usage: ".menu",
 
+    cooldown: 5,
+
     permissions: {},
+
 
     async execute(ctx) {
 
-    const plugins = pluginStore.getAll();
 
-    console.log("PLUGIN COUNT:", plugins.size);
+        const plugins =
+            pluginStore.getAll();
 
-    for (const [key, value] of plugins) {
-        console.log(key, "=>", value.name);
+
+
+        const menu =
+            generateMenu(
+                plugins
+            );
+
+
+
+        await ctx.reply(
+            menu
+        );
+
+
     }
-
-    const menu = generateMenu(plugins);
-
-    await ctx.reply(menu);
-
-}
 
 };

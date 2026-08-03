@@ -2,11 +2,13 @@ export default {
 
     name: "tagall",
 
-    aliases: ["everyone"],
+    aliases: [
+        "everyone"
+    ],
 
     category: "group",
 
-    description: "Mention all group members.",
+    description: "Mention all group members",
 
     usage: ".tagall [message]",
 
@@ -18,22 +20,35 @@ export default {
     async execute(ctx) {
 
         const announcement =
-    ctx.args.join(" ") ||
-    "📢 Attention everyone!";
+            ctx.args.join(" ") ||
+            "📢 Attention everyone!";
+
 
         const mentions =
             ctx.members.map(
                 member => member.id
             );
 
-        let message =
-`🤖 ${ctx.botName}
 
-👥 Members: ${ctx.members.length}
+        let message =
+
+`╭━━━〔 📢 GROUP ALERT 〕━━━╮
+
+🤖 ${ctx.botName}
+
+👥 Members
+${ctx.members.length}
+
+━━━━━━━━━━━━━━━━━━
+
+📌 Announcement
 
 ${announcement}
 
+━━━━━━━━━━━━━━━━━━
+
 `;
+
 
         for (const member of ctx.members) {
 
@@ -42,16 +57,33 @@ ${announcement}
                     .split("@")[0]
                     .split(":")[0];
 
-            message += `@${number}\n`;
+
+            message +=
+                `👤 @${number}\n`;
 
         }
 
+
+        message +=
+
+`
+━━━━━━━━━━━━━━━━━━
+
+⚡ Sent by
+${ctx.sender.split("@")[0]}
+
+╰━━━━━━━━━━━━━━━━━━╯`;
+
+
         await ctx.client.sendMessage(
+
             ctx.chat,
+
             {
                 text: message,
                 mentions
             }
+
         );
 
     }

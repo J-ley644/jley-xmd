@@ -2,6 +2,7 @@ import {
     handleCommand
 } from "./commandService.js";
 
+
 export async function handleMessage(
     sock,
     message
@@ -11,32 +12,67 @@ export async function handleMessage(
         return;
     }
 
+
     if (message.key?.fromMe) {
         return;
     }
 
+
     const jid =
         message.key?.remoteJid;
+
 
     if (!jid) {
         return;
     }
+
 
     const content =
         message.message.conversation ||
         message.message.extendedTextMessage?.text ||
         "";
 
+
     if (!content.trim()) {
         return;
     }
 
+
+
     const response =
         handleCommand(content);
+
+
 
     if (!response) {
         return;
     }
+
+
+
+    // command reaction
+    try {
+
+        await sock.sendMessage(
+            jid,
+            {
+                react: {
+                    text: "⚡",
+                    key: message.key
+                }
+            }
+        );
+
+    } catch(error) {
+
+        console.error(
+            "Reaction error:",
+            error.message
+        );
+
+    }
+
+
 
     await sock.sendMessage(
         jid,
@@ -44,4 +80,5 @@ export async function handleMessage(
             text: response
         }
     );
+
 }
