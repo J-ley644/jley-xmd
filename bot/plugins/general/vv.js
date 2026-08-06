@@ -28,28 +28,13 @@ export default {
         }
 
 
-        const quoted =
-            ctx.quoted;
+        if (!ctx.isViewOnce) {
 
+    return ctx.reply(
+        "❌ The replied message is not a view-once media."
+    );
 
-        const viewOnce =
-
-            quoted?.viewOnceMessage ||
-
-            quoted?.viewOnceMessageV2 ||
-
-            quoted?.viewOnceMessageV2Extension;
-
-
-        if (!viewOnce) {
-
-            return ctx.reply(
-
-"❌ The replied message is not a view-once media."
-
-            );
-
-        }
+}
 
 
         try {
@@ -59,7 +44,7 @@ export default {
 
 
             const media =
-                viewOnce.message;
+    ctx.mediaMessage;
 
 
             if (media.imageMessage) {

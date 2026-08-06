@@ -188,17 +188,42 @@ function normalizeMedia(quoted) {
 
     const media =
 
-        mediaMessage?.imageMessage ||
+    mediaMessage?.imageMessage ||
 
-        mediaMessage?.videoMessage ||
+    mediaMessage?.videoMessage ||
 
-        mediaMessage?.audioMessage ||
+    mediaMessage?.audioMessage ||
 
-        mediaMessage?.stickerMessage ||
+    mediaMessage?.stickerMessage ||
 
-        mediaMessage?.documentMessage ||
+    mediaMessage?.documentMessage ||
 
-        null;
+    null;
+
+
+/*
+|--------------------------------------------------------------------------
+| New WhatsApp View Once Detection
+|--------------------------------------------------------------------------
+*/
+
+if (
+    media?.viewOnce === true
+) {
+
+    isViewOnce = true;
+
+}
+
+return {
+
+    mediaMessage,
+
+    media,
+
+    isViewOnce
+
+};
 
 
 
@@ -338,12 +363,11 @@ export default async function createContext(
     |--------------------------------------------------------------------------
     */
 
-    const quoted =
-        message.message
-            ?.extendedTextMessage
-            ?.contextInfo
-            ?.quotedMessage ||
-        null;
+    const content =
+    Object.values(message.message || {})[0];
+
+const quoted =
+    content?.contextInfo?.quotedMessage || null;
 
     const isReply =
         Boolean(quoted);
@@ -357,18 +381,9 @@ export default async function createContext(
     */
 
     const target =
-
-        message.message
-            ?.extendedTextMessage
-            ?.contextInfo
-            ?.participant ||
-
-        message.message
-            ?.extendedTextMessage
-            ?.contextInfo
-            ?.mentionedJid?.[0] ||
-
-        sender;
+    content?.contextInfo?.participant ||
+    content?.contextInfo?.mentionedJid?.[0] ||
+    sender;
 
 
 
@@ -389,6 +404,9 @@ export default async function createContext(
     } = normalizeMedia(
         quoted
     );
+
+    console.log("Quoted:", JSON.stringify(quoted, null, 2));
+console.log("View Once:", isViewOnce);
 
 
 
