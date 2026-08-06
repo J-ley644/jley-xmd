@@ -4,37 +4,46 @@ export default {
 
     name: "owner",
 
-    aliases: ["creator"],
+    aliases: [
+        "creator"
+    ],
 
     category: "general",
 
     description: "Show bot owner information",
 
-    permissions: {
-        owner: true
-    },
+    usage: ".owner",
+
+    permissions: {},
 
     async execute(ctx) {
 
-        const text = `
-╭━━━〔 👤 OWNER INFO 〕━━━╮
+        const text =
 
-👤 Name:
+`╭━━━〔 👑 OWNER PROFILE 〕━━━╮
+
+👤 Name
 ${config.owner.name}
 
+📞 Contact
++${config.owner.number}
 
-📞 Number:
-${config.owner. number}
-
-🤖 Bot:
+🤖 Bot
 ${config.botName}
 
 ━━━━━━━━━━━━━━━━━━
 
-Thank you for using JLEY-XMD ❤️
+🚀 Project
+WhatsApp Automation Engine
 
-╰━━━━━━━━━━━━━━━━━━╯
-`;
+⚡ Role
+Developer & Maintainer
+
+━━━━━━━━━━━━━━━━━━
+
+🔥 Powered by JLEY-XMD
+
+╰━━━━━━━━━━━━━━━━━━╯`;
 
         await ctx.reply(text);
 

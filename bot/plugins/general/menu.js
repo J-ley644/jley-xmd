@@ -29,9 +29,10 @@ export default {
             pluginStore.getAll();
 
         const menu =
-            generateMenu(
-                plugins
-            );
+    generateMenu(
+        plugins,
+        ctx
+    );
 
         if (menuStore.hasBanner()) {
 

@@ -26,7 +26,10 @@ function getCategoryEmoji(category) {
 
 
 
-function generateMenu(plugins) {
+function generateMenu(
+    plugins,
+    ctx
+) {
 
     const categories = {};
 
@@ -60,20 +63,61 @@ function generateMenu(plugins) {
     const announcement =
         menuStore.getAnnouncement();
 
+        const hour =
+    new Date().getHours();
+
+let greeting =
+    "👋 Hello";
+
+if (hour >= 5 && hour < 12) {
+
+    greeting =
+        "🌅 Good Morning";
+
+}
+
+else if (hour >= 12 && hour < 17) {
+
+    greeting =
+        "☀️ Good Afternoon";
+
+}
+
+else if (hour >= 17 && hour < 21) {
+
+    greeting =
+        "🌇 Good Evening";
+
+}
+
+else {
+
+    greeting =
+        "🌙 Good Night";
+
+}
+
+const userName =
+    ctx?.pushName || "User";
+
 
 
     let menu =
-`👋 Welcome to ${config.botName}
+`${greeting}, ${userName}
 
 ╭━━━━━━━━━━━━━━━━━━━━╮
 │ 🤖 ${config.botName}
+│ ⚡ Smart • Fast • Reliable
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-📦 Version : ${config.version}
-🟢 Status  : ${config.status}
-⚙️ Mode    : ${config.mode}
-📚 Commands: ${totalCommands}
-📂 Categories: ${Object.keys(categories).length}
+👤 User        : ${userName}
+🤖 Prefix      : ${ctx.prefix}
+📦 Version     : ${ctx.version}
+🟢 Status      : ${config.status}
+⚙️ Mode        : ${config.mode}
+⏱️ Runtime     : ${ctx.runtime.formatUptime()}
+📚 Commands    : ${totalCommands}
+📂 Categories  : ${Object.keys(categories).length}
 
 `;
 

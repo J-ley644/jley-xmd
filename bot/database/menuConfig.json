@@ -1,6 +1,6 @@
 {
-    "announcementEnabled": false,
-    "announcement": "",
-    "updatedBy": "System",
-    "updatedAt": null
+    "announcementEnabled": true,
+    "announcement": "this is just a beta version",
+    "updatedBy": "Jley",
+    "updatedAt": "2026-08-06T09:06:20.883Z"
 }
