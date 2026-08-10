@@ -9,9 +9,9 @@
         "goodbye": true
     },
     "120363420033060707@g.us": {
-        "welcome": false,
+        "welcome": true,
         "goodbye": false,
-        "antilink": false
+        "antilink": true
     },
     "120363425292939144@g.us": {
         "welcome": false,
@@ -49,6 +49,31 @@
         "antilink": false
     },
     "120363421690446764@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363428504192555@g.us": {
+        "welcome": true,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363409403693428@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363402079978975@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363407192805376@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363427652111067@g.us": {
         "welcome": false,
         "goodbye": false,
         "antilink": false

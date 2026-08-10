@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum DeploymentStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  PENDING
+}
+
+enum TransactionType {
+  DEPOSIT
+  PURCHASE
+  REFUND
+  BONUS
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         UserRole @default(USER)
+
+  jlBalance    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deployments  Deployment[]
+  transactions Transaction[]
+}
+
+model Deployment {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionId   String   @unique
+
+  phone       String?
+
+  status      DeploymentStatus @default(PENDING)
+
+  startedAt   DateTime @default(now())
+
+  expiresAt   DateTime
+
+  graceEndsAt DateTime
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  id          String @id @default(cuid())
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amountKes   Float
+
+  jlReceived  Int
+
+  type        TransactionType
+
+  createdAt   DateTime @default(now())
+}
+
+model Settings {
+  id Int @id @default(1)
+
+  jlPrice Float @default(70)
+
+  jlPerPackage Int @default(50)
+
+  deploymentDays Int @default(32)
+
+  graceDays Int @default(3)
+
+  updatedAt DateTime @updatedAt
+}

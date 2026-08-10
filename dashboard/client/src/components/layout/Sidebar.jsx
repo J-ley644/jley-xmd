@@ -1,9 +1,7 @@
+
 export default function Sidebar({
-
     current,
-
     onChange
-
 }) {
 
     const items = [
@@ -12,9 +10,17 @@ export default function Sidebar({
 
         ["deployments", "🤖", "Deployments"],
 
+        ["pairing", "📱", "Pairing"],
+
+        ["plugins", "🧩", "Plugins"],
+
+        ["testing", "🧪", "Bot Testing"],
+
+        ["logs", "📜", "Logs"],
+
         ["wallet", "💰", "Wallet"],
 
-        ["pairing", "📱", "Pairing"],
+        ["updates", "🔔", "Updates"],
 
         ["settings", "⚙️", "Settings"]
 
@@ -26,11 +32,16 @@ export default function Sidebar({
 
             <div className="logo">
 
-                <span className="logo-icon">⚡</span>
+                <span className="logo-icon">
+                    ⚡
+                </span>
 
-                <span>JLEY-XMD</span>
+                <span>
+                    JLEY-XMD
+                </span>
 
             </div>
+
 
             <nav>
 
@@ -55,16 +66,18 @@ export default function Sidebar({
                                 }
 
                                 onClick={() =>
-
                                     onChange(id)
-
                                 }
 
                             >
 
-                                <span>{icon}</span>
+                                <span>
+                                    {icon}
+                                </span>
 
-                                <span>{label}</span>
+                                <span>
+                                    {label}
+                                </span>
 
                             </button>
 
@@ -75,6 +88,7 @@ export default function Sidebar({
                 }
 
             </nav>
+
 
             <div className="sidebar-footer">
 

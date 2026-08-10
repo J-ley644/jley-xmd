@@ -13,6 +13,36 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Deployments from "./pages/Deployments";
 
+function ComingSoon({ title, icon }) {
+    return (
+        <section className="page-section">
+            <div className="page-header">
+                <div>
+                    <h1>
+                        {icon} {title}
+                    </h1>
+
+                    <p>
+                        JLEY-XMD dashboard module
+                    </p>
+                </div>
+            </div>
+
+            <div className="dashboard-card">
+                <h2>
+                    {title}
+                </h2>
+
+                <p>
+                    This section is being prepared.
+                    The dashboard foundation is already connected
+                    and this module will be added here.
+                </p>
+            </div>
+        </section>
+    );
+}
+
 
 function App() {
 
@@ -136,10 +166,7 @@ function App() {
         try {
 
 
-            const me =
-                await apiGet(
-                    "/api/auth/me"
-                );
+            const me = await apiGet("/auth/profile");
 
 
             setUser(me.user);
@@ -178,7 +205,7 @@ function App() {
 
             const data =
                 await apiGet(
-                    "/api/wallet"
+                    "/wallet"
                 );
 
 
@@ -209,7 +236,7 @@ function App() {
 
             const data =
                 await apiGet(
-                    "/api/deployments"
+                    "/deployments"
                 );
 
 
@@ -247,7 +274,7 @@ function App() {
 
             const data =
                 await apiPost(
-                    "/api/auth/login",
+                    "/auth/login",
                     {
                         email,
                         password
@@ -298,7 +325,7 @@ function App() {
 
 
             await apiPost(
-                "/api/auth/register",
+                "/auth/register",
                 {
                     name,
                     email,
@@ -369,7 +396,7 @@ function App() {
 
 
             await apiPost(
-                "/api/deployments",
+                "/deployments",
                 {
                     botName
                 }
@@ -416,7 +443,7 @@ function App() {
 
             const data =
                 await apiPost(
-                    `/api/pairing/${id}/start`
+                    `/pairing/${id}/start`
                 );
 
 
@@ -472,7 +499,7 @@ function App() {
 
             const data =
                 await apiPost(
-                    `/api/pairing/${id}/code`,
+                    `/pairing/${id}/code`,
                     {
                         phoneNumber
                     }
@@ -713,69 +740,103 @@ function App() {
 
     return (
 
-        <DashboardLayout
+    <DashboardLayout
+        user={user}
+        balance={balance}
+        current={page}
+        onNavigate={setPage}
+    >
 
-            user={user}
-
-            balance={balance}
-
-            current={page}
-
-            onNavigate={setPage}
-
-        >
-
-
-            {
-
-                page === "dashboard"
-
-
-                ?
-
-
+        {
+            page === "dashboard" && (
                 <Dashboard
-
                     deployments={deployments}
-
                     balance={balance}
-
                 />
+            )
+        }
 
-
-                :
-
-
+        {
+            page === "deployments" && (
                 <Deployments
+                    deployments={deployments}
+                    onPair={pairBot}
+                    onPairCode={pairPhone}
+                    onStop={stopBot}
+                    botName={botName}
+                    setBotName={setBotName}
+                    deployBot={deployBot}
+                    deploying={deploying}
+                />
+            )
+        }
 
-    deployments={deployments}
+        {
+            page === "pairing" && (
+                <ComingSoon
+                    title="Pairing"
+                    icon="📱"
+                />
+            )
+        }
 
-    onPair={pairBot}
+        {
+            page === "plugins" && (
+                <ComingSoon
+                    title="Plugins"
+                    icon="🧩"
+                />
+            )
+        }
 
-    onPairCode={pairPhone}
+        {
+            page === "testing" && (
+                <ComingSoon
+                    title="Bot Testing"
+                    icon="🧪"
+                />
+            )
+        }
 
-    onStop={stopBot}
+        {
+            page === "logs" && (
+                <ComingSoon
+                    title="Logs"
+                    icon="📜"
+                />
+            )
+        }
 
-    botName={botName}
+        {
+            page === "wallet" && (
+                <ComingSoon
+                    title="JL Wallet"
+                    icon="💰"
+                />
+            )
+        }
 
-    setBotName={setBotName}
+        {
+            page === "updates" && (
+                <ComingSoon
+                    title="Updates"
+                    icon="🔔"
+                />
+            )
+        }
 
-    deployBot={deployBot}
+        {
+            page === "settings" && (
+                <ComingSoon
+                    title="Settings"
+                    icon="⚙️"
+                />
+            )
+        }
 
-    deploying={deploying}
+    </DashboardLayout>
 
-/>
-
-
-            }
-
-
-        </DashboardLayout>
-
-
-    );
-
-
+);
 }
 
 
