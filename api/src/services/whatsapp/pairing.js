@@ -65,28 +65,18 @@ export async function createSession(
         (async () => {
 
             const {
+    state,
+    saveCreds,
+    stopSync
+} = await getAuthState(key);
 
-                state,
-
-                saveCreds
-
-            } =
-
-                await getAuthState(key);
-
-
-
-            return createSocket(
-
-                key,
-
-                state,
-
-                saveCreds,
-
-                phoneNumber
-
-            );
+return createSocket(
+    key,
+    state,
+    saveCreds,
+    phoneNumber,
+    stopSync
+);
 
         })();
 

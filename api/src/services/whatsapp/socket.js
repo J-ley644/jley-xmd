@@ -35,13 +35,11 @@ import {
 
 
 export async function createSocket(
-
     deploymentId,
-
     authState,
-
-    saveCreds
-
+    saveCreds,
+    phoneNumber = null,
+    stopSync = null
 ) {
 
     const key = String(deploymentId);
@@ -72,7 +70,8 @@ export async function createSocket(
 
         reconnects: 0,
 
-        status: CONNECTION.CONNECTING
+        status: CONNECTION.CONNECTING,
+        stopSync
 
     };
 
@@ -467,6 +466,10 @@ export async function destroySocket(
         }
 
     } catch {}
+
+    if (session.stopSync) {
+    session.stopSync();
+}
 
 
 

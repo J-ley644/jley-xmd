@@ -121,6 +121,18 @@ model SystemSetting {
   createdAt DateTime @default(now())
 }
 
+model WhatsAppSession {
+  id           String   @id @default(uuid())
+  deploymentId String
+  fileName     String
+  data         String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([deploymentId, fileName])
+  @@index([deploymentId])
+}
+
 enum Role {
   CLIENT
   ADMIN

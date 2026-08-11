@@ -3,56 +3,144 @@ import path from "path";
 
 import { useMultiFileAuthState } from "@whiskeysockets/baileys";
 
+import prisma from "../../config/prisma.js";
 import { SESSIONS_ROOT } from "./constants.js";
 
 if (!fs.existsSync(SESSIONS_ROOT)) {
-
     fs.mkdirSync(SESSIONS_ROOT, {
-
         recursive: true
-
     });
-
 }
 
 export function getSessionPath(deploymentId) {
-
     return path.join(
-
         SESSIONS_ROOT,
-
         String(deploymentId)
-
     );
+}
 
+async function restoreSessionFiles(deploymentId) {
+    const sessionPath = getSessionPath(deploymentId);
+
+    fs.mkdirSync(sessionPath, {
+        recursive: true
+    });
+
+    const files = await prisma.whatsAppSession.findMany({
+        where: {
+            deploymentId: String(deploymentId)
+        }
+    });
+
+    for (const file of files) {
+        const filePath = path.join(
+            sessionPath,
+            file.fileName
+        );
+
+        fs.writeFileSync(
+            filePath,
+            file.data,
+            "utf8"
+        );
+    }
+
+    console.log(
+        `Restored ${files.length} session files for ${deploymentId}`
+    );
+}
+
+async function persistSessionFiles(deploymentId) {
+    const sessionPath = getSessionPath(deploymentId);
+
+    if (!fs.existsSync(sessionPath)) {
+        return;
+    }
+
+    const files = fs.readdirSync(sessionPath);
+
+    for (const fileName of files) {
+        const filePath = path.join(
+            sessionPath,
+            fileName
+        );
+
+        if (!fs.statSync(filePath).isFile()) {
+            continue;
+        }
+
+        const data = fs.readFileSync(
+            filePath,
+            "utf8"
+        );
+
+        await prisma.whatsAppSession.upsert({
+            where: {
+                deploymentId_fileName: {
+                    deploymentId: String(deploymentId),
+                    fileName
+                }
+            },
+            update: {
+                data
+            },
+            create: {
+                deploymentId: String(deploymentId),
+                fileName,
+                data
+            }
+        });
+    }
 }
 
 export async function getAuthState(deploymentId) {
+    const key = String(deploymentId);
 
-    const sessionPath =
+    await restoreSessionFiles(key);
 
-        getSessionPath(deploymentId);
+    const sessionPath = getSessionPath(key);
 
-    return useMultiFileAuthState(sessionPath);
+    const {
+        state,
+        saveCreds: originalSaveCreds
+    } = await useMultiFileAuthState(sessionPath);
 
+    const saveCreds = async () => {
+        await originalSaveCreds();
+        await persistSessionFiles(key);
+    };
+
+    // Keep Baileys key files synchronized with PostgreSQL.
+    const syncTimer = setInterval(
+        () => {
+            persistSessionFiles(key).catch((error) => {
+                console.error(
+                    "Session persistence error:",
+                    error.message
+                );
+            });
+        },
+        3000
+    );
+
+    if (syncTimer.unref) {
+        syncTimer.unref();
+    }
+
+    return {
+        state,
+        saveCreds,
+        stopSync: () => clearInterval(syncTimer)
+    };
 }
 
 export function deleteSessionFolder(deploymentId) {
-
-    const sessionPath =
-
-        getSessionPath(deploymentId);
+    const sessionPath = getSessionPath(deploymentId);
 
     if (fs.existsSync(sessionPath)) {
-
         fs.rmSync(sessionPath, {
-
             recursive: true,
-
             force: true
-
         });
-
     }
-
 }
