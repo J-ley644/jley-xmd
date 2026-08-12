@@ -143,20 +143,13 @@ export async function startDeploymentSession(
 
 
 export async function getDeploymentStatus(
-
     deploymentId
-
 ) {
 
     const session =
-
         getSocket(
-
             deploymentId
-
         );
-
-
 
     if (!session) {
 
@@ -164,19 +157,21 @@ export async function getDeploymentStatus(
 
             status: "OFFLINE",
 
-            qr: null
+            qr: null,
+
+            code: null
 
         };
 
     }
 
-
-
     return {
 
         status: session.status,
 
-        qr: session.qr
+        qr: session.qr || null,
+
+        code: session.code || null
 
     };
 

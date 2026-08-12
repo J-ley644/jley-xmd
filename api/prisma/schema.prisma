@@ -125,7 +125,7 @@ model WhatsAppSession {
   id           String   @id @default(uuid())
   deploymentId String
   fileName     String
-  data         String   @db.Text
+  data         String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

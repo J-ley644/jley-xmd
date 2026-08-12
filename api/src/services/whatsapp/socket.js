@@ -9,29 +9,19 @@ import QRCode from "qrcode";
 import prisma from "../../config/prisma.js";
 
 import {
-
     CONNECTION,
-
     RECONNECT_DELAY,
-
+    MAX_RECONNECT_ATTEMPTS,
     DEFAULT_BROWSER
-
 } from "./constants.js";
 
 import {
-
     getSession,
-
     setSession,
-
     removeSession,
-
     clearReconnectTimer,
-
     setReconnectTimer
-
 } from "./manager.js";
-
 
 
 export async function createSocket(
@@ -45,6 +35,9 @@ export async function createSocket(
     const key = String(deploymentId);
 
 
+    /*
+     * Do not create duplicate sockets.
+     */
 
     const existing = getSession(key);
 
@@ -55,6 +48,13 @@ export async function createSocket(
     }
 
 
+    /*
+     * Shared deployment session object.
+     *
+     * The socket itself can be replaced during
+     * automatic reconnection while this object
+     * remains registered in the manager.
+     */
 
     const session = {
 
@@ -71,354 +71,560 @@ export async function createSocket(
         reconnects: 0,
 
         status: CONNECTION.CONNECTING,
-        stopSync
+
+        stopSync,
+
+        stopping: false
 
     };
 
 
-
-    const sock = makeWASocket({
-
-        auth: authState,
-
-        browser: DEFAULT_BROWSER,
-
-        logger: P({
-
-            level: "silent"
-
-        }),
-
-        printQRInTerminal: false,
-
-        markOnlineOnConnect: true,
-
-        syncFullHistory: false,
-
-        generateHighQualityLinkPreview: false
-
-    });
-
-
-
-    session.sock = sock;
-
     setSession(key, session);
 
 
+    /*
+     * Create the WhatsApp socket.
+     *
+     * This function is also used by the automatic
+     * reconnect system.
+     */
 
-    sock.ev.on(
+    const connectSocket = async () => {
 
-        "creds.update",
+        if (session.stopping) {
 
-        saveCreds
+            return;
 
-    );
-
-
-
-    sock.ev.on(
-
-        "connection.update",
-
-        async (update) => {
-
-            const {
-
-                connection,
-
-                qr,
-
-                lastDisconnect
-
-            } = update;
+        }
 
 
-
-            console.log("WHATSAPP:", {
-
-                connection,
-
-                qr: !!qr,
-
-                code:
-
-                    lastDisconnect?.error?.output?.statusCode
-
-            });
+        console.log(
+            `Creating WhatsApp socket for deployment ${key}`
+        );
 
 
+        const sock = makeWASocket({
 
-            if (qr) {
+            auth: authState,
 
-                session.qr =
+            browser: DEFAULT_BROWSER,
 
-                    await QRCode.toDataURL(qr);
+            logger: P({
+                level: "silent"
+            }),
 
-                session.status =
+            printQRInTerminal: false,
 
-                    CONNECTION.QR_READY;
+            markOnlineOnConnect: true,
 
-            }
+            syncFullHistory: false,
 
+            generateHighQualityLinkPreview: false
 
-
-            if (connection === "open") {
-
-                clearReconnectTimer(key);
-
-                session.ready = true;
-
-                session.qr = null;
-
-                session.code = null;
-
-                session.reconnects = 0;
-
-                session.status =
-
-                    CONNECTION.CONNECTED;
+        });
 
 
+        session.sock = sock;
 
-                try {
 
-                    await prisma.deployment.update({
+        /*
+         * Save credentials to Supabase-backed
+         * session storage.
+         */
 
-                        where: {
+        sock.ev.on(
+            "creds.update",
+            saveCreds
+        );
 
-                            id: key
 
-                        },
+        /*
+         * Connection events.
+         */
 
-                        data: {
+        sock.ev.on(
+            "connection.update",
+            async (update) => {
 
-                            status: "RUNNING",
+                const {
+                    connection,
+                    qr,
+                    lastDisconnect
+                } = update;
 
-                            connectionStatus: "CONNECTED",
 
-                            sessionReady: true,
-
-                            lastConnected: new Date()
-
-                        }
-
-                    });
-
-                } catch (err) {
-
-                    console.error(
-
-                        "DB update:",
-
-                        err.message
-
-                    );
-
-                }
-
+                const disconnectCode =
+                    lastDisconnect
+                        ?.error
+                        ?.output
+                        ?.statusCode;
 
 
                 console.log(
-
-                    "CONNECTED:",
-
-                    key
-
+                    "WHATSAPP:",
+                    {
+                        deploymentId: key,
+                        connection,
+                        qr: !!qr,
+                        code: disconnectCode
+                    }
                 );
 
 
-
-                return;
-
-            }
-
-
-
-            if (connection !== "close") {
-
-                return;
-
-            }
-
-
-
-            session.ready = false;
-
-            session.status =
-
-                CONNECTION.OFFLINE;
-
-
-
-            const code =
-
-                lastDisconnect?.error?.output?.statusCode;
-
-
-
-            console.log(
-
-                "Disconnected:",
-
-                code
-
-            );
-
-
-
-            if (
-
-                code === DisconnectReason.loggedOut
-
-            ) {
-
-                console.log(
-
-                    "Logged out:",
-
-                    key
-
-                );
-
-
-
-                removeSession(key);
-
-
-
-                try {
-
-                    await prisma.deployment.update({
-
-                        where: {
-
-                            id: key
-
-                        },
-
-                        data: {
-
-                            status: "STOPPED",
-
-                            connectionStatus: "OFFLINE",
-
-                            sessionReady: false
-
-                        }
-
-                    });
-
-                } catch {}
-
-
-
-                return;
-
-            }
-
-
-
-            session.reconnects++;
-
-
-
-            console.log(
-
-                "Reconnect attempt",
-
-                session.reconnects
-
-            );
-
-
-
-            clearReconnectTimer(key);
-
-
-
-            const timer = setTimeout(
-
-                async () => {
+                /*
+                 * QR CODE
+                 */
+
+                if (qr) {
 
                     try {
 
-                        removeSession(key);
+                        session.qr =
+                            await QRCode.toDataURL(qr);
+
+                        session.status =
+                            CONNECTION.QR_READY;
+
+                        session.ready = false;
+
+                    } catch (error) {
+
+                        console.error(
+                            "QR generation failed:",
+                            error.message
+                        );
+
+                    }
+
+                }
+
+
+                /*
+                 * CONNECTED
+                 */
+
+                if (connection === "open") {
+
+                    clearReconnectTimer(key);
+
+                    session.ready = true;
+
+                    session.qr = null;
+
+                    session.code = null;
+
+                    session.reconnects = 0;
+
+                    session.status =
+                        CONNECTION.CONNECTED;
+
+
+                    try {
+
+                        await prisma.deployment.update({
+
+                            where: {
+                                id: key
+                            },
+
+                            data: {
+
+                                status: "RUNNING",
+
+                                connectionStatus:
+                                    "CONNECTED",
+
+                                sessionReady: true,
+
+                                lastConnected:
+                                    new Date()
+
+                            }
+
+                        });
+
+                    } catch (error) {
+
+                        console.error(
+                            "DB connection update:",
+                            error.message
+                        );
+
+                    }
+
+
+                    console.log(
+                        `CONNECTED: ${key}`
+                    );
+
+
+                    return;
+
+                }
+
+
+                /*
+                 * Ignore intermediate states.
+                 */
+
+                if (connection !== "close") {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Socket closed.
+                 */
+
+                session.ready = false;
+
+                session.status =
+                    CONNECTION.OFFLINE;
+
+
+                console.log(
+                    `Disconnected: ${key}`,
+                    disconnectCode
+                );
+
+
+                /*
+                 * Manual stop/logout.
+                 *
+                 * Never automatically reconnect a
+                 * deployment that the user intentionally
+                 * stopped.
+                 */
+
+                if (session.stopping) {
+
+                    console.log(
+                        `Deployment ${key} was intentionally stopped.`
+                    );
+
+                    return;
+
+                }
+
+
+                /*
+                 * WhatsApp logged the account out.
+                 *
+                 * This requires a new QR/pairing process.
+                 */
+
+                if (
+                    disconnectCode ===
+                    DisconnectReason.loggedOut
+                ) {
+
+                    console.log(
+                        `WhatsApp logged out deployment ${key}`
+                    );
+
+
+                    clearReconnectTimer(key);
+
+                    removeSession(key);
+
+
+                    try {
+
+                        await prisma.deployment.update({
+
+                            where: {
+                                id: key
+                            },
+
+                            data: {
+
+                                status: "STOPPED",
+
+                                connectionStatus:
+                                    "OFFLINE",
+
+                                sessionReady: false
+
+                            }
+
+                        });
 
                     } catch {}
 
-                },
+                    return;
 
-                RECONNECT_DELAY
-
-            );
+                }
 
 
+                /*
+                 * Automatic reconnect.
+                 */
 
-            setReconnectTimer(
-
-                key,
-
-                timer
-
-            );
-
-        }
-
-    );
-
-
-
-    sock.ev.on(
-
-        "messages.upsert",
-
-        async ({ messages }) => {
-
-            if (!messages?.length) {
-
-                return;
-
-            }
-
-
-
-            for (const message of messages) {
-
-                try {
-
-                    const { handleMessage } =
-
-                        await import("../messageService.js");
-
-
-
-                    await handleMessage(
-
-                        sock,
-
-                        message
-
-                    );
-
-                } catch (err) {
+                if (
+                    session.reconnects >=
+                    MAX_RECONNECT_ATTEMPTS
+                ) {
 
                     console.error(
-
-                        "Message handler:",
-
-                        err.message
-
+                        `Deployment ${key} reached ${MAX_RECONNECT_ATTEMPTS} reconnect attempts.`
                     );
+
+
+                    try {
+
+                        await prisma.deployment.update({
+
+                            where: {
+                                id: key
+                            },
+
+                            data: {
+
+                                status: "PENDING",
+
+                                connectionStatus:
+                                    "OFFLINE",
+
+                                sessionReady: false
+
+                            }
+
+                        });
+
+                    } catch {}
+
+                    return;
+
+                }
+
+
+                session.reconnects++;
+
+
+                console.log(
+                    `Reconnect attempt ${session.reconnects}/${MAX_RECONNECT_ATTEMPTS} for ${key}`
+                );
+
+
+                clearReconnectTimer(key);
+
+
+                const timer =
+                    setTimeout(
+                        async () => {
+
+                            try {
+
+                                /*
+                                 * Make sure this deployment
+                                 * has not been manually stopped
+                                 * while waiting.
+                                 */
+
+                                if (
+                                    session.stopping
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                /*
+                                 * Recreate the socket using
+                                 * the SAME persisted auth state.
+                                 */
+
+                                await connectSocket();
+
+
+                            } catch (error) {
+
+                                console.error(
+                                    `Reconnect failed for ${key}:`,
+                                    error.message
+                                );
+
+
+                                /*
+                                 * Schedule another attempt
+                                 * if the deployment is still active.
+                                 */
+
+                                if (
+                                    !session.stopping &&
+                                    session.reconnects <
+                                        MAX_RECONNECT_ATTEMPTS
+                                ) {
+
+                                    clearReconnectTimer(
+                                        key
+                                    );
+
+
+                                    const retryTimer =
+                                        setTimeout(
+                                            async () => {
+
+                                                try {
+
+                                                    await connectSocket();
+
+                                                } catch (
+                                                    retryError
+                                                ) {
+
+                                                    console.error(
+                                                        `Retry failed for ${key}:`,
+                                                        retryError.message
+                                                    );
+
+                                                }
+
+                                            },
+                                            RECONNECT_DELAY
+                                        );
+
+
+                                    setReconnectTimer(
+                                        key,
+                                        retryTimer
+                                    );
+
+                                }
+
+                            }
+
+                        },
+                        RECONNECT_DELAY
+                    );
+
+
+                setReconnectTimer(
+                    key,
+                    timer
+                );
+
+            }
+        );
+
+
+        /*
+         * Incoming WhatsApp messages.
+         */
+
+        sock.ev.on(
+            "messages.upsert",
+            async ({ messages }) => {
+
+                if (!messages?.length) {
+
+                    return;
+
+                }
+
+
+                for (
+                    const message of messages
+                ) {
+
+                    try {
+
+                        const {
+                            handleMessage
+                        } = await import(
+                            "../messageService.js"
+                        );
+
+
+                        await handleMessage(
+                            sock,
+                            message
+                        );
+
+                    } catch (error) {
+
+                        console.error(
+                            "Message handler:",
+                            error.message
+                        );
+
+                    }
 
                 }
 
             }
+        );
+
+
+        return sock;
+
+    };
+
+
+    /*
+     * Initial socket creation.
+     */
+
+    await connectSocket();
+
+
+    /*
+     * Pairing-code flow.
+     */
+
+    if (phoneNumber) {
+
+        try {
+
+            const normalizedPhone =
+                String(phoneNumber)
+                    .replace(/\D/g, "");
+
+
+            if (!normalizedPhone) {
+
+                throw new Error(
+                    "Invalid phone number."
+                );
+
+            }
+
+
+            const pairingCode =
+                await session.sock.requestPairingCode(
+                    normalizedPhone
+                );
+
+
+            session.code =
+                pairingCode;
+
+            session.qr = null;
+
+            session.status =
+                CONNECTION.CONNECTING;
+
+
+            console.log(
+                "PAIRING CODE READY:",
+                pairingCode
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Pairing code generation failed:",
+                error.message
+            );
+
+            session.code = null;
 
         }
 
-    );
-
+    }
 
 
     return session;
@@ -426,19 +632,21 @@ export async function createSocket(
 }
 
 
+/*
+ * Destroy / stop deployment.
+ */
 
 export async function destroySocket(
-
     deploymentId,
-
     logout = false
-
 ) {
 
-    const key = String(deploymentId);
+    const key =
+        String(deploymentId);
 
-    const session = getSession(key);
 
+    const session =
+        getSession(key);
 
 
     if (!session) {
@@ -448,29 +656,52 @@ export async function destroySocket(
     }
 
 
+    /*
+     * Mark the session as intentionally stopping
+     * BEFORE closing the socket.
+     *
+     * This prevents the connection.update "close"
+     * handler from starting a reconnect.
+     */
+
+    session.stopping = true;
+
 
     clearReconnectTimer(key);
 
 
-
     try {
 
-        if (logout) {
+        if (
+            logout &&
+            session.sock
+        ) {
 
             await session.sock.logout();
 
-        } else {
+        } else if (
+            session.sock
+        ) {
 
             session.sock.end?.();
 
         }
 
-    } catch {}
+    } catch (error) {
+
+        console.error(
+            `Socket shutdown error for ${key}:`,
+            error.message
+        );
+
+    }
+
 
     if (session.stopSync) {
-    session.stopSync();
-}
 
+        session.stopSync();
+
+    }
 
 
     removeSession(key);
@@ -478,17 +709,16 @@ export async function destroySocket(
 }
 
 
+/*
+ * Get current deployment socket/session.
+ */
 
 export function getSocket(
-
     deploymentId
-
 ) {
 
     return getSession(
-
         deploymentId
-
     );
 
 }

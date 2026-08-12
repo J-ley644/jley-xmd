@@ -6,3 +6,7 @@ logs/
 *.log
 
 .DS_Store
+
+pass
+dashboard/client/dist/
+api/src/services/whatsapp/socket.backup.js

@@ -7,8 +7,9 @@ import {
     stopDeploymentSession
 } from "./whatsapp/index.js";
 
-
 const DEPLOYMENT_LIFESPAN_DAYS = 32;
+
+const JL_DEPLOYMENT_COST = 50;
 
 
 /*
@@ -33,10 +34,11 @@ export async function createDeployment(
         throw new Error("Wallet not found.");
     }
 
-    const jlCost = 1;
 
-    if (wallet.balance < jlCost) {
-        throw new Error("Insufficient JL balance.");
+    if (wallet.balance < JL_DEPLOYMENT_COST) {
+        throw new Error(
+            `Insufficient JL balance. You need ${JL_DEPLOYMENT_COST} JL.`
+        );
     }
 
 
@@ -51,45 +53,43 @@ export async function createDeployment(
         );
 
 
-    const result =
-        await prisma.$transaction(
-            async (tx) => {
+    return await prisma.$transaction(
+        async (tx) => {
 
-                const updatedWallet =
-                    await tx.wallet.update({
-                        where: {
-                            userId
-                        },
-                        data: {
-                            balance: {
-                                decrement: jlCost
-                            }
+            const updatedWallet =
+                await tx.wallet.update({
+                    where: {
+                        userId
+                    },
+                    data: {
+                        balance: {
+                            decrement: JL_DEPLOYMENT_COST
                         }
-                    });
+                    }
+                });
 
 
-                const deployment =
-                    await tx.deployment.create({
-                        data: {
-                            botName,
-                            jlCost,
-                            ownerId: userId,
-                            status: "PENDING",
-                            expiresAt
-                        }
-                    });
+            const deployment =
+                await tx.deployment.create({
+                    data: {
+                        botName: botName.trim(),
+                        jlCost: JL_DEPLOYMENT_COST,
+                        ownerId: userId,
+                        status: "PENDING",
+                        connectionStatus: "OFFLINE",
+                        sessionReady: false,
+                        expiresAt
+                    }
+                });
 
 
-                return {
-                    deployment,
-                    wallet: updatedWallet
-                };
+            return {
+                deployment,
+                wallet: updatedWallet
+            };
 
-            }
-        );
-
-
-    return result;
+        }
+    );
 }
 
 
@@ -114,12 +114,15 @@ export async function startDeployment(
 
 
     if (!deployment) {
-        throw new Error("Deployment not found.");
+        throw new Error(
+            "Deployment not found."
+        );
     }
 
 
     /*
-     * Prevent expired deployments from starting.
+     * Do not allow expired deployments
+     * to start.
      */
 
     if (
@@ -156,35 +159,73 @@ export async function startDeployment(
         );
 
 
+    /*
+     * IMPORTANT:
+     *
+     * WhatsApp constants use uppercase values:
+     *
+     * CONNECTING
+     * QR_READY
+     * CONNECTED
+     * OFFLINE
+     *
+     * Do not compare against lowercase strings.
+     */
+
+    const sessionStatus =
+        String(
+            session?.status || "OFFLINE"
+        ).toUpperCase();
+
+
+    const isConnected =
+        sessionStatus === "CONNECTED";
+
+
+    const isStopped =
+        sessionStatus === "OFFLINE";
+
+
     const updatedDeployment =
         await prisma.deployment.update({
             where: {
                 id: deployment.id
             },
             data: {
+
                 status:
-                    session.status === "connected"
+                    isConnected
                         ? "RUNNING"
-                        : "PENDING",
+                        : deployment.status === "STOPPED"
+                            ? "STOPPED"
+                            : "PENDING",
 
                 connectionStatus:
-                    session.status?.toUpperCase() ||
-                    "OFFLINE",
+                    sessionStatus,
 
                 sessionReady:
-                    session.status === "connected",
+                    isConnected,
 
                 lastConnected:
-                    session.status === "connected"
+                    isConnected
                         ? new Date()
                         : deployment.lastConnected
+
             }
         });
 
 
     return {
         deployment: updatedDeployment,
-        session
+
+        session: {
+            deploymentId: deployment.id,
+
+            status: sessionStatus,
+
+            qr:
+                session?.qr || null
+        }
     };
 }
 
@@ -210,12 +251,14 @@ export async function getDeployment(
 
 
     if (!deployment) {
-        throw new Error("Deployment not found.");
+        throw new Error(
+            "Deployment not found."
+        );
     }
 
 
     /*
-     * Automatically mark expired deployments.
+     * Automatically stop expired deployments.
      */
 
     if (
@@ -253,9 +296,50 @@ export async function getDeployment(
         );
 
 
+    const sessionStatus =
+        String(
+            session?.status || "OFFLINE"
+        ).toUpperCase();
+
+
+    /*
+     * If the live WhatsApp session says CONNECTED,
+     * make sure the database reflects it.
+     */
+
+    if (
+        sessionStatus === "CONNECTED" &&
+        deployment.status !== "RUNNING"
+    ) {
+
+        await prisma.deployment.update({
+            where: {
+                id: deployment.id
+            },
+            data: {
+                status: "RUNNING",
+                connectionStatus: "CONNECTED",
+                sessionReady: true,
+                lastConnected: new Date()
+            }
+        });
+
+
+        deployment.status = "RUNNING";
+        deployment.connectionStatus = "CONNECTED";
+        deployment.sessionReady = true;
+    }
+
+
     return {
         deployment,
-        session
+
+        session: {
+            status: sessionStatus,
+
+            qr:
+                session?.qr || null
+        }
     };
 }
 
@@ -275,6 +359,7 @@ export async function listDeployments(
             where: {
                 ownerId: userId
             },
+
             orderBy: {
                 createdAt: "desc"
             }
@@ -305,6 +390,7 @@ export async function listDeployments(
                 where: {
                     id: deployment.id
                 },
+
                 data: {
                     status: "STOPPED",
                     connectionStatus: "OFFLINE",
@@ -325,9 +411,66 @@ export async function listDeployments(
             );
 
 
+        const sessionStatus =
+            String(
+                session?.status || "OFFLINE"
+            ).toUpperCase();
+
+
+        const connected =
+            sessionStatus === "CONNECTED";
+
+
+        /*
+         * Keep database synchronized with
+         * the actual live WhatsApp socket.
+         */
+
+        if (
+            connected &&
+            deployment.status !== "RUNNING"
+        ) {
+
+            await prisma.deployment.update({
+                where: {
+                    id: deployment.id
+                },
+
+                data: {
+                    status: "RUNNING",
+                    connectionStatus: "CONNECTED",
+                    sessionReady: true,
+                    lastConnected: new Date()
+                }
+            });
+
+
+            deployment.status = "RUNNING";
+            deployment.connectionStatus = "CONNECTED";
+            deployment.sessionReady = true;
+            deployment.lastConnected = new Date();
+        }
+
+
+        const daysRemaining =
+            deployment.expiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                        (
+                            deployment.expiresAt.getTime() -
+                            Date.now()
+                        ) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                )
+                : null;
+
+
         results.push({
 
-            id: deployment.id,
+            id:
+                deployment.id,
 
             botName:
                 deployment.botName,
@@ -338,17 +481,13 @@ export async function listDeployments(
             connectionStatus:
                 deployment.status === "STOPPED"
                     ? "OFFLINE"
-                    : (
-                        session.status?.toUpperCase() ||
-                        "OFFLINE"
-                    ),
+                    : sessionStatus,
 
             sessionReady:
                 deployment.status !== "STOPPED" &&
-                session.status === "connected",
+                connected,
 
             lastConnected:
-                session.lastConnected ||
                 deployment.lastConnected ||
                 null,
 
@@ -358,22 +497,9 @@ export async function listDeployments(
             expiresAt:
                 deployment.expiresAt,
 
-            daysRemaining:
-                deployment.expiresAt
-                    ? Math.max(
-                        0,
-                        Math.ceil(
-                            (
-                                deployment.expiresAt.getTime() -
-                                Date.now()
-                            ) /
-                            (1000 * 60 * 60 * 24)
-                        )
-                    )
-                    : null
+            daysRemaining
 
         });
-
     }
 
 
@@ -418,6 +544,7 @@ export async function stopDeployment(
             where: {
                 id: deployment.id
             },
+
             data: {
                 status: "STOPPED",
                 connectionStatus: "OFFLINE",
@@ -434,10 +561,6 @@ export async function stopDeployment(
 |--------------------------------------------------------------------------
 | EXPIRE DEPLOYMENTS
 |--------------------------------------------------------------------------
-|
-| This function is intended to be called periodically
-| by the API server.
-|
 */
 
 export async function expireDeployments() {
@@ -474,7 +597,6 @@ export async function expireDeployments() {
                 `Failed to stop expired deployment ${deployment.id}:`,
                 error.message
             );
-
         }
 
 
@@ -482,13 +604,13 @@ export async function expireDeployments() {
             where: {
                 id: deployment.id
             },
+
             data: {
                 status: "STOPPED",
                 connectionStatus: "OFFLINE",
                 sessionReady: false
             }
         });
-
     }
 
 

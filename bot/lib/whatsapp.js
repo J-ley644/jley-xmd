@@ -160,41 +160,61 @@ const sessionPath =
 
 
 
-            if(connection==="close"){
+            if (connection === "close") {
 
+    const statusCode =
+        lastDisconnect?.error?.output?.statusCode;
 
-                const reconnect =
-                    lastDisconnect
-                    ?.error
-                    ?.output
-                    ?.statusCode
-                    !== DisconnectReason.loggedOut;
+    const errorMessage =
+        lastDisconnect?.error?.message;
 
+    logger.warn(
+        `Deployment ${deploymentId} disconnected`
+    );
 
+    logger.warn(
+        `Disconnect status code: ${statusCode}`
+    );
 
-                logger.warn(
-                    `Deployment ${deploymentId} disconnected`
-                );
+    logger.warn(
+        `Disconnect reason: ${errorMessage}`
+    );
 
+    logger.warn(
+        `Disconnect error: ${JSON.stringify(
+            lastDisconnect?.error,
+            Object.getOwnPropertyNames(
+                lastDisconnect?.error || {}
+            )
+        )}`
+    );
 
+    const reconnect =
+        statusCode !== DisconnectReason.loggedOut;
 
-                if(reconnect){
+    if (reconnect) {
 
+        logger.info(
+            "Restarting connection in 5 seconds..."
+        );
 
-                    logger.info(
-                        "Restarting connection..."
-                    );
+        setTimeout(() => {
 
+            startWhatsApp(
+                deploymentId
+            );
 
-                    startWhatsApp(
-                        deploymentId
-                    );
+        }, 5000);
 
+    } else {
 
-                }
+        logger.error(
+            `Deployment ${deploymentId} was logged out.`
+        );
 
+    }
 
-            }
+}
 
 
         }

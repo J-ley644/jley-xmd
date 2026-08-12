@@ -1,36 +1,30 @@
-const API_BASE_URL = "http://localhost:5000";
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "https://jley-xmd-v2.onrender.com";
 
-async function request(
-    path,
-    options = {}
-) {
+async function request(path, options = {}) {
 
     const token =
         localStorage.getItem("jley_token");
-
 
     const headers = {
         "Content-Type": "application/json",
         ...(options.headers || {})
     };
 
-
     if (token) {
         headers.Authorization =
             `Bearer ${token}`;
     }
 
-
-    const response =
-        await fetch(
-            `${API_BASE_URL}${path}`,
-            {
-                ...options,
-                headers
-            }
-        );
-
+    const response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...options,
+            headers
+        }
+    );
 
     let data = null;
 
@@ -40,7 +34,6 @@ async function request(
         data = null;
     }
 
-
     if (!response.ok) {
 
         throw new Error(
@@ -49,10 +42,8 @@ async function request(
         );
     }
 
-
     return data;
 }
-
 
 export function apiGet(path) {
 
@@ -61,18 +52,34 @@ export function apiGet(path) {
     });
 }
 
+export function apiPost(path, body = undefined) {
 
-export function apiPost(
-    path,
-    body
-) {
+    const options = {
+        method: "POST"
+    };
+
+    if (body !== undefined) {
+        options.body =
+            JSON.stringify(body);
+    }
+
+    return request(path, options);
+}
+
+export function apiPut(path, body = {}) {
 
     return request(path, {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify(body)
     });
 }
 
+export function apiDelete(path) {
+
+    return request(path, {
+        method: "DELETE"
+    });
+}
 
 export function saveToken(token) {
 
@@ -82,7 +89,6 @@ export function saveToken(token) {
     );
 }
 
-
 export function getToken() {
 
     return localStorage.getItem(
@@ -90,10 +96,10 @@ export function getToken() {
     );
 }
 
-
 export function clearToken() {
 
     localStorage.removeItem(
         "jley_token"
     );
 }
+
