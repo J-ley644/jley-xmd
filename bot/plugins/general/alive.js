@@ -14,48 +14,29 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
-
 
         const uptime =
             ctx.runtime?.formatUptime
-            ? ctx.runtime.formatUptime()
-            : "Unknown";
+                ? ctx.runtime.formatUptime()
+                : "Unknown";
 
+        return ctx.info(
 
+`🟢 ${ctx.botName} ALIVE
 
-        await ctx.reply(
-
-`╭━━━〔 🟢 ${ctx.botName} ALIVE 〕━━━╮
-
-📡 Status
-➜ Online
-
-⚡ Engine
-➜ Running
-
-📦 Version
-➜ ${ctx.version}
-
-⏱ Runtime
-➜ ${uptime}
-
-━━━━━━━━━━━━━━━━━━
+📡 Status     • Online
+⚡ Engine     • Running
+📦 Version    • ${ctx.version}
+⏱️ Runtime    • ${uptime}
 
 🤖 WhatsApp Automation
 🧩 Plugin Architecture
 🚀 High Performance
 
-━━━━━━━━━━━━━━━━━━
-
-👑 Owner
-➜ ${ctx.config.owner.name}
-
-╰━━━━━━━━━━━━━━━━━━╯`
+👑 Owner      • ${ctx.config.owner.name}`
 
         );
-
 
     }
 

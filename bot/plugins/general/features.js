@@ -15,71 +15,44 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
+        return ctx.info(
 
-        const text =
-
-`╭━━━〔 ⚡ JLEY-XMD FEATURES 〕━━━╮
-
+`⚡ JLEY-XMD FEATURES
 
 🤖 CORE ENGINE
-
 ⚡ Fast command processing
 🧩 Plugin-based architecture
 🔄 Modular system design
 🚀 Scalable bot framework
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 👥 GROUP MANAGEMENT
-
 🛡️ Admin tools
 ⚠️ Warning system
 🔗 Anti-link protection
 👋 Welcome & goodbye system
 📢 Member tagging tools
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 ⚙️ AUTOMATION
-
 📦 Custom commands
 🔌 Plugin extensions
 📊 System monitoring
 🔐 Permission control
 ⏱️ Cooldown protection
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 🌐 PLATFORM
-
 📱 WhatsApp automation
 🤖 Multi-purpose assistant
 🏗️ Developer friendly
 🚀 Continuous improvements
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 🔥 Built for reliability.
 Designed for the future.
 
+🤖 ${ctx.botName}`
 
-🤖 ${ctx.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`;
-
-
-        await ctx.reply(text);
+        );
 
     }
 

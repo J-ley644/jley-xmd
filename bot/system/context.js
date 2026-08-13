@@ -1,13 +1,14 @@
 /**
  * =====================================================
  * JLEY-XMD Context Builder
- * Context API v4
+ * Context API v5
  *
  * Core
  * User
  * Group
  * Runtime
  * Media Engine
+ * Response UI
  * Helper API
  * =====================================================
  */
@@ -38,9 +39,7 @@ async function getGroupInfo(client, chat) {
         return {
 
             metadata: null,
-
             members: [],
-
             admins: []
 
         };
@@ -54,37 +53,23 @@ async function getGroupInfo(client, chat) {
         metadata.participants || [];
 
     const admins =
-
         members
-
-        .filter(
-
-            member =>
-
-                member.admin === "admin" ||
-
-                member.admin === "superadmin"
-
-        )
-
-        .flatMap(
-
-            member => [
-
-                member.id,
-
-                member.lid
-
-            ].filter(Boolean)
-
-        );
+            .filter(
+                member =>
+                    member.admin === "admin" ||
+                    member.admin === "superadmin"
+            )
+            .flatMap(
+                member => [
+                    member.id,
+                    member.lid
+                ].filter(Boolean)
+            );
 
     return {
 
         metadata,
-
         members,
-
         admins
 
     };
@@ -122,12 +107,6 @@ function getText(message) {
 /*
 |--------------------------------------------------------------------------
 | Normalize Media
-|
-| Handles:
-|
-| ✔ Normal Media
-| ✔ View Once
-| ✔ Future Wrappers
 |--------------------------------------------------------------------------
 */
 
@@ -138,9 +117,7 @@ function normalizeMedia(quoted) {
         return {
 
             mediaMessage: null,
-
             media: null,
-
             isViewOnce: false
 
         };
@@ -172,9 +149,7 @@ function normalizeMedia(quoted) {
     }
 
     else if (
-
         quoted.viewOnceMessageV2Extension?.message
-
     ) {
 
         mediaMessage =
@@ -188,54 +163,84 @@ function normalizeMedia(quoted) {
 
     const media =
 
-    mediaMessage?.imageMessage ||
+        mediaMessage?.imageMessage ||
 
-    mediaMessage?.videoMessage ||
+        mediaMessage?.videoMessage ||
 
-    mediaMessage?.audioMessage ||
+        mediaMessage?.audioMessage ||
 
-    mediaMessage?.stickerMessage ||
+        mediaMessage?.stickerMessage ||
 
-    mediaMessage?.documentMessage ||
+        mediaMessage?.documentMessage ||
 
-    null;
+        null;
 
 
-/*
-|--------------------------------------------------------------------------
-| New WhatsApp View Once Detection
-|--------------------------------------------------------------------------
-*/
 
-if (
-    media?.viewOnce === true
-) {
+    /*
+    |--------------------------------------------------------------------------
+    | View Once Detection
+    |--------------------------------------------------------------------------
+    */
 
-    isViewOnce = true;
+    if (media?.viewOnce === true) {
 
-}
+        isViewOnce = true;
 
-return {
-
-    mediaMessage,
-
-    media,
-
-    isViewOnce
-
-};
+    }
 
 
 
     return {
 
         mediaMessage,
-
         media,
-
         isViewOnce
 
     };
+
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| JLEY-XMD Response UI
+|--------------------------------------------------------------------------
+*/
+
+function formatResponse(
+    title,
+    icon,
+    content
+) {
+
+    const lines =
+        String(content || "")
+            .split("\n");
+
+    const formatted =
+        lines
+            .map(line => {
+
+                if (!line.trim()) {
+
+                    return "┃";
+
+                }
+
+                return `┃  ${line}`;
+
+            })
+            .join("\n");
+
+    return (
+`╭━━━━━━━━〔 ${icon} ${title} 〕━━━━━━━━╮
+┃
+${formatted}
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+    );
 
 }
 
@@ -252,7 +257,7 @@ export default async function createContext(
     message
 ) {
 
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Message
     |--------------------------------------------------------------------------
@@ -294,7 +299,6 @@ export default async function createContext(
     */
 
     const realNumber =
-
         sender
             .split(":")[0]
             .replace("@s.whatsapp.net", "")
@@ -351,8 +355,14 @@ export default async function createContext(
     const isBotAdmin =
         groupInfo.admins.some(
             admin =>
-                jidMatch(admin, botPhoneJid) ||
-                jidMatch(admin, botLid)
+                jidMatch(
+                    admin,
+                    botPhoneJid
+                ) ||
+                jidMatch(
+                    admin,
+                    botLid
+                )
         );
 
 
@@ -364,10 +374,13 @@ export default async function createContext(
     */
 
     const content =
-    Object.values(message.message || {})[0];
+        Object.values(
+            message.message || {}
+        )[0];
 
-const quoted =
-    content?.contextInfo?.quotedMessage || null;
+    const quoted =
+        content?.contextInfo?.quotedMessage ||
+        null;
 
     const isReply =
         Boolean(quoted);
@@ -381,9 +394,11 @@ const quoted =
     */
 
     const target =
-    content?.contextInfo?.participant ||
-    content?.contextInfo?.mentionedJid?.[0] ||
-    sender;
+        content?.contextInfo?.participant ||
+
+        content?.contextInfo?.mentionedJid?.[0] ||
+
+        sender;
 
 
 
@@ -394,25 +409,23 @@ const quoted =
     */
 
     const {
-
         mediaMessage,
-
         media,
-
         isViewOnce
-
-    } = normalizeMedia(
-        quoted
-    );
-
-    console.log("Quoted:", JSON.stringify(quoted, null, 2));
-console.log("View Once:", isViewOnce);
+    } =
+        normalizeMedia(
+            quoted
+        );
 
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Context
+    |--------------------------------------------------------------------------
+    */
 
-
-        const ctx = {
+    const ctx = {
 
         /*
         |--------------------------------------------------------------------------
@@ -442,7 +455,8 @@ console.log("View Once:", isViewOnce);
         |--------------------------------------------------------------------------
         */
 
-        number: realNumber,
+        number:
+            realNumber,
 
         pushName,
 
@@ -520,8 +534,6 @@ console.log("View Once:", isViewOnce);
 
         isViewOnce,
 
-
-
         isImage:
             Boolean(
                 mediaMessage?.imageMessage
@@ -549,26 +561,24 @@ console.log("View Once:", isViewOnce);
 
 
 
-
-
-                /*
+        /*
         |--------------------------------------------------------------------------
-        | Helpers
+        | Basic Reply
         |--------------------------------------------------------------------------
         */
 
-        async reply(text, options = {}) {
+        async reply(
+            text,
+            options = {}
+        ) {
 
             return client.sendMessage(
 
                 chat,
 
                 {
-
                     text,
-
                     ...options
-
                 }
 
             );
@@ -577,7 +587,111 @@ console.log("View Once:", isViewOnce);
 
 
 
-        async send(content) {
+        /*
+        |--------------------------------------------------------------------------
+        | JLEY-XMD Response Helpers
+        |--------------------------------------------------------------------------
+        */
+
+        async success(
+            text
+        ) {
+
+            return this.reply(
+
+                formatResponse(
+                    "SUCCESS",
+                    "✅",
+                    text
+                )
+
+            );
+
+        },
+
+
+
+        async error(
+            text
+        ) {
+
+            return this.reply(
+
+                formatResponse(
+                    "ERROR",
+                    "❌",
+                    text
+                )
+
+            );
+
+        },
+
+
+
+        async warning(
+            text
+        ) {
+
+            return this.reply(
+
+                formatResponse(
+                    "WARNING",
+                    "⚠️",
+                    text
+                )
+
+            );
+
+        },
+
+
+
+        async info(
+            text
+        ) {
+
+            return this.reply(
+
+                formatResponse(
+                    "INFORMATION",
+                    "ℹ️",
+                    text
+                )
+
+            );
+
+        },
+
+
+
+        async denied(
+            text = "You don't have permission to use this command."
+        ) {
+
+            return this.reply(
+
+                formatResponse(
+                    "ACCESS DENIED",
+                    "🛡️",
+                    text
+                )
+
+            );
+
+        },
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send
+        |--------------------------------------------------------------------------
+        */
+
+        async send(
+            content
+        ) {
 
             return client.sendMessage(
 
@@ -591,7 +705,15 @@ console.log("View Once:", isViewOnce);
 
 
 
-        async react(emoji) {
+        /*
+        |--------------------------------------------------------------------------
+        | React
+        |--------------------------------------------------------------------------
+        */
+
+        async react(
+            emoji
+        ) {
 
             return client.sendMessage(
 
@@ -623,7 +745,10 @@ console.log("View Once:", isViewOnce);
 
         async download() {
 
-            if (!isReply || !media) {
+            if (
+                !isReply ||
+                !media
+            ) {
 
                 throw new Error(
                     "Reply to a media message."
@@ -633,23 +758,19 @@ console.log("View Once:", isViewOnce);
 
             return downloadMediaMessage(
 
-    {
+                {
+                    message: quoted
+                },
 
-        message: quoted
+                "buffer",
 
-    },
+                {},
 
-    "buffer",
+                {
+                    logger: console
+                }
 
-    {},
-
-    {
-
-        logger: console
-
-    }
-
-);
+            );
 
         }
 

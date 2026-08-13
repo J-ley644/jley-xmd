@@ -6,7 +6,8 @@
     },
     "120363364987163480@g.us": {
         "welcome": true,
-        "goodbye": true
+        "goodbye": true,
+        "antilink": true
     },
     "120363420033060707@g.us": {
         "welcome": true,
@@ -79,6 +80,16 @@
         "antilink": false
     },
     "120363411376996746@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363417765446037@g.us": {
+        "welcome": false,
+        "goodbye": false,
+        "antilink": false
+    },
+    "120363418741646557@g.us": {
         "welcome": false,
         "goodbye": false,
         "antilink": false

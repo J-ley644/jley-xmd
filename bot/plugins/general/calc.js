@@ -14,78 +14,58 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
-
         const expression =
-            ctx.args.join(" ");
-
+            ctx.args.join(" ").trim();
 
         if (!expression) {
 
-            return ctx.reply(
-`╭━━━〔 🧮 CALCULATOR 〕━━━╮
+            return ctx.error(
+
+`🧮 Calculator
 
 Usage:
-
-.calc expression
+${ctx.prefix}calc <expression>
 
 Examples:
+${ctx.prefix}calc 20+30
+${ctx.prefix}calc 100/5
+${ctx.prefix}calc 5*5`
 
-.calc 20+30
-.calc 100/5
-.calc 5*5
-
-╰━━━━━━━━━━━━━━━━━━╯`
             );
 
         }
 
-
         try {
 
-
-            // Basic calculator evaluation
             const result =
                 Function(
                     `"use strict"; return (${expression})`
                 )();
 
+            return ctx.success(
 
-            await ctx.reply(
+`🧮 Calculation
 
-`╭━━━〔 🧮 CALCULATOR 〕━━━╮
+📌 Expression  • ${expression}
+✅ Result      • ${result}
 
-📌 Expression
-
-${expression}
-
-━━━━━━━━━━━━━━━━━━
-
-✅ Result
-
-${result}
-
-━━━━━━━━━━━━━━━━━━
-
-🤖 ${ctx.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`
+🤖 ${ctx.botName}`
 
             );
 
+        } catch (error) {
 
-        } catch(error) {
+            return ctx.error(
 
+`🧮 Invalid calculation
 
-            await ctx.reply(
-
-`❌ Invalid calculation.
+Expression:
+${expression}
 
 Example:
-
-.calc 25*4`
+${ctx.prefix}calc 25*4`
 
             );
 

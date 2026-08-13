@@ -1,7 +1,6 @@
 import config from "../../config/config.js";
 import pluginStore from "../../system/pluginStore.js";
 
-
 export default {
 
     name: "developer",
@@ -19,89 +18,40 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
+        return ctx.info(
 
-        const text =
-
-`╭━━━〔 👨‍💻 DEVELOPER INFO 〕━━━╮
-
+`👨‍💻 Developer Information
 
 🚀 PROJECT
-
 ${config.botName}
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 🧩 ARCHITECTURE
-
-⚡ Plugin Based System
-
+⚡ Plugin-Based System
 🔌 Dynamic Command Loader
-
 🛡️ Permission Engine
-
 ⏱️ Cooldown Management
-
 📦 Modular Services
 
-
-━━━━━━━━━━━━━━━━━━
-
-
 ⚙️ TECHNOLOGY
-
-📱 Platform
-WhatsApp Automation
-
-🟢 Runtime
-Node.js
-
-📚 Plugins
-${pluginStore.size()}
-
-📦 Version
-${config.version}
-
-
-━━━━━━━━━━━━━━━━━━
-
+📱 Platform     • WhatsApp Automation
+🟢 Runtime      • Node.js
+📚 Plugins      • ${pluginStore.size()}
+📦 Version      • ${ctx.version}
 
 👑 CREATOR
-
 ${config.owner.name}
-
-
-Role:
-Founder & Developer
-
-
-━━━━━━━━━━━━━━━━━━
-
+Role • Founder & Developer
 
 🔥 DEVELOPMENT PHILOSOPHY
-
 Build scalable systems.
-
 Keep improving.
+Create technology that solves real problems.
 
-Create technology
-that solves real problems.
+🤖 ${config.botName}`
 
-
-━━━━━━━━━━━━━━━━━━
-
-
-🤖 ${config.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`;
-
-
-
-        await ctx.reply(text);
+        );
 
     }
 

@@ -15,9 +15,9 @@ export default {
 
     category: "general",
 
-    description: "Display all available bot commands.",
+    description: "Display available bot commands.",
 
-    usage: ".menu",
+    usage: ".menu [category]",
 
     cooldown: 5,
 
@@ -28,11 +28,15 @@ export default {
         const plugins =
             pluginStore.getAll();
 
+        const requestedCategory =
+            ctx.args?.join(" ").trim() || null;
+
         const menu =
-    generateMenu(
-        plugins,
-        ctx
-    );
+            generateMenu(
+                plugins,
+                ctx,
+                requestedCategory
+            );
 
         if (menuStore.hasBanner()) {
 

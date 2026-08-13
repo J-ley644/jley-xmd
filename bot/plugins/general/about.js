@@ -14,48 +14,31 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
+        return ctx.info(
 
-        await ctx.reply(
-
-`╭━━━〔 🤖 ${ctx.botName} 〕━━━╮
+`🤖 ${ctx.botName}
 
 🚀 Identity
-➜ Next Generation
-WhatsApp Automation Platform
-
-━━━━━━━━━━━━━━━━━━
+Next Generation WhatsApp Automation Platform
 
 ⚡ Performance
-➜ Fast & Reliable Engine
+Fast • Reliable • Efficient
 
 🧩 Architecture
-➜ Plugin-Based System
+Plugin-Based System
 
 📡 Platform
-➜ Multi-Deployment Ready
+Multi-Deployment Ready
 
-━━━━━━━━━━━━━━━━━━
+📦 Version    • ${ctx.version}
+⚙️ Mode       • ${ctx.config.mode}
+👑 Developer  • ${ctx.config.owner.name}
 
-📦 Version
-➜ ${ctx.version}
-
-⚙️ Mode
-➜ ${ctx.config.mode}
-
-👑 Developer
-➜ ${ctx.config.owner.name}
-
-━━━━━━━━━━━━━━━━━━
-
-🔥 Powered by JLEY-XMD Engine
-
-╰━━━━━━━━━━━━━━━━━━╯`
+🔥 Powered by JLEY-XMD Engine`
 
         );
-
 
     }
 

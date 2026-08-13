@@ -16,40 +16,24 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
-
 
         const start =
             Date.now();
 
-
-
         const latency =
             Date.now() - start;
 
+        return ctx.info(
 
+`🏓 PONG
 
-        await ctx.reply(
-
-`╭━━━〔 🏓 PONG 〕━━━╮
-
-⚡ Response
-➜ ${latency} ms
-
-🟢 Status
-➜ Online
-
-🤖 Engine
-➜ JLEY-XMD
-
-📦 Version
-➜ ${ctx.version}
-
-╰━━━━━━━━━━━━━━━━━━╯`
+⚡ Response   • ${latency} ms
+🟢 Status     • Online
+🤖 Engine     • JLEY-XMD
+📦 Version    • ${ctx.version}`
 
         );
-
 
     }
 

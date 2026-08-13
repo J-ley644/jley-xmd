@@ -18,9 +18,9 @@ export default {
 
     async execute(ctx) {
 
-        const text =
+        return ctx.info(
 
-`╭━━━〔 👑 OWNER PROFILE 〕━━━╮
+`👑 OWNER PROFILE
 
 👤 Name
 ${config.owner.name}
@@ -31,21 +31,15 @@ ${config.owner.name}
 🤖 Bot
 ${config.botName}
 
-━━━━━━━━━━━━━━━━━━
-
 🚀 Project
 WhatsApp Automation Engine
 
 ⚡ Role
 Developer & Maintainer
 
-━━━━━━━━━━━━━━━━━━
+🔥 Powered by JLEY-XMD`
 
-🔥 Powered by JLEY-XMD
-
-╰━━━━━━━━━━━━━━━━━━╯`;
-
-        await ctx.reply(text);
+        );
 
     }
 

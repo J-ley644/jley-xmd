@@ -12,38 +12,25 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
+        return ctx.info(
 
-        await ctx.reply(
-
-`╭━━━〔 🆔 CHAT INFO 〕━━━╮
+`🆔 CHAT INFORMATION
 
 💬 Chat ID
-➜ ${ctx.chat}
-
-━━━━━━━━━━━━━━━━━━
+${ctx.chat}
 
 👤 Sender ID
-➜ ${ctx.sender}
-
-━━━━━━━━━━━━━━━━━━
+${ctx.sender}
 
 📍 Type
-➜ ${
-    ctx.isGroup
-    ? "Group Chat"
-    : "Private Chat"
-}
+${ctx.isGroup ? "Group Chat" : "Private Chat"}
 
 🤖 Bot
-➜ ${ctx.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`
+${ctx.botName}`
 
         );
-
 
     }
 

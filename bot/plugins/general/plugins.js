@@ -4,7 +4,9 @@ export default {
 
     name: "plugins",
 
-    aliases: ["pl"],
+    aliases: [
+        "pl"
+    ],
 
     category: "general",
 
@@ -16,13 +18,17 @@ export default {
 
     async execute(ctx) {
 
-        const plugins = pluginStore.getAll();
+        const plugins =
+            pluginStore.getAll();
 
         const categories = {};
 
+
+
         for (const [, plugin] of plugins) {
 
-            const category = plugin.category || "other";
+            const category =
+                plugin.category || "other";
 
             if (!categories[category]) {
 
@@ -30,35 +36,55 @@ export default {
 
             }
 
-            categories[category].push(plugin.name);
+            categories[category]
+                .push(plugin.name);
 
         }
+
+
 
         let text =
-`╭━━━〔 PLUGINS 〕━━━╮
-
-Loaded Plugins: ${pluginStore.size()}
-
-━━━━━━━━━━━━━━
-
+`╭━━━━━━━━〔 🧩 PLUGIN SYSTEM 〕━━━━━━━━╮
+┃
+┃  📦 Loaded Plugins • ${pluginStore.size()}
+┃
 `;
 
-        for (const category in categories) {
 
-            text += `📂 ${category.toUpperCase()}\n`;
 
-            text += categories[category]
-                .sort()
-                .map(cmd => `• ${cmd}`)
-                .join("\n");
+        Object
+            .keys(categories)
+            .sort()
+            .forEach(category => {
 
-            text += "\n\n";
+                text +=
+`┃
+┃  📂 ${category.toUpperCase()}
+`;
 
-        }
+                categories[category]
+                    .sort()
+                    .forEach(plugin => {
 
-        text += "╰━━━━━━━━━━━━━━╯";
+                        text +=
+`┃  • ${ctx.prefix}${plugin}
+`;
 
-        await ctx.reply(text);
+                    });
+
+            });
+
+
+
+        text +=
+`┃
+┃  🤖 ${ctx.botName}
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`;
+
+
+
+        return ctx.reply(text);
 
     }
 

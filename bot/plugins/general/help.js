@@ -23,41 +23,35 @@ export default {
 
     async execute(ctx) {
 
-
         const plugins =
             pluginStore.getAll();
 
-
-
         const query =
             (ctx.args[0] || "")
-            .toLowerCase();
+                .toLowerCase();
 
 
 
         /*
-            .help
+        |--------------------------------------------------------------------------
+        | .help
+        |--------------------------------------------------------------------------
         */
 
         if (!query) {
 
-
             const categories = {};
-
 
             for (const [, command] of plugins) {
 
-
                 const category =
                     command.category || "other";
-
 
                 if (!categories[category]) {
 
                     categories[category] = 0;
 
                 }
-
 
                 categories[category]++;
 
@@ -66,69 +60,63 @@ export default {
 
 
             let text =
-`╭━━━〔 📖 ${config.botName} HELP 〕━━━╮
+`📖 ${config.botName} HELP
 
-📚 Available Categories
+📚 AVAILABLE CATEGORIES
 
 `;
 
-
-
             Object
-            .keys(categories)
-            .sort()
-            .forEach(category => {
+                .keys(categories)
+                .sort()
+                .forEach(category => {
 
-
-                text +=
+                    text +=
 `📂 ${category.toUpperCase()}
-
    └─ ${categories[category]} commands
 
 `;
 
-            });
+                });
 
 
 
             text +=
-`━━━━━━━━━━━━━━━━━━
+`💡 QUICK HELP
 
-Example:
+${config.prefix}help <command>
+${config.prefix}help <category>
 
-${config.prefix}help ping
-
-${config.prefix}help group
-
-🤖 ${config.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`;
+🤖 ${config.botName}`;
 
 
 
-            return ctx.reply(text);
+            return ctx.info(text);
 
         }
 
 
 
-
         /*
-            .help category
+        |--------------------------------------------------------------------------
+        | .help category
+        |--------------------------------------------------------------------------
         */
-
 
         const categoryExists =
             [...plugins.values()]
-            .some(command =>
-                (command.category || "other")
-                .toLowerCase() === query
-            );
+                .some(
+                    command =>
+                        (
+                            command.category ||
+                            "other"
+                        )
+                        .toLowerCase() === query
+                );
 
 
 
         if (categoryExists) {
-
 
             return ctx.reply(
 
@@ -143,11 +131,11 @@ ${config.prefix}help group
 
 
 
-
         /*
-            .help command
+        |--------------------------------------------------------------------------
+        | .help command
+        |--------------------------------------------------------------------------
         */
-
 
         const command =
             plugins.get(query);
@@ -155,7 +143,6 @@ ${config.prefix}help group
 
 
         if (command) {
-
 
             return ctx.reply(
 
@@ -169,26 +156,25 @@ ${config.prefix}help group
 
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Not Found
+        |--------------------------------------------------------------------------
+        */
 
+        return ctx.error(
 
-        return ctx.reply(
+`🔎 Command or category not found.
 
-`╭━━━〔 ❌ NOT FOUND 〕━━━╮
-
-Command:
-
+📌 Search
 ${config.prefix}${query}
 
-does not exist.
-
-Try:
-
+💡 Try
 ${config.prefix}menu
-
-╰━━━━━━━━━━━━━━━━━━╯`
+${config.prefix}help <command>
+${config.prefix}help <category>`
 
         );
-
 
     }
 

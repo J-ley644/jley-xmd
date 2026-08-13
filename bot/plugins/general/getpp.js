@@ -15,7 +15,6 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
         try {
@@ -34,7 +33,7 @@ export default {
                     .split("@")[0]
                     .split(":")[0];
 
-            await ctx.send({
+            return ctx.send({
 
                 image: {
                     url
@@ -42,16 +41,14 @@ export default {
 
                 caption:
 
-`╭━━━〔 👤 PROFILE PICTURE 〕━━━╮
-
-📱 User
-+${number}
-
-━━━━━━━━━━━━━━━━━━
-
-🤖 ${ctx.botName}
-
-╰━━━━━━━━━━━━━━━━━━╯`
+`╭━━━━━━━━〔 👤 PROFILE PICTURE 〕━━━━━━━━╮
+┃
+┃  📱 User
+┃  +${number}
+┃
+┃  🤖 ${ctx.botName}
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
 
             });
 
@@ -59,9 +56,9 @@ export default {
 
         catch {
 
-            await ctx.reply(
+            return ctx.error(
 
-`❌ Unable to retrieve the profile picture.
+`👤 Unable to retrieve the profile picture.
 
 Possible reasons:
 

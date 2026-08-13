@@ -29,13 +29,12 @@ export default {
 
         if (!text) {
 
-            return ctx.reply(
+            return ctx.error(
 
-`❌ Please provide an announcement.
+`Please provide an announcement.
 
 Example:
-
-.setannouncement 🚀 AI Module launching next week!`
+${ctx.prefix}setannouncement 🚀 AI Module launching next week!`
 
             );
 
@@ -49,15 +48,15 @@ Example:
 
         );
 
-        await ctx.reply(
+        return ctx.success(
 
-`✅ Global announcement updated successfully.
+`Global announcement updated successfully.
 
-📢 New Announcement
+📢 Announcement
 
 ${text}
 
-Every user will now see this announcement when using .menu.`
+Users will now see this announcement in .menu.`
 
         );
 

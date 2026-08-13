@@ -1,7 +1,6 @@
 import os from "os";
 import pluginStore from "../../system/pluginStore.js";
 
-
 export default {
 
     name: "botinfo",
@@ -18,62 +17,36 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
-
         const memory =
-            process.memoryUsage().rss / 1024 / 1024;
-
+            process.memoryUsage().rss /
+            1024 /
+            1024;
 
         const uptime =
             ctx.runtime?.formatUptime
-            ? ctx.runtime.formatUptime()
-            : "Unknown";
+                ? ctx.runtime.formatUptime()
+                : "Unknown";
 
+        return ctx.info(
 
-        const text =
+`🤖 ${ctx.botName}
 
-`╭━━━〔 🤖 BOT INFORMATION 〕━━━╮
+📌 Name       • ${ctx.botName}
+📦 Version    • ${ctx.version}
+🟢 Status     • Online
+⚙️ Mode       • ${ctx.config?.mode || "Public"}
 
-📌 Name
-${ctx.botName}
+🧩 Plugins    • ${pluginStore.size()}
+💾 Memory     • ${memory.toFixed(2)} MB
+🖥️ Platform   • ${os.platform()} ${os.arch()}
+⏱️ Runtime    • ${uptime}
 
-📦 Version
-${ctx.version}
+⚡ Engine     • JLEY-XMD Core
+🚀 Architecture • Plugin Based`
 
-🟢 Status
-Online
-
-⚙️ Mode
-${ctx.config?.mode || "Public"}
-
-━━━━━━━━━━━━━━━━━━
-
-🧩 Plugins
-${pluginStore.size()}
-
-💾 Memory
-${memory.toFixed(2)} MB
-
-🖥 Platform
-${os.platform()} ${os.arch()}
-
-⏱ Runtime
-${uptime}
-
-━━━━━━━━━━━━━━━━━━
-
-⚡ Engine
-JLEY-XMD Core
-
-🚀 Architecture
-Plugin Based
-
-╰━━━━━━━━━━━━━━━━━━╯`;
-
-
-        await ctx.reply(text);
+        );
 
     }
 
