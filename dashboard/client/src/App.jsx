@@ -114,20 +114,21 @@ function App() {
         try {
 
             const data = await apiGet(
-                `/api/deployments/${pairingId}`
-            );
+    `/api/pairing/${pairingId}/status`
+);
 
             const deployment =
                 data?.deployment || data;
 
             // Update QR if the backend provides one
             if (data?.qr) {
-    setQr(data.qr);
-}
+                setQr(data.qr);
+            }
 
-if (data?.code) {
+            if (data?.code) {
     setPairingCode(data.code);
 }
+
             // WhatsApp successfully connected
             if (
                 deployment?.connectionStatus ===

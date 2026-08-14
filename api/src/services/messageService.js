@@ -32,6 +32,11 @@ export async function handleMessage(
         message.message.extendedTextMessage?.text ||
         "";
 
+        console.log("INCOMING MESSAGE:", {
+    jid,
+    content
+});
+
 
     if (!content.trim()) {
         return;
