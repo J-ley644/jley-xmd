@@ -1,20 +1,7 @@
 import { handleCommand } from "../../../bot/core/commandHandler.js";
-import loadPlugins from "../../../bot/core/pluginLoader.js";
-
-let pluginsLoaded = false;
-
-async function ensurePluginsLoaded() {
-    if (pluginsLoaded) {
-        return;
-    }
-
-    await loadPlugins();
-    pluginsLoaded = true;
-
-    console.log("JLEY-XMD advanced plugins loaded.");
-}
 
 export async function handleMessage(sock, message) {
+
     if (!message?.message) {
         return;
     }
@@ -30,7 +17,6 @@ export async function handleMessage(sock, message) {
     }
 
     try {
-        await ensurePluginsLoaded();
 
         await handleCommand(
             sock,
@@ -38,9 +24,12 @@ export async function handleMessage(sock, message) {
         );
 
     } catch (error) {
+
         console.error(
             "Advanced message engine error:",
             error
         );
+
     }
+
 }
