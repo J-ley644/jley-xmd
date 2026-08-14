@@ -1,7 +1,5 @@
 import automationStore from "../../system/automationStore.js";
-import {
-    isStatus
-} from "./helpers.js";
+import { isStatus } from "./helpers.js";
 
 
 async function handleAutoView(
@@ -12,7 +10,7 @@ async function handleAutoView(
     try {
 
         /*
-         * Ignore anything that is not a WhatsApp status.
+         * Only process WhatsApp status messages.
          */
 
         if (!isStatus(message)) {
@@ -21,45 +19,37 @@ async function handleAutoView(
 
 
         /*
-         * The terminal bot stores automation settings
-         * using the bot owner's/sender JID.
+         * The command system stores settings under
+         * the bot/account identity.
          *
-         * For now, use the socket's own WhatsApp identity.
+         * Prefer the bot LID because the current
+         * command configuration is stored as @lid.
          */
 
-        const botJid =
-            socket.user?.id;
+        const botLid =
+            socket.user?.lid || null;
+
+        const botId =
+            socket.user?.id || null;
 
 
-        if (!botJid) {
+        const botIdentity =
+            botLid || botId;
 
-            console.log(
-                "AUTO VIEW: Bot identity unavailable."
-            );
 
+        if (!botIdentity) {
             return;
-
         }
 
 
         /*
-         * WhatsApp JIDs can contain a device suffix.
-         *
-         * Example:
-         * 2547xxxxxxx:12@s.whatsapp.net
-         *
-         * Normalize it to:
-         * 2547xxxxxxx@s.whatsapp.net
+         * Get automation settings for this bot.
          */
 
-        const ownerJid =
-            botJid
-                .split(":")[0]
-                .replace(/:\d+(?=@)/, "");
-
-
         const settings =
-            automationStore.get(ownerJid);
+            automationStore.get(
+                botIdentity
+            );
 
 
         /*
@@ -72,7 +62,7 @@ async function handleAutoView(
 
 
         /*
-         * Mark the status as viewed/read.
+         * Mark the status as read/viewed.
          */
 
         await socket.readMessages([
@@ -81,7 +71,7 @@ async function handleAutoView(
 
 
         console.log(
-            "AUTO VIEW: Status viewed."
+            `AUTO VIEW: Status viewed by ${botIdentity}`
         );
 
 

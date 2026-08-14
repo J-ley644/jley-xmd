@@ -122,9 +122,12 @@ function App() {
 
             // Update QR if the backend provides one
             if (data?.qr) {
-                setQr(data.qr);
-            }
+    setQr(data.qr);
+}
 
+if (data?.code) {
+    setPairingCode(data.code);
+}
             // WhatsApp successfully connected
             if (
                 deployment?.connectionStatus ===

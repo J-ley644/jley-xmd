@@ -779,17 +779,10 @@ export async function getDeploymentStatus(
 
 
     return {
-
-
-        status:
-            session.status,
-
-
-        qr:
-            session.qr
-
-
-    };
+    status: session.status,
+    qr: session.qr,
+    code: session.code
+};
 
 
 }
