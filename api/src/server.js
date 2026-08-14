@@ -12,6 +12,8 @@ import {
     expireDeployments
 } from "./services/deploymentService.js";
 
+import loadPlugins from "../../bot/core/pluginLoader.js";
+
 
 const PORT =
     process.env.PORT || 5000;
@@ -61,6 +63,9 @@ async function start() {
     try {
 
         await prisma.$connect();
+
+        await loadPlugins();
+console.log("JLEY-XMD advanced plugin engine loaded.");
 
 
         console.log("");
