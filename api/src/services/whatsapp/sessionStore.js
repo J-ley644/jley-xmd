@@ -94,53 +94,69 @@ async function persistSessionFiles(deploymentId) {
 }
 
 export async function getAuthState(deploymentId) {
+
     const key = String(deploymentId);
 
     await restoreSessionFiles(key);
 
-    const sessionPath = getSessionPath(key);
+    const sessionPath =
+        getSessionPath(key);
 
     const {
         state,
         saveCreds: originalSaveCreds
-    } = await useMultiFileAuthState(sessionPath);
-
-    const saveCreds = async () => {
-        await originalSaveCreds();
-        await persistSessionFiles(key);
-    };
-
-    // Keep Baileys key files synchronized with PostgreSQL.
-    const syncTimer = setInterval(
-        () => {
-            persistSessionFiles(key).catch((error) => {
-                console.error(
-                    "Session persistence error:",
-                    error.message
-                );
-            });
-        },
-        3000
+    } = await useMultiFileAuthState(
+        sessionPath
     );
 
-    if (syncTimer.unref) {
-        syncTimer.unref();
-    }
+
+    const saveCreds = async () => {
+
+        await originalSaveCreds();
+
+        try {
+
+            await persistSessionFiles(key);
+
+        } catch (error) {
+
+            console.error(
+                "Session persistence error:",
+                error.message
+            );
+
+        }
+
+    };
+
 
     return {
+
         state,
+
         saveCreds,
-        stopSync: () => clearInterval(syncTimer)
+
+        stopSync: () => {}
+
     };
+
 }
 
 export function deleteSessionFolder(deploymentId) {
-    const sessionPath = getSessionPath(deploymentId);
+
+    const sessionPath =
+        getSessionPath(deploymentId);
 
     if (fs.existsSync(sessionPath)) {
-        fs.rmSync(sessionPath, {
-            recursive: true,
-            force: true
-        });
+
+        fs.rmSync(
+            sessionPath,
+            {
+                recursive: true,
+                force: true
+            }
+        );
+
     }
+
 }
