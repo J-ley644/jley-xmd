@@ -1,89 +1,46 @@
-import {
-    handleCommand
-} from "./commandService.js";
+import { handleCommand } from "../../../bot/core/commandHandler.js";
+import loadPlugins from "../../../bot/core/pluginLoader.js";
 
+let pluginsLoaded = false;
 
-export async function handleMessage(
-    sock,
-    message
-) {
-
-    if (!message?.message) {
+async function ensurePluginsLoaded() {
+    if (pluginsLoaded) {
         return;
     }
 
+    await loadPlugins();
+    pluginsLoaded = true;
+
+    console.log("JLEY-XMD advanced plugins loaded.");
+}
+
+export async function handleMessage(sock, message) {
+    if (!message?.message) {
+        return;
+    }
 
     if (message.key?.fromMe) {
         return;
     }
 
-
-    const jid =
-        message.key?.remoteJid;
-
+    const jid = message.key?.remoteJid;
 
     if (!jid) {
         return;
     }
 
-
-    const content =
-        message.message.conversation ||
-        message.message.extendedTextMessage?.text ||
-        "";
-
-        console.log("INCOMING MESSAGE:", {
-    jid,
-    content
-});
-
-
-    if (!content.trim()) {
-        return;
-    }
-
-
-
-    const response =
-        handleCommand(content);
-
-
-
-    if (!response) {
-        return;
-    }
-
-
-
-    // command reaction
     try {
+        await ensurePluginsLoaded();
 
-        await sock.sendMessage(
-            jid,
-            {
-                react: {
-                    text: "⚡",
-                    key: message.key
-                }
-            }
+        await handleCommand(
+            sock,
+            message
         );
 
-    } catch(error) {
-
+    } catch (error) {
         console.error(
-            "Reaction error:",
-            error.message
+            "Advanced message engine error:",
+            error
         );
-
     }
-
-
-
-    await sock.sendMessage(
-        jid,
-        {
-            text: response
-        }
-    );
-
 }
