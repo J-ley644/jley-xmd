@@ -10,8 +10,9 @@ import prisma from "../../config/prisma.js";
 
 import {
     CONNECTION,
-    RECONNECT_DELAY,
-    MAX_RECONNECT_ATTEMPTS,
+    RECONNECT_INITIAL_DELAY,
+    RECONNECT_MAX_DELAY,
+    RECONNECT_BACKOFF_MULTIPLIER,
     DEFAULT_BROWSER
 } from "./constants.js";
 
@@ -51,9 +52,9 @@ export async function createSocket(
     /*
      * Shared deployment session object.
      *
-     * The socket itself can be replaced during
-     * automatic reconnection while this object
-     * remains registered in the manager.
+     * The socket can be replaced during automatic
+     * reconnection while this session object remains
+     * registered in the manager.
      */
 
     const session = {
@@ -70,6 +71,8 @@ export async function createSocket(
 
         reconnects: 0,
 
+        reconnectDelay: RECONNECT_INITIAL_DELAY,
+
         status: CONNECTION.CONNECTING,
 
         stopSync,
@@ -80,6 +83,109 @@ export async function createSocket(
 
 
     setSession(key, session);
+
+
+    /*
+     * Schedule another connection attempt.
+     *
+     * Temporary WhatsApp/network failures should never
+     * permanently kill a deployment.
+     */
+
+    const scheduleReconnect = () => {
+
+        if (session.stopping) {
+
+            return;
+
+        }
+
+
+        clearReconnectTimer(key);
+
+
+        const delay = Math.min(
+            session.reconnectDelay,
+            RECONNECT_MAX_DELAY
+        );
+
+
+        session.reconnects++;
+
+
+        console.log(
+            `Reconnect attempt ${session.reconnects} for ${key} in ${delay}ms`
+        );
+
+
+        const timer = setTimeout(
+            async () => {
+
+                if (session.stopping) {
+
+                    return;
+
+                }
+
+
+                try {
+
+                    await connectSocket();
+
+                } catch (error) {
+
+                    console.error(
+                        `Reconnect failed for ${key}:`,
+                        error.message
+                    );
+
+
+                    /*
+                     * If socket creation itself fails,
+                     * schedule another attempt.
+                     */
+
+                    if (!session.stopping) {
+
+                        scheduleReconnect();
+
+                    }
+
+                }
+
+            },
+            delay
+        );
+
+
+        setReconnectTimer(
+            key,
+            timer
+        );
+
+
+        /*
+         * Increase the delay for the next failure.
+         *
+         * Example:
+         *
+         * 3s
+         * 4.5s
+         * 6.75s
+         * 10.1s
+         * ...
+         * maximum 60s
+         */
+
+        session.reconnectDelay = Math.min(
+            Math.floor(
+                session.reconnectDelay *
+                RECONNECT_BACKOFF_MULTIPLIER
+            ),
+            RECONNECT_MAX_DELAY
+        );
+
+    };
 
 
     /*
@@ -172,6 +278,20 @@ export async function createSocket(
 
 
                 /*
+                 * Ignore events from an old socket that
+                 * has already been replaced.
+                 */
+
+                if (
+                    session.sock !== sock
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
                  * QR CODE
                  */
 
@@ -214,6 +334,9 @@ export async function createSocket(
                     session.code = null;
 
                     session.reconnects = 0;
+
+                    session.reconnectDelay =
+                        RECONNECT_INITIAL_DELAY;
 
                     session.status =
                         CONNECTION.CONNECTED;
@@ -294,8 +417,8 @@ export async function createSocket(
                  * Manual stop/logout.
                  *
                  * Never automatically reconnect a
-                 * deployment that the user intentionally
-                 * stopped.
+                 * deployment intentionally stopped by
+                 * the user.
                  */
 
                 if (session.stopping) {
@@ -351,7 +474,15 @@ export async function createSocket(
 
                         });
 
-                    } catch {}
+                    } catch (error) {
+
+                        console.error(
+                            "Logout DB update:",
+                            error.message
+                        );
+
+                    }
+
 
                     return;
 
@@ -359,153 +490,44 @@ export async function createSocket(
 
 
                 /*
-                 * Automatic reconnect.
+                 * Temporary connection failure.
+                 *
+                 * Keep the deployment alive and continue
+                 * reconnecting indefinitely.
                  */
 
-                if (
-                    session.reconnects >=
-                    MAX_RECONNECT_ATTEMPTS
-                ) {
+                try {
+
+                    await prisma.deployment.update({
+
+                        where: {
+                            id: key
+                        },
+
+                        data: {
+
+                            status: "RUNNING",
+
+                            connectionStatus:
+                                "OFFLINE",
+
+                            sessionReady: true
+
+                        }
+
+                    });
+
+                } catch (error) {
 
                     console.error(
-                        `Deployment ${key} reached ${MAX_RECONNECT_ATTEMPTS} reconnect attempts.`
+                        "Offline DB update:",
+                        error.message
                     );
-
-
-                    try {
-
-                        await prisma.deployment.update({
-
-                            where: {
-                                id: key
-                            },
-
-                            data: {
-
-                                status: "PENDING",
-
-                                connectionStatus:
-                                    "OFFLINE",
-
-                                sessionReady: false
-
-                            }
-
-                        });
-
-                    } catch {}
-
-                    return;
 
                 }
 
 
-                session.reconnects++;
-
-
-                console.log(
-                    `Reconnect attempt ${session.reconnects}/${MAX_RECONNECT_ATTEMPTS} for ${key}`
-                );
-
-
-                clearReconnectTimer(key);
-
-
-                const timer =
-                    setTimeout(
-                        async () => {
-
-                            try {
-
-                                /*
-                                 * Make sure this deployment
-                                 * has not been manually stopped
-                                 * while waiting.
-                                 */
-
-                                if (
-                                    session.stopping
-                                ) {
-
-                                    return;
-
-                                }
-
-
-                                /*
-                                 * Recreate the socket using
-                                 * the SAME persisted auth state.
-                                 */
-
-                                await connectSocket();
-
-
-                            } catch (error) {
-
-                                console.error(
-                                    `Reconnect failed for ${key}:`,
-                                    error.message
-                                );
-
-
-                                /*
-                                 * Schedule another attempt
-                                 * if the deployment is still active.
-                                 */
-
-                                if (
-                                    !session.stopping &&
-                                    session.reconnects <
-                                        MAX_RECONNECT_ATTEMPTS
-                                ) {
-
-                                    clearReconnectTimer(
-                                        key
-                                    );
-
-
-                                    const retryTimer =
-                                        setTimeout(
-                                            async () => {
-
-                                                try {
-
-                                                    await connectSocket();
-
-                                                } catch (
-                                                    retryError
-                                                ) {
-
-                                                    console.error(
-                                                        `Retry failed for ${key}:`,
-                                                        retryError.message
-                                                    );
-
-                                                }
-
-                                            },
-                                            RECONNECT_DELAY
-                                        );
-
-
-                                    setReconnectTimer(
-                                        key,
-                                        retryTimer
-                                    );
-
-                                }
-
-                            }
-
-                        },
-                        RECONNECT_DELAY
-                    );
-
-
-                setReconnectTimer(
-                    key,
-                    timer
-                );
+                scheduleReconnect();
 
             }
         );
@@ -520,6 +542,20 @@ export async function createSocket(
             async ({ messages }) => {
 
                 if (!messages?.length) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Ignore messages from an old socket
+                 * after a reconnect replacement.
+                 */
+
+                if (
+                    session.sock !== sock
+                ) {
 
                     return;
 
