@@ -6,55 +6,164 @@ import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
 
 
+/*
+|--------------------------------------------------------------------------
+| Command Reaction Map
+|--------------------------------------------------------------------------
+|
+| Each command category gets an appropriate reaction.
+| Individual commands do not need their own reaction code.
+|
+*/
+
+const commandReactions = {
+
+    general: "⚡",
+
+    group: "👥",
+
+    download: "📥",
+
+    owner: "👑",
+
+    admin: "🛡️",
+
+    tools: "🛠️",
+
+    fun: "🎮",
+
+    automation: "🤖",
+
+    media: "🎬",
+
+    other: "📌"
+
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Command Reaction
+|--------------------------------------------------------------------------
+*/
+
+function getCommandReaction(command) {
+
+    return (
+        commandReactions[
+            command?.category
+        ] ||
+        commandReactions.other
+    );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Command Handler
+|--------------------------------------------------------------------------
+*/
+
 async function handleCommand(
     client,
     message
-){
+) {
 
-    try{
+    try {
 
+        /*
+        |--------------------------------------------------------------------------
+        | Extract Message Text
+        |--------------------------------------------------------------------------
+        */
 
         const text =
             message.message
-            ?.conversation ||
+                ?.conversation ||
+
             message.message
-            ?.extendedTextMessage
-            ?.text ||
+                ?.extendedTextMessage
+                ?.text ||
+
             "";
 
 
-        if(!text.startsWith(config.prefix)){
+        /*
+        |--------------------------------------------------------------------------
+        | Check Prefix
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !text.startsWith(
+                config.prefix
+            )
+        ) {
+
             return;
+
         }
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Parse Arguments
+        |--------------------------------------------------------------------------
+        */
 
         const args =
             text
-            .slice(config.prefix.length)
-            .trim()
-            .split(/\s+/);
+                .slice(
+                    config.prefix.length
+                )
+                .trim()
+                .split(/\s+/);
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Command Name
+        |--------------------------------------------------------------------------
+        */
 
         const commandName =
-            args.shift()
-            .toLowerCase();
+            args
+                .shift()
+                .toLowerCase();
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Find Command
+        |--------------------------------------------------------------------------
+        */
 
         const command =
-    pluginStore.get(commandName);
+            pluginStore.get(
+                commandName
+            );
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Unknown Command
+        |--------------------------------------------------------------------------
+        */
 
-        if(!command){
+        if (!command) {
+
             return;
+
         }
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Create Command Context
+        |--------------------------------------------------------------------------
+        */
 
-        // Create command context first
         const ctx =
             await createContext(
                 client,
@@ -62,8 +171,46 @@ async function handleCommand(
             );
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | React To Command
+        |--------------------------------------------------------------------------
+        |
+        | The reaction happens before permission checking,
+        | cooldown checking and command execution.
+        |
+        | If the reaction fails, the command itself should
+        | still continue normally.
+        |
+        */
 
-        // Permission check
+        try {
+
+            const emoji =
+                getCommandReaction(
+                    command
+                );
+
+            await ctx.react(
+                emoji
+            );
+
+        } catch (reactionError) {
+
+            logger.warn(
+                reactionError,
+                `Failed to react to command: ${command.name}`
+            );
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Permission Check
+        |--------------------------------------------------------------------------
+        */
+
         const permissionError =
             checkPermissions(
                 ctx,
@@ -71,8 +218,7 @@ async function handleCommand(
             );
 
 
-
-        if(permissionError){
+        if (permissionError) {
 
             return await ctx.reply(
                 permissionError
@@ -81,12 +227,14 @@ async function handleCommand(
         }
 
 
-
-        // Cooldown check
+        /*
+        |--------------------------------------------------------------------------
+        | Cooldown Check
+        |--------------------------------------------------------------------------
+        */
 
         const cooldown =
             command.cooldown || 3;
-
 
 
         const result =
@@ -97,33 +245,37 @@ async function handleCommand(
             );
 
 
-
-        if(!result.allowed){
+        if (!result.allowed) {
 
             return await ctx.reply(
 
-`⏳ Please wait ${result.remaining}s before using *${command.name}* again.`
+                `⏳ Please wait ${result.remaining}s before using *${command.name}* again.`
 
             );
 
         }
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Execute Plugin
+        |--------------------------------------------------------------------------
+        */
 
-        // Execute plugin
+        await command.execute(
+            ctx
+        );
 
-        await command.execute(ctx);
 
+    } catch (error) {
 
-
-    }catch(error){
-
-        logger.error(error);
+        logger.error(
+            error
+        );
 
     }
 
 }
-
 
 
 export {

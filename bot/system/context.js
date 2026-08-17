@@ -568,22 +568,25 @@ export default async function createContext(
         */
 
         async reply(
+    text,
+    options = {}
+) {
+
+    return client.sendMessage(
+
+        chat,
+
+        {
             text,
-            options = {}
-        ) {
+            ...options,
 
-            return client.sendMessage(
+            quoted: message
 
-                chat,
+        }
 
-                {
-                    text,
-                    ...options
-                }
+    );
 
-            );
-
-        },
+},
 
 
 
@@ -690,18 +693,25 @@ export default async function createContext(
         */
 
         async send(
-            content
-        ) {
+    content,
+    options = {}
+) {
 
-            return client.sendMessage(
+    return client.sendMessage(
 
-                chat,
+        chat,
 
-                content
+        {
+            ...content,
+            ...options,
 
-            );
+            quoted: message
 
-        },
+        }
+
+    );
+
+},
 
 
 

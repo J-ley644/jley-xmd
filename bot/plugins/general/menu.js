@@ -2,6 +2,9 @@ import generateMenu from "../../lib/menu.js";
 import pluginStore from "../../system/pluginStore.js";
 import menuStore from "../../system/menuStore.js";
 
+const CHANNEL_URL =
+    "https://whatsapp.com/channel/0029Vb8Qfzt3AzNUi9kshy0u";
+
 export default {
 
     name: "menu",
@@ -36,6 +39,11 @@ export default {
                 requestedCategory
             );
 
+        /*
+         * If a banner is configured,
+         * send the banner together with
+         * the redesigned menu and channel button.
+         */
         if (
             await menuStore.hasBanner()
         ) {
@@ -47,15 +55,41 @@ export default {
 
                 image: banner,
 
-                caption: menu
+                caption: menu,
+
+                templateButtons: [
+                    {
+                        index: 1,
+                        urlButton: {
+                            displayText: "📢 View Channel",
+                            url: CHANNEL_URL
+                        }
+                    }
+                ]
 
             });
 
         }
 
-        return ctx.reply(
-            menu
-        );
+        /*
+         * No banner:
+         * send the menu with the channel button.
+         */
+        return ctx.send({
+
+            text: menu,
+
+            templateButtons: [
+                {
+                    index: 1,
+                    urlButton: {
+                        displayText: "📢 View Channel",
+                        url: CHANNEL_URL
+                    }
+                }
+            ]
+
+        });
 
     }
 
