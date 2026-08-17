@@ -5,6 +5,40 @@ import menuStore from "../../system/menuStore.js";
 const CHANNEL_URL =
     "https://whatsapp.com/channel/0029Vb8Qfzt3AzNUi9kshy0u";
 
+
+function createChannelButton() {
+
+    return {
+
+        name: "cta_url",
+
+        buttonParamsJson:
+            JSON.stringify({
+
+                display_text:
+                    "📢 View Channel",
+
+                url:
+                    CHANNEL_URL
+
+            })
+
+    };
+
+}
+
+
+function createMenuButtons() {
+
+    return [
+
+        createChannelButton()
+
+    ];
+
+}
+
+
 export default {
 
     name: "menu",
@@ -16,9 +50,11 @@ export default {
 
     category: "general",
 
-    description: "Display available bot commands.",
+    description:
+        "Display available bot commands.",
 
-    usage: ".menu [category]",
+    usage:
+        ".menu [category]",
 
     cooldown: 5,
 
@@ -30,7 +66,8 @@ export default {
             pluginStore.getAll();
 
         const requestedCategory =
-            ctx.args?.join(" ").trim() || null;
+            ctx.args?.join(" ").trim() ||
+            null;
 
         const menu =
             generateMenu(
@@ -39,11 +76,13 @@ export default {
                 requestedCategory
             );
 
+
         /*
-         * If a banner is configured,
-         * send the banner together with
-         * the redesigned menu and channel button.
-         */
+        |--------------------------------------------------------------------------
+        | Banner Menu
+        |--------------------------------------------------------------------------
+        */
+
         if (
             await menuStore.hasBanner()
         ) {
@@ -57,37 +96,29 @@ export default {
 
                 caption: menu,
 
-                templateButtons: [
-                    {
-                        index: 1,
-                        urlButton: {
-                            displayText: "📢 View Channel",
-                            url: CHANNEL_URL
-                        }
-                    }
-                ]
+                footer:
+                    "𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃",
+
+                buttons:
+                    createMenuButtons()
 
             });
 
         }
 
+
         /*
-         * No banner:
-         * send the menu with the channel button.
-         */
+        |--------------------------------------------------------------------------
+        | Text Menu
+        |--------------------------------------------------------------------------
+        */
+
         return ctx.send({
 
             text: menu,
 
-            templateButtons: [
-                {
-                    index: 1,
-                    urlButton: {
-                        displayText: "📢 View Channel",
-                        url: CHANNEL_URL
-                    }
-                }
-            ]
+            buttons:
+                createMenuButtons()
 
         });
 

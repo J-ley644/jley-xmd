@@ -8,15 +8,61 @@ import pluginStore from "../system/pluginStore.js";
 
 /*
 |--------------------------------------------------------------------------
-| Command Reaction Map
+| Command-Specific Reactions
 |--------------------------------------------------------------------------
 |
-| Each command category gets an appropriate reaction.
-| Individual commands do not need their own reaction code.
+| These take priority over category reactions.
 |
 */
 
 const commandReactions = {
+
+    menu: "📋",
+
+    commands: "📋",
+
+    list: "📋",
+
+    help: "📚",
+
+    ping: "🏓",
+
+    play: "🎵",
+
+    vv: "👁️",
+
+    sticker: "🖼️",
+
+    download: "📥",
+
+    song: "🎵",
+
+    video: "🎬",
+
+    photo: "📷",
+
+    image: "🖼️",
+
+    group: "👥",
+
+    settings: "⚙️",
+
+    plugins: "🧩",
+
+    owner: "👑",
+
+    admin: "🛡️"
+
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| Category Fallback Reactions
+|--------------------------------------------------------------------------
+*/
+
+const categoryReactions = {
 
     general: "⚡",
 
@@ -49,11 +95,26 @@ const commandReactions = {
 
 function getCommandReaction(command) {
 
+    const commandName =
+        command?.name
+            ?.toLowerCase();
+
+    if (
+        commandName &&
+        commandReactions[commandName]
+    ) {
+
+        return commandReactions[
+            commandName
+        ];
+
+    }
+
     return (
-        commandReactions[
+        categoryReactions[
             command?.category
         ] ||
-        commandReactions.other
+        categoryReactions.other
     );
 
 }
@@ -130,7 +191,14 @@ async function handleCommand(
         const commandName =
             args
                 .shift()
-                .toLowerCase();
+                ?.toLowerCase();
+
+
+        if (!commandName) {
+
+            return;
+
+        }
 
 
         /*
@@ -176,11 +244,11 @@ async function handleCommand(
         | React To Command
         |--------------------------------------------------------------------------
         |
-        | The reaction happens before permission checking,
-        | cooldown checking and command execution.
+        | The reaction happens immediately after
+        | the command is recognized.
         |
-        | If the reaction fails, the command itself should
-        | still continue normally.
+        | A reaction failure must never prevent
+        | the command itself from executing.
         |
         */
 

@@ -578,10 +578,11 @@ export default async function createContext(
 
         {
             text,
-            ...options,
+            ...options
+        },
 
+        {
             quoted: message
-
         }
 
     );
@@ -703,10 +704,11 @@ export default async function createContext(
 
         {
             ...content,
-            ...options,
+            ...options
+        },
 
+        {
             quoted: message
-
         }
 
     );
