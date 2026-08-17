@@ -12,6 +12,8 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 
 import Dashboard from "./pages/Dashboard";
 import Deployments from "./pages/Deployments";
+import Admin from "./pages/Admin";
+import AdminApp from "./admin/AdminApp";
 
 
 function ComingSoon({ title, icon }) {
@@ -714,6 +716,16 @@ const deployment =
 
     }
 
+    if (user.role === "ADMIN") {
+
+    return (
+        <AdminApp
+            onLogout={logout}
+        />
+    );
+
+}
+
 
     return (
 
@@ -804,6 +816,21 @@ const deployment =
                     icon="⚙️"
                 />
             )}
+
+            {page === "admin" && (
+    user?.role === "ADMIN"
+        ? (
+            <Admin
+                user={user}
+            />
+        )
+        : (
+            <ComingSoon
+                title="Access Denied"
+                icon="🛡️"
+            />
+        )
+)}
 
         </DashboardLayout>
 

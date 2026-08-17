@@ -8,20 +8,21 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  name        String
-  email       String       @unique
-  password    String
-  role        Role         @default(CLIENT)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  suspended   Boolean      @default(false)
-  blocked     Boolean      @default(false)
-  bots        Bot[]
-  deployments Deployment[]
-  payments    Payment[]
-  tickets     Ticket[]
-  wallet      Wallet?
+  id            String          @id @default(uuid())
+  name          String
+  email         String          @unique
+  password      String
+  role          Role            @default(CLIENT)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  suspended     Boolean         @default(false)
+  blocked       Boolean         @default(false)
+  bots          Bot[]
+  deployments   Deployment[]
+  JLTransaction JLTransaction[]
+  payments      Payment[]
+  tickets       Ticket[]
+  wallet        Wallet?
 }
 
 model Bot {
@@ -105,15 +106,6 @@ model Payment {
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model JLPackage {
-  id        String   @id @default(uuid())
-  price     Int
-  currency  String   @default("KES")
-  jlAmount  Int
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-}
-
 model SystemSetting {
   id        String   @id @default(uuid())
   key       String   @unique
@@ -131,6 +123,32 @@ model WhatsAppSession {
 
   @@unique([deploymentId, fileName])
   @@index([deploymentId])
+}
+
+model JLPackage {
+  id        String   @id
+  price     Int
+  currency  String   @default("KES")
+  jlAmount  Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model JLTransaction {
+  id            String            @id
+  userId        String
+  type          JLTransactionType
+  amount        Int
+  balanceBefore Int
+  balanceAfter  Int
+  description   String
+  reference     String?
+  createdAt     DateTime          @default(now())
+  User          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([reference])
+  @@index([userId])
 }
 
 enum Role {
@@ -161,4 +179,14 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum JLTransactionType {
+  WELCOME_BONUS
+  PURCHASE
+  DEPLOYMENT
+  REFUND
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+  ADJUSTMENT
 }

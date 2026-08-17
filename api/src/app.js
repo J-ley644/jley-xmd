@@ -9,6 +9,7 @@ import botRoutes from "./routes/botRoutes.js";
 import deploymentRoutes from "./routes/deploymentRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import pairingRoutes from "./routes/pairingRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/bots", botRoutes);
 app.use("/api/deployments", deploymentRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/pairing", pairingRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
