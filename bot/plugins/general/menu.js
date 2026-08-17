@@ -1,5 +1,3 @@
-import fs from "fs";
-
 import generateMenu from "../../lib/menu.js";
 import pluginStore from "../../system/pluginStore.js";
 import menuStore from "../../system/menuStore.js";
@@ -38,13 +36,16 @@ export default {
                 requestedCategory
             );
 
-        if (menuStore.hasBanner()) {
+        if (
+            await menuStore.hasBanner()
+        ) {
+
+            const banner =
+                await menuStore.getBanner();
 
             return ctx.send({
 
-                image: fs.readFileSync(
-                    menuStore.bannerPath()
-                ),
+                image: banner,
 
                 caption: menu
 

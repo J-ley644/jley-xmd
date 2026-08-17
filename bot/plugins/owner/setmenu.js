@@ -1,4 +1,3 @@
-import fs from "fs";
 import menuStore from "../../system/menuStore.js";
 
 export default {
@@ -16,9 +15,7 @@ export default {
     usage: ".setmenu (reply to an image)",
 
     permissions: {
-
         owner: true
-
     },
 
     async execute(ctx) {
@@ -26,7 +23,6 @@ export default {
         if (!ctx.isReply) {
 
             return ctx.reply(
-
 `❌ Reply to an image.
 
 Example:
@@ -34,7 +30,6 @@ Example:
 Reply to a photo then send
 
 .setmenu`
-
             );
 
         }
@@ -52,32 +47,25 @@ Reply to a photo then send
             const buffer =
                 await ctx.download();
 
-            fs.writeFileSync(
-
-                menuStore.bannerPath(),
-
+            await menuStore.setBanner(
                 buffer
-
             );
 
             await ctx.reply(
-
 `✅ Menu banner updated successfully.
 
 Every user will now receive the new banner when using .menu.`
-
             );
 
-        }
+        } catch (error) {
 
-        catch (error) {
-
-            console.error(error);
+            console.error(
+                "Menu banner update failed:",
+                error
+            );
 
             await ctx.reply(
-
                 "❌ Failed to update the menu banner."
-
             );
 
         }

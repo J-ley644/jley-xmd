@@ -1,66 +1,28 @@
 import config from "../config/config.js";
 import menuStore from "../system/menuStore.js";
 
-function getCategoryEmoji(category) {
+const icons = {
+    general: "⚡",
+    group: "👥",
+    download: "📥",
+    owner: "👑",
+    admin: "🛡️",
+    tools: "🛠️",
+    fun: "🎮",
+    automation: "🤖",
+    media: "🎬",
+    other: "📌"
+};
 
-    const emojis = {
+function greeting() {
 
-        general: "⚡",
-        group: "👥",
-        download: "📥",
-        owner: "👑",
-        admin: "🛡️",
-        tools: "🛠️",
-        fun: "🎮",
-        automation: "🤖",
-        media: "🎬",
-        other: "📌"
+    const hour = new Date().getHours();
 
-    };
+    if (hour < 12) return "𝐆𝐨𝐨𝐝 𝐌𝐨𝐫𝐧𝐢𝐧𝐠";
+    if (hour < 17) return "𝐆𝐨𝐨𝐝 𝐀𝐟𝐭𝐞𝐫𝐧𝐨𝐨𝐧";
+    if (hour < 21) return "𝐆𝐨𝐨𝐝 𝐄𝐯𝐞𝐧𝐢𝐧𝐠";
 
-    return emojis[
-        category.toLowerCase()
-    ] || emojis.other;
-
-}
-
-function getGreeting() {
-
-    const hour =
-        new Date().getHours();
-
-    if (hour >= 5 && hour < 12) {
-
-        return "🌅 Good Morning";
-
-    }
-
-    if (hour >= 12 && hour < 17) {
-
-        return "☀️ Good Afternoon";
-
-    }
-
-    if (hour >= 17 && hour < 21) {
-
-        return "🌇 Good Evening";
-
-    }
-
-    return "🌙 Good Night";
-
-}
-
-function normalizeCategory(category) {
-
-    if (!category) {
-        return null;
-    }
-
-    return category
-        .trim()
-        .toLowerCase();
-
+    return "𝐆𝐨𝐨𝐝 𝐍𝐢𝐠𝐡𝐭";
 }
 
 function generateMenu(
@@ -77,311 +39,140 @@ function generateMenu(
             command.category || "other";
 
         if (!categories[category]) {
-
             categories[category] = [];
-
         }
 
         categories[category].push(command);
-
     }
 
-    const categoryNames =
-        Object.keys(categories)
-            .sort((a, b) =>
-                a.localeCompare(b)
-            );
-
-    let totalCommands = 0;
-
-    Object.values(categories)
-        .forEach(list => {
-
-            totalCommands += list.length;
-
-        });
-
-    const announcement =
-        menuStore.getAnnouncement();
-
-    const userName =
-        ctx?.pushName || "User";
-
-    const greeting =
-        getGreeting();
+    const names = Object.keys(categories)
+        .sort();
 
     const prefix =
         ctx?.prefix || config.prefix;
 
+    const user =
+        ctx?.pushName || "User";
+
     const version =
         ctx?.version || "Unknown";
-
-    const status =
-        config.status || "Online";
-
-    const mode =
-        config.mode || "Public";
 
     const uptime =
         ctx?.runtime?.formatUptime?.() ||
         "Unknown";
 
-    const deployUrl =
-        "https://jley-xmd.netlify.app";
+    const total =
+        plugins.size || plugins.length || 0;
 
-    /*
-        * =====================================================
-     * channel link.
-     */
-    const channelUrl =
-        "https://whatsapp.com/channel/0029Vb8Qfzt3AzNUi9kshy0u";
+    const category =
+        requestedCategory
+            ?.trim()
+            .toLowerCase();
 
-    const selectedCategory =
-        normalizeCategory(
-            requestedCategory
-        );
+    if (category) {
 
-    /*
-     * =====================================================
-     * CATEGORY MENU
-     * =====================================================
-     */
-
-    if (selectedCategory) {
-
-        const actualCategory =
-            categoryNames.find(
-                category =>
-                    category.toLowerCase() ===
-                    selectedCategory
+        const actual =
+            names.find(
+                name =>
+                    name.toLowerCase() === category
             );
 
-        if (!actualCategory) {
+        if (!actual) {
 
-            return (
-`╭━━〔 ❌ CATEGORY NOT FOUND 〕━━╮
-┃
-┃  No category named:
-┃
-┃  ❝ ${requestedCategory} ❞
-┃
-┃  Available categories:
-┃
-${categoryNames
-    .map(category =>
-        `┃  ${getCategoryEmoji(category)} ${category.toUpperCase()}`
-    )
-    .join("\n")}
-┃
-┃  Use:
-┃  ${prefix}menu <category>
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
-            );
+            return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
+
+  ❌ 𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲 𝐍𝐨𝐭 𝐅𝐨𝐮𝐧𝐝
+
+  "${requestedCategory}"
+
+  𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞:
+${names.map(
+    name =>
+        `  ${icons[name] || "•"} ${name.toUpperCase()}`
+).join("\n")}
+
+  › ${prefix}menu <category>
+
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
 
         }
 
         const commands =
-            categories[actualCategory]
+            categories[actual]
                 .slice()
-                .sort((a, b) =>
-                    a.name.localeCompare(b.name)
+                .sort(
+                    (a, b) =>
+                        a.name.localeCompare(b.name)
                 );
 
-        const emoji =
-            getCategoryEmoji(
-                actualCategory
-            );
+        return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
 
-        let menu =
-`${emoji}⃝━─────✦ JLEY-XMD ✦─────━${emoji}
+  ${icons[actual] || "📌"} 𝐌𝐄𝐍𝐔
+  𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐘 • ${actual.toUpperCase()}
 
-╭━━〔 ${emoji} ${actualCategory.toUpperCase()} COMMANDS 〕━━╮
-┃
-┃  📚 Total Commands • ${commands.length}
-┃
-`;
+  ─────────────────
 
-        commands.forEach(
-            (command, index) => {
+${commands.map(
+    (cmd, i) =>
+        `  ${String(i + 1).padStart(2, "0")} › ${prefix}${cmd.name}`
+).join("\n")}
 
-                const number =
-                    String(index + 1)
-                        .padStart(2, "0");
+  ─────────────────
 
-                menu +=
-`┃  ${number} • ${prefix}${command.name}
-`;
+  › ${prefix}help <command>
+  › ${prefix}menu
 
-            }
-        );
-
-        menu +=
-`┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-╭━━〔 💡 QUICK HELP 〕━━━━━━╮
-┃
-┃  ${prefix}help <command>
-┃  ${prefix}menu
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-╭━━〔 🌐 JLEY-XMD 〕━━━━━━━━╮
-┃
-┃  🚀 Deploy your own bot
-┃  ${deployUrl}
-┃
-┃  📢 View our channel
-┃  ${channelUrl}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-       ✦ ${config.botName} ✦
-    ── Built for WhatsApp ──
-       Powered by JLEY`;
-
-        return menu;
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
 
     }
 
-    /*
-     * =====================================================
-     * MAIN MENU
-     * =====================================================
-     */
+    const announcement =
+        menuStore.getAnnouncement();
 
-    let menu =
-`${greeting}, *${userName}* 👋
+    let menu = `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
 
-🌐⃝━─────✦ J L E Y ─────✦⃝🌐
-       ╭─━━━━━━━━━━━━─╮
-       │ ✦ ${config.botName} ✦ │
-       │  WhatsApp OS  │
-       ╰─━━━━━━━━━━━━─╯
-             ✦ ✦ ✦
+  ${greeting()}, 𝐈𝐧𝐭𝐞𝐫𝐧𝐚𝐥 𝐔𝐬𝐞𝐫 👋
 
-╭━━━━━━━━〔 🏠 MAIN MENU 〕━━━━━━━━╮
-┃
-┃  ✦ Welcome to *${config.botName}*
-┃
-┃  ╭─〔 ⚙️ SYSTEM INFO 〕────────╮
-┃  │ 👤 User       • ${userName}
-┃  │ ⚡ Prefix     • ${prefix}
-┃  │ 📦 Version    • ${version}
-┃  │ 🟢 Status     • ${status}
-┃  │ ⚙️ Mode       • ${mode}
-┃  │ ⏱️ Uptime     • ${uptime}
-┃  │ 📚 Commands   • ${totalCommands}
-┃  │ 📂 Categories • ${categoryNames.length}
-┃  ╰────────────────────────────╯
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+  𝐒𝐘𝐒𝐓𝐄𝐌
+  ─────────────────
+  ◇ User       ${user}
+  ◇ Version    ${version}
+  ◇ Status     ${config.status || "Online"}
+  ◇ Mode       ${config.mode || "Public"}
+  ◇ Uptime     ${uptime}
+  ◇ Commands   ${total}
+  ◇ Categories ${names.length}
 
 `;
 
-    /*
-     * =====================================================
-     * ANNOUNCEMENT
-     * =====================================================
-     */
+    if (announcement.announcementEnabled) {
 
-    if (
-        announcement.announcementEnabled
-    ) {
-
-        menu +=
-`╭━━━━━━━━〔 📢 ANNOUNCEMENT 〕━━━━━━━━╮
-┃
-┃  ${announcement.announcement}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+        menu += `  📢 𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐌𝐄𝐍𝐓
+  ─────────────────
+  ${announcement.announcement}
 
 `;
 
     }
 
-    /*
-     * =====================================================
-     * COMMAND CENTER
-     * =====================================================
-     */
+    menu += `  𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑
+  ─────────────────
+${names.map(
+    (name, i) =>
+        `  ${String(i + 1).padStart(2, "0")} › ${icons[name] || "📌"} ${name.toUpperCase()}`
+).join("\n")}
 
-    menu +=
-`╭━━━━━━〔 ✦ COMMAND CENTER ✦ 〕━━━━━━╮
-┃
-`;
+  ─────────────────
 
-    categoryNames.forEach(
-        (category, index) => {
+  › ${prefix}menu <category>
+  › ${prefix}help <command>
 
-            const emoji =
-                getCategoryEmoji(category);
+  𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃
+  Deploy: https://jley-xmd.netlify.app
 
-            const number =
-                String(index + 1)
-                    .padStart(2, "0");
-
-            menu +=
-`┃  ${number} ${emoji} ${category.toUpperCase()}
-`;
-
-        }
-    );
-
-    menu +=
-`┃
-┃  ───────「 CATEGORY ACCESS 」───────
-┃
-┃  ${prefix}menu <category>
-┃
-┃  Example:
-┃  ${prefix}menu group
-┃  ${prefix}menu tools
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-`;
-
-    /*
-     * =====================================================
-     * QUICK ACCESS
-     * =====================================================
-     */
-
-    menu +=
-`╭────────〔 💡 QUICK ACCESS 〕────────╮
-┃
-┃  ⚡ ${prefix}help <command>
-┃  📋 ${prefix}menu
-┃
-╰─────────────────────────────────────╯
-
-`;
-
-    /*
-     * =====================================================
-     * LINKS
-     * =====================================================
-     */
-
-    menu +=
-`╭━━━━━━━━〔 🌐 JLEY-XMD 〕━━━━━━━━╮
-┃
-┃  🚀 Deploy your own bot
-┃  ${deployUrl}
-┃
-┃  📢 View our channel
-┃  ${channelUrl}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-       ✦ *${config.botName}* ✦
-    ── Built for WhatsApp ──
-       Powered by JLEY`;
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
 
     return menu;
-
 }
 
 export default generateMenu;
