@@ -18,7 +18,8 @@ import runtime from "./runtime.js";
 
 import {
     downloadMediaMessage,
-    proto
+    proto,
+    generateWAMessageFromContent
 } from "@whiskeysockets/baileys";
 
 import {
@@ -754,42 +755,56 @@ export default async function createContext(
         */
 
                         async send(
-            content,
-            options = {}
-        ) {
+    content,
+    options = {}
+) {
 
-            if (content.channelButton) {
+    if (content?.channelButton) {
 
-                const interactive =
-                    createChannelCTA(
-                        content.channelButton.url
-                    );
+        const interactive =
+            createChannelCTA(
+                content.channelButton.url
+            );
 
-                return client.sendMessage(
-                    chat,
-                    {
-                        ...interactive,
-                        ...options
-                    },
-                    {
-                        quoted: message
-                    }
-                );
-
-            }
-
-            return client.sendMessage(
+        const waMessage =
+            generateWAMessageFromContent(
                 chat,
                 {
-                    ...content,
-                    ...options
+                    interactiveMessage:
+                        interactive
                 },
                 {
+                    ...options,
                     quoted: message
                 }
             );
 
+        await client.relayMessage(
+            chat,
+            waMessage.message,
+            {
+                messageId:
+                    waMessage.key.id
+            }
+        );
+
+        return waMessage;
+
+    }
+
+    return client.sendMessage(
+        chat,
+        {
+            ...content,
+            ...options
         },
+        {
+            quoted: message
+        }
+    );
+
+},
+
 
 
 
