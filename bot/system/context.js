@@ -17,65 +17,12 @@ import config from "../config/config.js";
 import runtime from "./runtime.js";
 
 import {
-    downloadMediaMessage,
-    proto,
-    generateWAMessageFromContent
+    downloadMediaMessage
 } from "@whiskeysockets/baileys";
 
 import {
     jidMatch
 } from "../lib/jid.js";
-
-
-
-function createChannelCTA(url) {
-
-    const nativeFlow =
-        proto.Message.InteractiveMessage.NativeFlowMessage.create({
-
-            buttons: [
-
-                {
-                    name: "cta_url",
-
-                    buttonParamsJson:
-                        JSON.stringify({
-
-                            display_text:
-                                "View Channel",
-
-                            url,
-
-                            merchant_url:
-                                url
-
-                        })
-
-                }
-
-            ]
-
-        });
-
-    const interactive =
-        proto.Message.InteractiveMessage.create({
-
-            body: {
-
-                text:
-                    "📢 Follow JLEY-XMD Channel"
-
-            },
-
-            nativeFlowMessage:
-                nativeFlow
-
-        });
-
-    return interactive;
-
-}
-
 
 
 
@@ -631,11 +578,10 @@ export default async function createContext(
 
         {
             text,
-            ...options
-        },
+            ...options,
 
-        {
             quoted: message
+
         }
 
     );
@@ -740,67 +686,32 @@ export default async function createContext(
 
 
 
-
-
-
-
         /*
         |--------------------------------------------------------------------------
         | Send
         |--------------------------------------------------------------------------
         */
 
-                        async send(
+        async send(
     content,
     options = {}
 ) {
 
-    if (content?.channelButton) {
-
-        const interactive =
-            createChannelCTA(
-                content.channelButton.url
-            );
-
-        const waMessage =
-            generateWAMessageFromContent(
-                chat,
-                {
-                    interactiveMessage:
-                        interactive
-                },
-                {
-                    ...options,
-                    quoted: message
-                }
-            );
-
-        await client.relayMessage(
-            chat,
-            waMessage.message,
-            {
-                messageId:
-                    waMessage.key.id
-            }
-        );
-
-        return waMessage;
-
-    }
-
     return client.sendMessage(
+
         chat,
+
         {
             ...content,
-            ...options
-        },
-        {
+            ...options,
+
             quoted: message
+
         }
+
     );
 
 },
-
 
 
 

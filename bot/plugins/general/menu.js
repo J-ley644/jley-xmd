@@ -16,11 +16,9 @@ export default {
 
     category: "general",
 
-    description:
-        "Display available bot commands.",
+    description: "Display available bot commands.",
 
-    usage:
-        ".menu [category]",
+    usage: ".menu [category]",
 
     cooldown: 5,
 
@@ -32,8 +30,7 @@ export default {
             pluginStore.getAll();
 
         const requestedCategory =
-            ctx.args?.join(" ").trim() ||
-            null;
+            ctx.args?.join(" ").trim() || null;
 
         const menu =
             generateMenu(
@@ -43,11 +40,10 @@ export default {
             );
 
         /*
-        |--------------------------------------------------------------------------
-        | Banner Menu
-        |--------------------------------------------------------------------------
-        */
-
+         * If a banner is configured,
+         * send the banner together with
+         * the redesigned menu and channel button.
+         */
         if (
             await menuStore.hasBanner()
         ) {
@@ -57,46 +53,41 @@ export default {
 
             return ctx.send({
 
-                image:
-                    banner,
+                image: banner,
 
-                caption:
-                    menu,
+                caption: menu,
 
-                footer:
-                    "🤖 JLEY-XMD",
-
-                channelButton: {
-
-                    url:
-                        CHANNEL_URL
-
-                }
+                templateButtons: [
+                    {
+                        index: 1,
+                        urlButton: {
+                            displayText: "📢 View Channel",
+                            url: CHANNEL_URL
+                        }
+                    }
+                ]
 
             });
 
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | Text Menu
-        |--------------------------------------------------------------------------
-        */
-
+         * No banner:
+         * send the menu with the channel button.
+         */
         return ctx.send({
 
-            text:
-                menu,
+            text: menu,
 
-            footer:
-                "🤖 JLEY-XMD",
-
-            channelButton: {
-
-                url:
-                    CHANNEL_URL
-
-            }
+            templateButtons: [
+                {
+                    index: 1,
+                    urlButton: {
+                        displayText: "📢 View Channel",
+                        url: CHANNEL_URL
+                    }
+                }
+            ]
 
         });
 
