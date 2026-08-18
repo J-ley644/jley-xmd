@@ -3,41 +3,7 @@ import pluginStore from "../../system/pluginStore.js";
 import menuStore from "../../system/menuStore.js";
 
 const CHANNEL_URL =
-    "https://whatsapp.com/channel/0029Vb8Qfzt3AzNUi9kshy0u";
-
-
-function createChannelButton() {
-
-    return {
-
-        name: "cta_url",
-
-        buttonParamsJson:
-            JSON.stringify({
-
-                display_text:
-                    "📢 View Channel",
-
-                url:
-                    CHANNEL_URL
-
-            })
-
-    };
-
-}
-
-
-function createMenuButtons() {
-
-    return [
-
-        createChannelButton()
-
-    ];
-
-}
-
+    "https://whatsapp.com/channel/0029Vb8fXJpEquiKJsG56i29";
 
 export default {
 
@@ -92,15 +58,21 @@ export default {
 
             return ctx.send({
 
-                image: banner,
+                image:
+                    banner,
 
-                caption: menu,
+                caption:
+                    menu,
 
                 footer:
-                    "𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃",
+                    "🤖 JLEY-XMD",
 
-                buttons:
-                    createMenuButtons()
+                channelButton: {
+
+                    url:
+                        CHANNEL_URL
+
+                }
 
             });
 
@@ -115,10 +87,18 @@ export default {
 
         return ctx.send({
 
-            text: menu,
+            text:
+                menu,
 
-            buttons:
-                createMenuButtons()
+            footer:
+                "🤖 JLEY-XMD",
+
+            channelButton: {
+
+                url:
+                    CHANNEL_URL
+
+            }
 
         });
 
