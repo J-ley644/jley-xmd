@@ -72,14 +72,10 @@ function createChannelCTA(url) {
 
         });
 
-    return {
-
-        interactiveMessage:
-            interactive
-
-    };
+    return interactive;
 
 }
+
 
 
 
