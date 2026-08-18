@@ -1,10 +1,8 @@
-
 import youtubeDl from "youtube-dl-exec";
 import fs from "fs";
 import os from "os";
 import path from "path";
 
-// FFmpeg installed through WinGet
 const FFMPEG_DIR = String.raw`C:\Users\KONZA-VDI\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0-full_build-shared\bin`;
 
 function createTempDirectory() {
@@ -17,7 +15,9 @@ function createTempDirectory() {
 }
 
 function sanitizeFileName(name) {
-    return String(name || "JLEY-XMD Audio")
+    return String(
+        name || "JLEY-XMD Audio"
+    )
         .replace(/[\\/:*?"<>|]/g, "_")
         .slice(0, 100);
 }
@@ -41,7 +41,9 @@ async function cleanup(directory) {
 }
 
 function isYouTubeUrl(text) {
-    return /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(text);
+    return /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
+        text
+    );
 }
 
 async function searchYouTube(query) {
@@ -56,9 +58,13 @@ async function searchYouTube(query) {
         }
     );
 
-    const entry = result?.entries?.[0];
+    const entry =
+        result?.entries?.[0];
 
-    if (!entry?.webpage_url && !entry?.url) {
+    if (
+        !entry?.webpage_url &&
+        !entry?.url
+    ) {
         throw new Error(
             "No YouTube result was found."
         );
@@ -76,6 +82,7 @@ async function searchYouTube(query) {
 }
 
 export default {
+
     name: "play",
 
     aliases: [
@@ -100,6 +107,7 @@ export default {
             ctx.args.join(" ").trim();
 
         if (!query) {
+
             return await ctx.reply(
                 `🎵 *JLEY-XMD PLAY*\n\n` +
                 `Usage:\n` +
@@ -107,6 +115,7 @@ export default {
                 `Example:\n` +
                 `${ctx.prefix}play Calm Down`
             );
+
         }
 
         let directory = null;
@@ -118,17 +127,18 @@ export default {
             );
 
             let url = query;
-            let title = "JLEY-XMD Audio";
 
-            /*
-             * If the user entered a song name,
-             * search YouTube first.
-             */
+            let title =
+                "JLEY-XMD Audio";
 
-            if (!isYouTubeUrl(query)) {
+            if (
+                !isYouTubeUrl(query)
+            ) {
 
                 const result =
-                    await searchYouTube(query);
+                    await searchYouTube(
+                        query
+                    );
 
                 url =
                     result.url;
@@ -136,10 +146,6 @@ export default {
                 title =
                     result.title;
             }
-
-            /*
-             * Create temporary directory.
-             */
 
             directory =
                 createTempDirectory();
@@ -153,10 +159,6 @@ export default {
             await ctx.reply(
                 `⬇️ Downloading:\n*${title}*`
             );
-
-            /*
-             * Download audio and convert to MP3.
-             */
 
             await youtubeDl(
                 url,
@@ -179,16 +181,9 @@ export default {
                     quiet: true,
 
                     ffmpegLocation:
-                        FFMPEG_DIR,
-
-                    print:
-                        "after_move:%(filepath)s"
+                        FFMPEG_DIR
                 }
             );
-
-            /*
-             * Find generated MP3.
-             */
 
             const files =
                 await fs.promises.readdir(
@@ -204,9 +199,11 @@ export default {
                 );
 
             if (!audioFile) {
+
                 throw new Error(
                     "yt-dlp completed but no MP3 file was created."
                 );
+
             }
 
             const audioPath =
@@ -215,20 +212,13 @@ export default {
                     audioFile
                 );
 
-            /*
-             * Read MP3 into memory.
-             */
-
             const audio =
                 await fs.promises.readFile(
                     audioPath
                 );
 
-            /*
-             * Send audio through JLEY-XMD.
-             */
-
             await ctx.send({
+
                 audio,
 
                 mimetype:
@@ -238,6 +228,7 @@ export default {
                     `${sanitizeFileName(title)}.mp3`,
 
                 ptt: false
+
             });
 
         } catch (error) {
@@ -256,7 +247,9 @@ export default {
             await cleanup(
                 directory
             );
-        }
-    }
-};
 
+        }
+
+    }
+
+};
