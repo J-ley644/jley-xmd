@@ -12,7 +12,9 @@ export default {
 
     usage: ".vv",
 
-    permissions: {},
+    permissions: {
+    botOwner: true
+},
 
 
     async execute(ctx) {
