@@ -11,6 +11,7 @@ const icons = {
     fun: "🎮",
     automation: "🤖",
     media: "🎬",
+    antidelete: "🗑️",
     other: "📌"
 };
 
