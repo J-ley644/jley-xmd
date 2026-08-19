@@ -51,7 +51,9 @@ const commandReactions = {
 
     owner: "👑",
 
-    admin: "🛡️"
+    admin: "🛡️",
+
+    antidelete: "🗑️"
 
 };
 
@@ -81,6 +83,8 @@ const categoryReactions = {
     automation: "🤖",
 
     media: "🎬",
+
+    antidelete: "🗑️",
 
     other: "📌"
 
@@ -237,6 +241,8 @@ async function handleCommand(
                 client,
                 message
             );
+            ctx.command =
+    commandName;
 
 
         /*

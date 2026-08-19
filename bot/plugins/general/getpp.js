@@ -13,7 +13,9 @@ export default {
 
     usage: ".getpp [@user]",
 
-    permissions: {},
+    permissions: {
+        botOwner: true
+    },
 
     async execute(ctx) {
 

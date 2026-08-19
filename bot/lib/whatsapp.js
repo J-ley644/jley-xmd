@@ -16,6 +16,11 @@ import { handleCommand } from "../core/commandHandler.js";
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antilink.js";
 import handleStatus from "./status/index.js";
+import {
+    storeMessage,
+    markDeleted,
+    isEnabled
+} from "../system/antideleteStore.js";
 
 
 
@@ -236,39 +241,166 @@ const sessionPath =
     */
 
 
-    socket.ev.on(
-        "messages.upsert",
-        async({messages})=>{
+   socket.ev.on(
+    "messages.upsert",
+    async ({ messages }) => {
+
+        for (const message of messages) {
+
+            if (!message?.message) {
+                continue;
+            }
 
 
-            const message =
-                messages[0];
-
-
-
-            if(!message.message)
-                return;
-
-
+            /*
+            |--------------------------------------------------------------------------
+            | Chat
+            |--------------------------------------------------------------------------
+            */
 
             message.chat =
-                message.key.remoteJid;
+                message.key?.remoteJid || "";
 
 
-                await handleStatus(
-    socket,
-    message
-);
+            /*
+            |--------------------------------------------------------------------------
+            | Anti-Delete Detection
+            |--------------------------------------------------------------------------
+            |
+            | WhatsApp sends a protocolMessage when a message is revoked.
+            |
+            | protocolMessage.key = original deleted message
+            | message.key         = person performing the deletion
+            |
+            */
 
-await processMessage(
-    socket,
-    message
-);
+            const messageValues =
+                Object.values(
+                    message.message || {}
+                );
 
 
+            const protocolMessage =
+                messageValues.find(
+                    value =>
+                        value?.protocolMessage
+                )?.protocolMessage;
+
+
+            if (
+                protocolMessage?.type ===
+                0
+            ) {
+
+                const deletedKey =
+                    protocolMessage.key;
+
+
+                const deletedMessageId =
+                    deletedKey?.id;
+
+
+                /*
+                |----------------------------------------------------------------------
+                | Person who deleted the message
+                |----------------------------------------------------------------------
+                */
+
+                const deletedBy =
+                    message.key?.participant ||
+                    message.key?.remoteJid ||
+                    "Unknown";
+
+
+                const deleted =
+                    markDeleted(
+                        deploymentId,
+                        deletedMessageId,
+                        deletedBy
+                    );
+
+
+                /*
+                |----------------------------------------------------------------------
+                | Automatic Anti-Delete
+                |----------------------------------------------------------------------
+                */
+
+                if (
+                    deleted &&
+                    isEnabled(
+                        deploymentId
+                    )
+                ) {
+
+                    try {
+
+                        await processMessage(
+                            socket,
+                            {
+                                ...message,
+                                antidelete:
+                                    deleted
+                            }
+                        );
+
+                    }
+                    catch (error) {
+
+                        logger.error(
+                            `Anti-delete restore failed: ${
+                                error?.message ||
+                                error
+                            }`
+                        );
+
+                    }
+
+                }
+
+
+                continue;
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Store Normal Messages
+            |--------------------------------------------------------------------------
+            |
+            | We save the original message BEFORE it can potentially
+            | be deleted later.
+            |
+            */
+
+            storeMessage(
+                deploymentId,
+                message
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Existing Message Pipeline
+            |--------------------------------------------------------------------------
+            */
+
+            await handleStatus(
+                socket,
+                message
+            );
+
+
+            await processMessage(
+                socket,
+                message
+            );
 
         }
-    );
+
+    }
+);
 
 
 

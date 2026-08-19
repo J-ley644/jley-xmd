@@ -10,7 +10,7 @@ export default {
 
     category: "general",
 
-    description: "Show bot owner information",
+    description: "Show the JLEY-XMD owner contact",
 
     usage: ".owner",
 
@@ -18,28 +18,47 @@ export default {
 
     async execute(ctx) {
 
-        return ctx.info(
+        const number =
+            String(config.owner.number || "")
+                .replace(/\D/g, "");
 
-`👑 OWNER PROFILE
+        const name =
+            config.owner.name ||
+            "JLEY";
 
-👤 Name
-${config.owner.name}
+        if (!number) {
 
-📞 Contact
-+${config.owner.number}
+            return ctx.error(
+                "❌ Owner contact is not configured."
+            );
 
-🤖 Bot
-${config.botName}
+        }
 
-🚀 Project
-WhatsApp Automation Engine
+        return ctx.send({
 
-⚡ Role
-Developer & Maintainer
+            contacts: {
 
-🔥 Powered by JLEY-XMD`
+                displayName: name,
 
-        );
+                contacts: [
+
+                    {
+
+                        vcard:
+
+`BEGIN:VCARD
+VERSION:3.0
+FN:${name}
+TEL;type=CELL;type=VOICE;waid=${number}:${number}
+END:VCARD`
+
+                    }
+
+                ]
+
+            }
+
+        });
 
     }
 

@@ -29,8 +29,56 @@ class PluginStore {
      * Get a plugin by name.
      */
     get(name) {
-        return this.plugins.get(name);
+
+    const commandName =
+        String(name || "")
+            .toLowerCase();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Exact command
+    |--------------------------------------------------------------------------
+    */
+
+    const exact =
+        this.plugins.get(
+            commandName
+        );
+
+    if (exact) {
+        return exact;
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Numbered Anti-Delete
+    |--------------------------------------------------------------------------
+    |
+    | .antidelete1
+    | .antidelete2
+    | .antidelete3
+    |
+    | All are routed to the main antidelete plugin.
+    |
+    */
+
+    if (
+        /^antidelete\d+$/.test(
+            commandName
+        )
+    ) {
+
+        return this.plugins.get(
+            "antidelete"
+        );
+
+    }
+
+
+    return undefined;
+
+}
 
     /**
      * Check if plugin exists.
