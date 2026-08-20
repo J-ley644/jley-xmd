@@ -1,5 +1,60 @@
 import automationStore from "../../system/automationStore.js";
 import { isStatus } from "./helpers.js";
+import { jidMatch } from "../jid.js";
+
+
+function getBotIdentities(socket) {
+
+    const identities = [];
+
+    const botId =
+        socket.user?.id || null;
+
+    const botLid =
+        socket.user?.lid || null;
+
+    if (botId) {
+        identities.push(botId);
+    }
+
+    if (botLid) {
+        identities.push(botLid);
+    }
+
+    return identities;
+
+}
+
+
+function isConfiguredForBot(
+    socket
+) {
+
+    const identities =
+        getBotIdentities(socket);
+
+    for (const identity of identities) {
+
+        const settings =
+            automationStore.get(identity);
+
+        if (settings?.autoview === true) {
+
+            return {
+                enabled: true,
+                identity
+            };
+
+        }
+
+    }
+
+    return {
+        enabled: false,
+        identity: null
+    };
+
+}
 
 
 async function handleAutoView(
@@ -10,60 +65,69 @@ async function handleAutoView(
     try {
 
         /*
-         * Only process WhatsApp status messages.
-         */
+        |----------------------------------------------------------------------
+        | Status Detection
+        |----------------------------------------------------------------------
+        */
 
         if (!isStatus(message)) {
+
             return;
+
         }
 
 
         /*
-         * The command system stores settings under
-         * the bot/account identity.
-         *
-         * Prefer the bot LID because the current
-         * command configuration is stored as @lid.
-         */
+        |----------------------------------------------------------------------
+        | Bot Configuration
+        |----------------------------------------------------------------------
+        |
+        | Settings may have been saved using either:
+        |
+        |   @s.whatsapp.net
+        |   @lid
+        |
+        | Therefore check both identities.
+        |
+        */
 
-        const botLid =
-            socket.user?.lid || null;
-
-        const botId =
-            socket.user?.id || null;
-
-
-        const botIdentity =
-            botLid || botId;
-
-
-        if (!botIdentity) {
-            return;
-        }
+        const configuration =
+            isConfiguredForBot(socket);
 
 
-        /*
-         * Get automation settings for this bot.
-         */
+        if (!configuration.enabled) {
 
-        const settings =
-            automationStore.get(
-                botIdentity
+            console.log(
+                "AUTO VIEW: Status received but AutoView is disabled."
             );
 
-
-        /*
-         * AutoView is disabled.
-         */
-
-        if (!settings.autoview) {
             return;
+
         }
 
 
         /*
-         * Mark the status as read/viewed.
-         */
+        |----------------------------------------------------------------------
+        | Validate Status Key
+        |----------------------------------------------------------------------
+        */
+
+        if (!message?.key) {
+
+            console.log(
+                "AUTO VIEW: Status has no message key."
+            );
+
+            return;
+
+        }
+
+
+        /*
+        |----------------------------------------------------------------------
+        | Mark Status As Read
+        |----------------------------------------------------------------------
+        */
 
         await socket.readMessages([
             message.key
@@ -71,7 +135,7 @@ async function handleAutoView(
 
 
         console.log(
-            `AUTO VIEW: Status viewed by ${botIdentity}`
+            `AUTO VIEW: Status viewed successfully using ${configuration.identity}`
         );
 
 
@@ -79,7 +143,7 @@ async function handleAutoView(
 
         console.error(
             "AUTO VIEW ERROR:",
-            error.message
+            error
         );
 
     }

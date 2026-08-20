@@ -1,14 +1,13 @@
 import fs from "fs";
 import path from "path";
 
+
 const DB_PATH = path.join(
     process.cwd(),
     "bot",
     "database",
     "autoMention.json"
 );
-
-
 
 
 function load() {
@@ -24,29 +23,31 @@ function load() {
 
 
     const content =
-        fs.readFileSync(DB_PATH, "utf8").trim();
+        fs.readFileSync(
+            DB_PATH,
+            "utf8"
+        ).trim();
 
 
     if (!content) {
-
         return {};
-
     }
 
 
     try {
 
-        return JSON.parse(content);
+        return JSON.parse(
+            content
+        );
 
-    } catch {
+    }
+    catch {
 
         return {};
 
     }
 
 }
-
-
 
 
 function save(data) {
@@ -55,38 +56,53 @@ function save(data) {
 
         DB_PATH,
 
-        JSON.stringify(data, null, 4)
+        JSON.stringify(
+            data,
+            null,
+            4
+        )
 
     );
 
 }
 
 
-
-
 function get(group) {
 
-    const db = load();
+    const db =
+        load();
 
     return db[group] || [];
 
 }
 
 
+function getAll() {
 
-
-function isEnabled(group, user) {
-
-    return get(group).includes(user);
+    return load();
 
 }
 
 
+function isEnabled(
+    group,
+    user
+) {
+
+    return get(group)
+        .includes(user);
+
+}
 
 
-function enable(group, user) {
+function enable(
+    group,
+    user
+) {
 
-    const db = load();
+    const db =
+        load();
+
 
     if (!db[group]) {
 
@@ -94,45 +110,63 @@ function enable(group, user) {
 
     }
 
-    if (!db[group].includes(user)) {
 
-        db[group].push(user);
+    if (
+        !db[group]
+            .includes(user)
+    ) {
+
+        db[group].push(
+            user
+        );
 
     }
+
 
     save(db);
 
 }
 
 
+function disable(
+    group,
+    user
+) {
 
+    const db =
+        load();
 
-function disable(group, user) {
-
-    const db = load();
 
     if (!db[group]) {
-
         return;
+    }
+
+
+    db[group] =
+        db[group].filter(
+            id => id !== user
+        );
+
+
+    if (
+        db[group].length === 0
+    ) {
+
+        delete db[group];
 
     }
 
-    db[group] = db[group].filter(
-
-        id => id !== user
-
-    );
 
     save(db);
 
 }
-
-
 
 
 export default {
 
     get,
+
+    getAll,
 
     enable,
 

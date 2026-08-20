@@ -10,18 +10,53 @@ export default {
 
     category: "automation",
 
-    description: "Automatically view WhatsApp status updates",
+    description:
+        "Automatically view WhatsApp status updates",
 
-    usage: ".autoview <on|off>",
+    usage:
+        ".autoview <on|off>",
 
-    permissions: {},
+    permissions: {
+        botOwner: true
+    },
 
     async execute(ctx) {
 
         const option =
-            (ctx.args[0] || "").toLowerCase();
+            String(ctx.args?.[0] || "")
+                .trim()
+                .toLowerCase();
+
+
+        /*
+         * The setting belongs to the bot deployment,
+         * not to the person sending the command.
+         *
+         * The status engine reads the setting using
+         * the connected bot identity.
+         */
+        const botIdentity =
+            ctx.client?.user?.lid ||
+            ctx.client?.user?.id ||
+            ctx.botJid ||
+            ctx.botId;
+
+
+        if (!botIdentity) {
+
+            return ctx.reply(
+                "❌ Unable to identify this bot account."
+            );
+
+        }
+
 
         if (!["on", "off"].includes(option)) {
+
+            const settings =
+                automationStore.get(
+                    botIdentity
+                );
 
             return ctx.reply(
 
@@ -35,7 +70,9 @@ Usage
 ━━━━━━━━━━━━━━━━━━
 
 Current:
-${automationStore.get(ctx.sender).autoview ? "🟢 Enabled" : "🔴 Disabled"}
+${settings.autoview
+    ? "🟢 Enabled"
+    : "🔴 Disabled"}
 
 ╰━━━━━━━━━━━━━━━━━━╯`
 
@@ -43,20 +80,29 @@ ${automationStore.get(ctx.sender).autoview ? "🟢 Enabled" : "🔴 Disabled"}
 
         }
 
+
         const enabled =
             option === "on";
 
+
         automationStore.set(
-            ctx.sender,
+
+            botIdentity,
+
             "autoview",
+
             enabled
+
         );
 
-        await ctx.reply(
+
+        return ctx.reply(
 
 `╭━━━〔 👁️ AUTO VIEW 〕━━━╮
 
-${enabled ? "🟢 Enabled" : "🔴 Disabled"}
+${enabled
+    ? "🟢 Enabled"
+    : "🔴 Disabled"}
 
 JLEY-XMD will ${
 enabled

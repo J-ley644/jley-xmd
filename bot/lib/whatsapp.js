@@ -247,6 +247,12 @@ const sessionPath =
 
         for (const message of messages) {
 
+            console.log(
+    "MESSAGE RECEIVED:",
+    message.key?.remoteJid,
+    message.key?.participant || ""
+);
+
             if (!message?.message) {
                 continue;
             }

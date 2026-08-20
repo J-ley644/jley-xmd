@@ -352,6 +352,11 @@ export default async function createContext(
     const botLid =
         client.user?.lid || "";
 
+        const botIdentity =
+    botLid ||
+    botPhoneJid ||
+    null;
+
     const isBotAdmin =
         groupInfo.admins.some(
             admin =>
@@ -438,6 +443,8 @@ export default async function createContext(
         message,
 
         sender,
+
+        botIdentity,
 
         chat,
 
