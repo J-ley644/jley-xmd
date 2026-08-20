@@ -12,6 +12,30 @@ async function handleAutoView(
 
     /*
     |--------------------------------------------------------------------------
+    | STATUS DIAGNOSTIC
+    |--------------------------------------------------------------------------
+    */
+
+    console.log(
+        "[AUTOVIEW] Event received:",
+        {
+            remoteJid:
+                message?.key?.remoteJid,
+
+            participant:
+                message?.key?.participant,
+
+            messageId:
+                message?.key?.id,
+
+            detected:
+                isStatus(message)
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
     | Only process WhatsApp status messages
     |--------------------------------------------------------------------------
     */
@@ -27,73 +51,39 @@ async function handleAutoView(
 
     /*
     |--------------------------------------------------------------------------
-    | Identify the connected bot
+    | Bot Identity
     |--------------------------------------------------------------------------
     */
 
     const botLid =
-    socket?.user?.lid ||
-    null;
+        socket?.user?.lid ||
+        null;
 
-const botId =
-    socket?.user?.id ||
-    null;
+    const botId =
+        socket?.user?.id ||
+        null;
 
-const identities = [
-    botId,
-    botLid
-].filter(Boolean);
-
-
-if (!identities.length) {
-
-    return;
-
-}
+    const botIdentity =
+        botLid ||
+        botId ||
+        null;
 
 
-/*
-|--------------------------------------------------------------------------
-| Read AutoView setting
-|--------------------------------------------------------------------------
-*/
+    console.log(
+        "[AUTOVIEW] Bot identity:",
+        {
+            botId,
+            botLid,
+            botIdentity
+        }
+    );
 
-let enabled = false;
 
-for (const identity of identities) {
+    if (!botIdentity) {
 
-    const settings =
-        automationStore.get(
-            identity
+        console.log(
+            "[AUTOVIEW] No bot identity detected."
         );
-
-    if (settings?.autoview === true) {
-
-        enabled = true;
-
-        break;
-
-    }
-
-}
-
-
-if (!enabled) {
-
-    return;
-
-}
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ignore invalid status events
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !message?.key?.id
-    ) {
 
         return;
 
@@ -102,22 +92,83 @@ if (!enabled) {
 
     /*
     |--------------------------------------------------------------------------
-    | View the status
+    | Read Configuration
+    |--------------------------------------------------------------------------
+    */
+
+    const settings =
+        automationStore.get(
+            botIdentity
+        );
+
+
+    console.log(
+        "[AUTOVIEW] Settings:",
+        settings
+    );
+
+
+    if (
+        !settings?.autoview
+    ) {
+
+        console.log(
+            "[AUTOVIEW] Disabled."
+        );
+
+        return;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Status Key
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !message?.key?.id
+    ) {
+
+        console.log(
+            "[AUTOVIEW] Status has no message ID."
+        );
+
+        return;
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mark Status As Read
     |--------------------------------------------------------------------------
     */
 
     try {
 
+        console.log(
+            "[AUTOVIEW] Attempting to view status:",
+            message.key
+        );
+
+
         await socket.readMessages([
             message.key
         ]);
+
+
+        console.log(
+            "[AUTOVIEW] Status viewed successfully."
+        );
 
     }
 
     catch (error) {
 
         console.error(
-            "AutoView failed:",
+            "[AUTOVIEW] Failed:",
             error?.message ||
             error
         );
