@@ -237,10 +237,11 @@ async function handleCommand(
         */
 
         const ctx =
-            await createContext(
-                client,
-                message
-            );
+    await createContext(
+        client,
+        message,
+        client?.deploymentId
+    );
             ctx.command =
     commandName;
 

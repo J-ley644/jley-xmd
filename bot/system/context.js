@@ -254,7 +254,8 @@ ${formatted}
 
 export default async function createContext(
     client,
-    message
+    message,
+    deploymentId
 ) {
 
     /*
@@ -439,6 +440,11 @@ export default async function createContext(
         */
 
         client,
+
+        deploymentId:
+    deploymentId ||
+    client?.deploymentId ||
+    "main",
 
         message,
 

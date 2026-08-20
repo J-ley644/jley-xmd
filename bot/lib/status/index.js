@@ -1,6 +1,7 @@
-import handleAutoMention from "./automention.js";
+import handleAutoMention from "./autoMention.js";
 import handleAutoLike from "./autolike.js";
 import handleAutoView from "./autoView.js";
+
 
 async function handleStatus(
     socket,
@@ -23,5 +24,6 @@ async function handleStatus(
     );
 
 }
+
 
 export default handleStatus;

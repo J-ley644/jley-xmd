@@ -87,6 +87,9 @@ const sessionPath =
 
         });
 
+        socket.deploymentId =
+    deploymentId || "main";
+
 
 
 
