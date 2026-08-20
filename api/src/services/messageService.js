@@ -2,6 +2,7 @@ import { handleCommand } from "../../../bot/core/commandHandler.js";
 import loadPlugins from "../../../bot/core/pluginLoader.js";
 import config from "../../../bot/config/config.js";
 import automationStore from "../../../bot/system/automationStore.js";
+import relationshipTracker from "../../../bot/system/relationshipTracker.js";
 
 
 let pluginsLoaded = false;
@@ -227,6 +228,48 @@ async function handleAutoTyping(
 
 /*
 |--------------------------------------------------------------------------
+| Relationship Tracking
+|--------------------------------------------------------------------------
+|
+| This runs for normal group messages.
+|
+| It is intentionally independent from the command handler so the
+| relationship system can learn from ordinary conversation too.
+|
+*/
+
+function trackRelationship(
+    sock,
+    message
+) {
+
+    try {
+
+        relationshipTracker.trackMessage(
+            sock,
+            message
+        );
+
+    } catch (error) {
+
+        /*
+         * Relationship tracking must NEVER break
+         * the main message engine.
+         */
+
+        console.error(
+            "Relationship tracking error:",
+            error?.message ||
+            error
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Message Handler
 |--------------------------------------------------------------------------
 */
@@ -252,7 +295,7 @@ export async function handleMessage(
 
     /*
     |--------------------------------------------------------------------------
-    | Extract text
+    | Extract Text
     |--------------------------------------------------------------------------
     */
 
@@ -266,7 +309,7 @@ export async function handleMessage(
 
     /*
     |--------------------------------------------------------------------------
-    | Ignore empty messages
+    | Ignore Empty Messages
     |--------------------------------------------------------------------------
     */
 
@@ -277,11 +320,33 @@ export async function handleMessage(
 
     /*
     |--------------------------------------------------------------------------
+    | Relationship Tracking
+    |--------------------------------------------------------------------------
+    |
+    | Track before command filtering so normal group conversation and
+    | command messages can both contribute to relationship analysis.
+    |
+    | The tracker itself ignores:
+    |
+    | - private chats
+    | - bot's own messages
+    | - status messages
+    |
+    */
+
+    trackRelationship(
+        sock,
+        message
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
     | AutoTyping
     |--------------------------------------------------------------------------
     |
-    | Run independently so the typing indicator does not
-    | delay command execution.
+    | Run independently so the typing indicator does not delay
+    | command execution.
     |
     */
 
@@ -297,8 +362,7 @@ export async function handleMessage(
     | Own Messages
     |--------------------------------------------------------------------------
     |
-    | Own messages are allowed only when they are actual
-    | bot commands.
+    | Own messages are allowed only when they are actual bot commands.
     |
     */
 
