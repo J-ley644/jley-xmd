@@ -30,5 +30,21 @@
         "autoreply": false,
         "autolikeEmoji": "❤️",
         "autoreplyText": "Hello! I'm currently unavailable. I'll respond as soon as possible."
+    },
+    "test-bot": {
+        "autoview": false,
+        "autoread": false,
+        "autolike": false,
+        "autoreply": false,
+        "autolikeEmoji": "❤️",
+        "autoreplyText": "Hello! I'm currently unavailable. I'll respond as soon as possible.",
+        "chats": {
+            "123@g.us": {
+                "autotyping": true
+            }
+        },
+        "automention": false,
+        "autotyping": false,
+        "autorecording": false
     }
 }

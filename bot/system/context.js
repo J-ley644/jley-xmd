@@ -285,8 +285,17 @@ export default async function createContext(
     */
 
     const sender =
-        message.key.participant ||
-        message.key.remoteJid;
+    message.key?.fromMe
+        ? (
+            client?.user?.lid ||
+            client?.user?.id ||
+            message.key?.participant ||
+            message.key?.remoteJid
+        )
+        : (
+            message.key?.participant ||
+            message.key?.remoteJid
+        );
 
     const chat =
         message.key.remoteJid;
