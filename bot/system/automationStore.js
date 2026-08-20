@@ -1,13 +1,41 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const DB_PATH = path.join(
-    process.cwd(),
-    "bot",
-    "database",
-    "automationSettings.json"
-);
 
+/*
+|--------------------------------------------------------------------------
+| Paths
+|--------------------------------------------------------------------------
+*/
+
+const __filename =
+    fileURLToPath(import.meta.url);
+
+const __dirname =
+    path.dirname(__filename);
+
+
+const DATABASE_DIR =
+    path.join(
+        __dirname,
+        "..",
+        "database"
+    );
+
+
+const DB_PATH =
+    path.join(
+        DATABASE_DIR,
+        "automationSettings.json"
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| Default Settings
+|--------------------------------------------------------------------------
+*/
 
 const DEFAULT_SETTINGS = {
 
@@ -27,22 +55,72 @@ const DEFAULT_SETTINGS = {
 };
 
 
-
+/*
+|--------------------------------------------------------------------------
+| Load Database
+|--------------------------------------------------------------------------
+*/
 
 function load() {
 
-    if (!fs.existsSync(DB_PATH)) {
+    /*
+    |--------------------------------------------------------------------------
+    | Ensure Database Directory Exists
+    |--------------------------------------------------------------------------
+    */
 
-        fs.writeFileSync(
-            DB_PATH,
-            JSON.stringify({}, null, 4)
+    if (
+        !fs.existsSync(
+            DATABASE_DIR
+        )
+    ) {
+
+        fs.mkdirSync(
+            DATABASE_DIR,
+            {
+                recursive: true
+            }
         );
 
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ensure Database File Exists
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !fs.existsSync(
+            DB_PATH
+        )
+    ) {
+
+        fs.writeFileSync(
+            DB_PATH,
+            JSON.stringify(
+                {},
+                null,
+                4
+            ),
+            "utf8"
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Read Database
+    |--------------------------------------------------------------------------
+    */
+
     const content =
-        fs.readFileSync(DB_PATH, "utf8").trim();
+        fs.readFileSync(
+            DB_PATH,
+            "utf8"
+        ).trim();
 
 
     if (!content) {
@@ -52,9 +130,17 @@ function load() {
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Parse Database
+    |--------------------------------------------------------------------------
+    */
+
     try {
 
-        return JSON.parse(content);
+        return JSON.parse(
+            content
+        );
 
     } catch {
 
@@ -65,32 +151,71 @@ function load() {
 }
 
 
-
+/*
+|--------------------------------------------------------------------------
+| Save Database
+|--------------------------------------------------------------------------
+*/
 
 function save(data) {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ensure Directory Still Exists
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !fs.existsSync(
+            DATABASE_DIR
+        )
+    ) {
+
+        fs.mkdirSync(
+            DATABASE_DIR,
+            {
+                recursive: true
+            }
+        );
+
+    }
+
 
     fs.writeFileSync(
 
         DB_PATH,
 
-        JSON.stringify(data, null, 4)
+        JSON.stringify(
+            data,
+            null,
+            4
+        ),
+
+        "utf8"
 
     );
 
 }
 
 
-
+/*
+|--------------------------------------------------------------------------
+| Get Settings
+|--------------------------------------------------------------------------
+*/
 
 function get(user) {
 
-    const db = load();
+    const db =
+        load();
 
 
     if (!db[user]) {
 
         db[user] = {
+
             ...DEFAULT_SETTINGS
+
         };
 
         save(db);
@@ -103,23 +228,35 @@ function get(user) {
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| Set Single Setting
+|--------------------------------------------------------------------------
+*/
 
+function set(
+    user,
+    key,
+    value
+) {
 
-function set(user, key, value) {
-
-    const db = load();
+    const db =
+        load();
 
 
     if (!db[user]) {
 
         db[user] = {
+
             ...DEFAULT_SETTINGS
+
         };
 
     }
 
 
-    db[user][key] = value;
+    db[user][key] =
+        value;
 
 
     save(db);
@@ -130,28 +267,51 @@ function set(user, key, value) {
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| Get Single Setting
+|--------------------------------------------------------------------------
+*/
 
-
-function getValue(user, key) {
+function getValue(
+    user,
+    key
+) {
 
     const settings =
         get(user);
+
 
     return settings[key];
 
 }
 
-function update(user, settings) {
 
-    const db = load();
+/*
+|--------------------------------------------------------------------------
+| Update Multiple Settings
+|--------------------------------------------------------------------------
+*/
+
+function update(
+    user,
+    settings
+) {
+
+    const db =
+        load();
+
 
     if (!db[user]) {
 
         db[user] = {
+
             ...DEFAULT_SETTINGS
+
         };
 
     }
+
 
     db[user] = {
 
@@ -161,11 +321,20 @@ function update(user, settings) {
 
     };
 
+
     save(db);
+
 
     return db[user];
 
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Export
+|--------------------------------------------------------------------------
+*/
 
 export default {
 
