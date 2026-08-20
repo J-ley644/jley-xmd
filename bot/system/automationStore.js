@@ -47,6 +47,12 @@ const DEFAULT_SETTINGS = {
 
     autoreply: false,
 
+    automention: false,
+
+    autotyping: false,
+
+    autorecording: false,
+
     autolikeEmoji: "❤️",
 
     autoreplyText:
@@ -57,17 +63,11 @@ const DEFAULT_SETTINGS = {
 
 /*
 |--------------------------------------------------------------------------
-| Load Database
+| Ensure Database
 |--------------------------------------------------------------------------
 */
 
-function load() {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ensure Database Directory Exists
-    |--------------------------------------------------------------------------
-    */
+function ensureDatabase() {
 
     if (
         !fs.existsSync(
@@ -84,12 +84,6 @@ function load() {
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ensure Database File Exists
-    |--------------------------------------------------------------------------
-    */
 
     if (
         !fs.existsSync(
@@ -109,12 +103,19 @@ function load() {
 
     }
 
+}
 
-    /*
-    |--------------------------------------------------------------------------
-    | Read Database
-    |--------------------------------------------------------------------------
-    */
+
+/*
+|--------------------------------------------------------------------------
+| Load Database
+|--------------------------------------------------------------------------
+*/
+
+function load() {
+
+    ensureDatabase();
+
 
     const content =
         fs.readFileSync(
@@ -129,12 +130,6 @@ function load() {
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Parse Database
-    |--------------------------------------------------------------------------
-    */
 
     try {
 
@@ -159,26 +154,7 @@ function load() {
 
 function save(data) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Ensure Directory Still Exists
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !fs.existsSync(
-            DATABASE_DIR
-        )
-    ) {
-
-        fs.mkdirSync(
-            DATABASE_DIR,
-            {
-                recursive: true
-            }
-        );
-
-    }
+    ensureDatabase();
 
 
     fs.writeFileSync(
@@ -200,7 +176,26 @@ function save(data) {
 
 /*
 |--------------------------------------------------------------------------
-| Get Settings
+| Create Bot Settings
+|--------------------------------------------------------------------------
+*/
+
+function createBotSettings() {
+
+    return {
+
+        ...DEFAULT_SETTINGS,
+
+        chats: {}
+
+    };
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Bot Settings
 |--------------------------------------------------------------------------
 */
 
@@ -212,11 +207,66 @@ function get(user) {
 
     if (!db[user]) {
 
-        db[user] = {
+    db[user] =
+        createBotSettings();
 
-            ...DEFAULT_SETTINGS
+    save(db);
 
-        };
+} else {
+
+    let changed = false;
+
+
+    for (
+        const [key, value]
+        of Object.entries(DEFAULT_SETTINGS)
+    ) {
+
+        if (
+            db[user][key] === undefined
+        ) {
+
+            db[user][key] =
+                value;
+
+            changed = true;
+
+        }
+
+    }
+
+
+    if (
+        !db[user].chats
+    ) {
+
+        db[user].chats = {};
+
+        changed = true;
+
+    }
+
+
+    if (changed) {
+
+        save(db);
+
+    }
+
+}
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Migration Protection
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !db[user].chats
+    ) {
+
+        db[user].chats = {};
 
         save(db);
 
@@ -230,7 +280,7 @@ function get(user) {
 
 /*
 |--------------------------------------------------------------------------
-| Set Single Setting
+| Set Global Setting
 |--------------------------------------------------------------------------
 */
 
@@ -246,11 +296,8 @@ function set(
 
     if (!db[user]) {
 
-        db[user] = {
-
-            ...DEFAULT_SETTINGS
-
-        };
+        db[user] =
+            createBotSettings();
 
     }
 
@@ -269,7 +316,7 @@ function set(
 
 /*
 |--------------------------------------------------------------------------
-| Get Single Setting
+| Get Global Setting
 |--------------------------------------------------------------------------
 */
 
@@ -289,7 +336,103 @@ function getValue(
 
 /*
 |--------------------------------------------------------------------------
-| Update Multiple Settings
+| Get Chat Settings
+|--------------------------------------------------------------------------
+*/
+
+function getChat(
+    user,
+    chat
+) {
+
+    const settings =
+        get(user);
+
+
+    if (
+        !settings.chats[chat]
+    ) {
+
+        settings.chats[chat] = {};
+
+    }
+
+
+    return {
+
+        ...DEFAULT_SETTINGS,
+
+        ...settings.chats[chat]
+
+    };
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Set Chat Setting
+|--------------------------------------------------------------------------
+*/
+
+function setChat(
+    user,
+    chat,
+    key,
+    value
+) {
+
+    const db =
+        load();
+
+
+    if (!db[user]) {
+
+        db[user] =
+            createBotSettings();
+
+    }
+
+
+    if (
+        !db[user].chats
+    ) {
+
+        db[user].chats = {};
+
+    }
+
+
+    if (
+        !db[user].chats[chat]
+    ) {
+
+        db[user].chats[chat] = {};
+
+    }
+
+
+    db[user].chats[chat][key] =
+        value;
+
+
+    save(db);
+
+
+    return {
+
+        ...DEFAULT_SETTINGS,
+
+        ...db[user].chats[chat]
+
+    };
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Update Multiple Global Settings
 |--------------------------------------------------------------------------
 */
 
@@ -304,11 +447,8 @@ function update(
 
     if (!db[user]) {
 
-        db[user] = {
-
-            ...DEFAULT_SETTINGS
-
-        };
+        db[user] =
+            createBotSettings();
 
     }
 
@@ -316,6 +456,68 @@ function update(
     db[user] = {
 
         ...db[user],
+
+        ...settings,
+
+        chats:
+            db[user].chats || {}
+
+    };
+
+
+    save(db);
+
+
+    return db[user];
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Update Multiple Chat Settings
+|--------------------------------------------------------------------------
+*/
+
+function updateChat(
+    user,
+    chat,
+    settings
+) {
+
+    const db =
+        load();
+
+
+    if (!db[user]) {
+
+        db[user] =
+            createBotSettings();
+
+    }
+
+
+    if (
+        !db[user].chats
+    ) {
+
+        db[user].chats = {};
+
+    }
+
+
+    if (
+        !db[user].chats[chat]
+    ) {
+
+        db[user].chats[chat] = {};
+
+    }
+
+
+    db[user].chats[chat] = {
+
+        ...db[user].chats[chat],
 
         ...settings
 
@@ -325,7 +527,13 @@ function update(
     save(db);
 
 
-    return db[user];
+    return {
+
+        ...DEFAULT_SETTINGS,
+
+        ...db[user].chats[chat]
+
+    };
 
 }
 
@@ -344,6 +552,12 @@ export default {
 
     getValue,
 
-    update
+    getChat,
+
+    setChat,
+
+    update,
+
+    updateChat
 
 };
