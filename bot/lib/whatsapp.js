@@ -383,10 +383,14 @@ const sessionPath =
             |
             */
 
-            storeMessage(
-                deploymentId,
-                message
-            );
+            if (isEnabled(deploymentId)) {
+
+    storeMessage(
+        deploymentId,
+        message
+    );
+
+}
 
 
             /*

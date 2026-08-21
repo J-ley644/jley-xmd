@@ -1,127 +1,329 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+
 import logger from "../lib/logger.js";
 import pluginStore from "../system/pluginStore.js";
 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename =
+    fileURLToPath(import.meta.url);
+
+const __dirname =
+    path.dirname(__filename);
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Plugins
+|--------------------------------------------------------------------------
+|
+| Loads every JavaScript plugin from:
+|
+| bot/plugins/<category>/*.js
+|
+| Each plugin can have:
+|
+| name: "play"
+| aliases: ["song"]
+|
+| Both the main command and aliases are registered.
+|
+|--------------------------------------------------------------------------
+*/
 
 async function loadPlugins() {
 
-    console.log("PLUGIN LOADER VERSION 2");
-
-    const plugins = new Map();
-
-    const pluginsPath = path.join(
-        __dirname,
-        "../plugins"
+    console.log(
+        "PLUGIN LOADER VERSION 3"
     );
 
-    if (!fs.existsSync(pluginsPath)) {
-        logger.warn("Plugins directory not found");
-        return plugins;
-    }
 
-    const categories = fs.readdirSync(pluginsPath);
+    const plugins =
+        new Map();
 
-    for (const category of categories) {
 
-        const categoryPath = path.join(
-            pluginsPath,
-            category
+    const pluginsPath =
+        path.join(
+            __dirname,
+            "../plugins"
         );
 
-        if (!fs.statSync(categoryPath).isDirectory()) {
+
+    if (
+        !fs.existsSync(
+            pluginsPath
+        )
+    ) {
+
+        logger.warn(
+            "Plugins directory not found"
+        );
+
+        return plugins;
+
+    }
+
+
+    const categories =
+        fs.readdirSync(
+            pluginsPath,
+            {
+                withFileTypes: true
+            }
+        );
+
+
+    for (
+        const categoryEntry
+        of categories
+    ) {
+
+        if (
+            !categoryEntry.isDirectory()
+        ) {
             continue;
         }
 
-        const files = fs.readdirSync(categoryPath);
+
+        const category =
+            categoryEntry.name;
+
+
+        const categoryPath =
+            path.join(
+                pluginsPath,
+                category
+            );
+
+
+        const files =
+            fs.readdirSync(
+                categoryPath,
+                {
+                    withFileTypes: true
+                }
+            );
+
 
         console.log(
-    "CATEGORY:",
-    category,
-    "FILES:",
-    files
-);
+            "CATEGORY:",
+            category,
+            "FILES:",
+            files.map(
+                file => file.name
+            )
+        );
 
-        for (const file of files) {
 
-            console.log("FOUND PLUGIN FILE:", category, file);
+        for (
+            const fileEntry
+            of files
+        ) {
 
-            if (!file.endsWith(".js")) {
+            const file =
+                fileEntry.name;
+
+
+            if (
+                !fileEntry.isFile() ||
+                !file.endsWith(".js")
+            ) {
                 continue;
             }
 
+
+            console.log(
+                "FOUND PLUGIN FILE:",
+                category,
+                file
+            );
+
+
             try {
 
-                const pluginPath = path.join(
-                    categoryPath,
-                    file
+                const pluginPath =
+                    path.join(
+                        categoryPath,
+                        file
+                    );
+
+
+                const plugin =
+                    await import(
+                        pathToFileURL(
+                            pluginPath
+                        ).href
+                    );
+
+
+                const command =
+                    plugin.default;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Plugin
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    !command ||
+                    !command.name
+                ) {
+
+                    logger.warn(
+                        `Invalid plugin skipped: ${file} (missing name)`
+                    );
+
+                    continue;
+
+                }
+
+
+                const commandName =
+                    String(
+                        command.name
+                    )
+                        .trim()
+                        .toLowerCase();
+
+
+                if (!commandName) {
+
+                    logger.warn(
+                        `Invalid plugin skipped: ${file} (empty name)`
+                    );
+
+                    continue;
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Category
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    !command.category
+                ) {
+
+                    logger.warn(
+                        `Plugin ${commandName} has no category`
+                    );
+
+                    command.category =
+                        "general";
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Register Main Command
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    plugins.has(
+                        commandName
+                    )
+                ) {
+
+                    logger.warn(
+                        `Duplicate command skipped: ${commandName}`
+                    );
+
+                    continue;
+
+                }
+
+
+                plugins.set(
+                    commandName,
+                    command
                 );
 
-                const plugin = await import(
-    pathToFileURL(pluginPath).href
-);
 
-                const command = plugin.default;
+                /*
+                |--------------------------------------------------------------------------
+                | Register Aliases
+                |--------------------------------------------------------------------------
+                */
 
-                if (!command || !command.name) {
+                if (
+                    Array.isArray(
+                        command.aliases
+                    )
+                ) {
 
-    logger.warn(
-        `Invalid plugin skipped: ${file} (missing name)`
-    );
+                    for (
+                        const alias
+                        of command.aliases
+                    ) {
 
-    continue;
-
-}
-
-
-// Validate category
-
-if (!command.category) {
-
-    logger.warn(
-        `Plugin ${command.name} has no category`
-    );
-
-    command.category = "general";
-
-}
+                        const aliasName =
+                            String(
+                                alias || ""
+                            )
+                                .trim()
+                                .toLowerCase();
 
 
-// Register main command
-
-if (plugins.has(command.name)) {
-
-    logger.warn(
-        `Duplicate command skipped: ${command.name}`
-    );
-
-    continue;
-
-}
+                        if (!aliasName) {
+                            continue;
+                        }
 
 
-plugins.set(
-    command.name,
-    command
-);
+                        /*
+                        |----------------------------------------------------------------------
+                        | Prevent Alias From Overwriting A Real Command
+                        |----------------------------------------------------------------------
+                        */
+
+                        if (
+                            plugins.has(
+                                aliasName
+                            )
+                        ) {
+
+                            logger.warn(
+                                `Alias "${aliasName}" for "${commandName}" conflicts with an existing command. Alias skipped.`
+                            );
+
+                            continue;
+
+                        }
 
 
-// Register aliases
+                        plugins.set(
+                            aliasName,
+                            command
+                        );
 
-logger.info(
-    `Loaded plugin: ${command.name}`
-);
+
+                        logger.info(
+                            `Registered alias: ${aliasName} -> ${commandName}`
+                        );
+
+                    }
+
+                }
+
+
+                logger.info(
+                    `Loaded plugin: ${commandName}`
+                );
+
 
             } catch (error) {
 
                 logger.error(
-    error,
-    `Failed loading plugin ${file}`
-);
+                    error,
+                    `Failed loading plugin ${file}`
+                );
 
             }
 
@@ -129,11 +331,26 @@ logger.info(
 
     }
 
-    logger.info(`Total plugins loaded: ${plugins.size}`);
 
-    pluginStore.set(plugins);
+    /*
+    |--------------------------------------------------------------------------
+    | Final Plugin Registry
+    |--------------------------------------------------------------------------
+    */
+
+    logger.info(
+        `Total commands and aliases loaded: ${plugins.size}`
+    );
+
+
+    pluginStore.set(
+        plugins
+    );
+
 
     return plugins;
+
 }
+
 
 export default loadPlugins;

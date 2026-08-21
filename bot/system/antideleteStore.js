@@ -1,17 +1,29 @@
 /**
  * JLEY-XMD Anti-Delete Store
+ * --------------------------
+ * Bounded in-memory message history.
  *
- * Stores recent messages so they can be recovered
- * after WhatsApp deletion/revoke events.
- *
+ * Stores only recent messages while anti-delete is enabled.
  * History is isolated per deployment.
  */
 
 const histories = new Map();
-
 const settings = new Map();
 
-const MAX_HISTORY = 100;
+/*
+|--------------------------------------------------------------------------
+| Memory Limits
+|--------------------------------------------------------------------------
+|
+| Keep these deliberately conservative.
+|
+*/
+
+const MAX_HISTORY = 30;
+
+// Messages older than this are no longer useful for recovery.
+const MAX_AGE_MS =
+    30 * 60 * 1000;
 
 
 /*
@@ -42,15 +54,81 @@ function getHistory(deploymentId) {
 
 /*
 |--------------------------------------------------------------------------
+| Cleanup
+|--------------------------------------------------------------------------
+*/
+
+function cleanupHistory(
+    deploymentId
+) {
+
+    const history =
+        getHistory(
+            deploymentId
+        );
+
+    const cutoff =
+        Date.now() -
+        MAX_AGE_MS;
+
+
+    /*
+    Remove expired messages.
+    */
+
+    for (
+        let index = history.length - 1;
+        index >= 0;
+        index--
+    ) {
+
+        if (
+            history[index].storedAt <
+            cutoff
+        ) {
+
+            history.splice(
+                index,
+                1
+            );
+
+        }
+
+    }
+
+
+    /*
+    Enforce hard count limit.
+    */
+
+    if (
+        history.length >
+        MAX_HISTORY
+    ) {
+
+        history.splice(
+            MAX_HISTORY
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Settings
 |--------------------------------------------------------------------------
 */
 
-export function isEnabled(deploymentId) {
+export function isEnabled(
+    deploymentId
+) {
 
     return (
         settings.get(
-            deploymentId || "main"
+            deploymentId ||
+            "main"
         ) === true
     );
 
@@ -62,10 +140,29 @@ export function setEnabled(
     enabled
 ) {
 
+    const id =
+        deploymentId ||
+        "main";
+
+
     settings.set(
-        deploymentId || "main",
+        id,
         Boolean(enabled)
     );
+
+
+    /*
+    When anti-delete is disabled,
+    immediately release its stored history.
+    */
+
+    if (!enabled) {
+
+        histories.delete(
+            id
+        );
+
+    }
 
 }
 
@@ -82,8 +179,27 @@ export function storeMessage(
 ) {
 
     if (!message) {
+
         return;
+
     }
+
+
+    /*
+    Never store anything if the
+    feature is disabled.
+    */
+
+    if (
+        !isEnabled(
+            deploymentId
+        )
+    ) {
+
+        return;
+
+    }
+
 
     const history =
         getHistory(
@@ -92,22 +208,37 @@ export function storeMessage(
 
 
     /*
-    Prevent duplicate storage
+    Remove old entries before
+    adding another message.
+    */
+
+    cleanupHistory(
+        deploymentId
+    );
+
+
+    /*
+    Prevent duplicates.
     */
 
     const messageId =
         message.key?.id;
+
 
     if (messageId) {
 
         const exists =
             history.some(
                 item =>
-                    item.messageId === messageId
+                    item.messageId ===
+                    messageId
             );
 
+
         if (exists) {
+
             return;
+
         }
 
     }
@@ -145,7 +276,7 @@ export function storeMessage(
 
 
     /*
-    Keep memory bounded.
+    Hard memory ceiling.
     */
 
     if (
@@ -174,6 +305,11 @@ export function markDeleted(
     deletedBy
 ) {
 
+    cleanupHistory(
+        deploymentId
+    );
+
+
     const history =
         getHistory(
             deploymentId
@@ -183,7 +319,8 @@ export function markDeleted(
     const item =
         history.find(
             entry =>
-                entry.messageId === messageId
+                entry.messageId ===
+                messageId
         );
 
 
@@ -196,7 +333,6 @@ export function markDeleted(
 
     item.deletedAt =
         Date.now();
-
 
     item.deletedBy =
         deletedBy ||
@@ -218,6 +354,11 @@ export function getDeleted(
     deploymentId,
     index = 1
 ) {
+
+    cleanupHistory(
+        deploymentId
+    );
+
 
     const history =
         getHistory(
@@ -250,6 +391,11 @@ export function getAllDeleted(
     deploymentId
 ) {
 
+    cleanupHistory(
+        deploymentId
+    );
+
+
     const history =
         getHistory(
             deploymentId
@@ -275,11 +421,18 @@ export function clearHistory(
 ) {
 
     histories.delete(
-        deploymentId || "main"
+        deploymentId ||
+        "main"
     );
 
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Default Export
+|--------------------------------------------------------------------------
+*/
 
 export default {
 

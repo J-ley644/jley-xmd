@@ -1,75 +1,126 @@
-import youtubeDl from "youtube-dl-exec";
-import fs from "fs";
-import os from "os";
-import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
-const FFMPEG_DIR = String.raw`C:\Users\KONZA-VDI\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0-full_build-shared\bin`;
+const execFileAsync =
+    promisify(execFile);
 
-function createTempDirectory() {
-    return fs.mkdtempSync(
-        path.join(
-            os.tmpdir(),
-            "jley-xmd-video-"
-        )
-    );
-}
+const PYTHON_BIN = "python";
 
-function sanitizeFileName(name) {
-    return String(
-        name || "JLEY-XMD Video"
-    )
-        .replace(/[\\/:*?"<>|]/g, "_")
-        .slice(0, 100);
-}
+const BGUTIL_URL =
+    "https://jley-xmd-bgutil.onrender.com";
 
-async function cleanup(directory) {
-    if (!directory) {
-        return;
-    }
+const YTDLP_BASE_ARGS = [
+    "--ignore-config",
+    "--remote-components",
+    "ejs:github",
+    "--extractor-args",
+    "youtube:player_client=mweb",
+    "--extractor-args",
+    `youtubepot-bgutilhttp:base_url=${BGUTIL_URL}`
+];
 
-    try {
-        await fs.promises.rm(
-            directory,
-            {
-                recursive: true,
-                force: true
-            }
-        );
-    } catch {
-        // Ignore cleanup errors.
-    }
-}
+/*
+|--------------------------------------------------------------------------
+| YouTube URL detection
+|--------------------------------------------------------------------------
+*/
 
 function isYouTubeUrl(text) {
-    return /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)/i.test(
-        text.trim()
-    );
+
+    return /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)/i
+        .test(
+            String(text).trim()
+        );
 }
+
+/*
+|--------------------------------------------------------------------------
+| Run yt-dlp metadata only
+|--------------------------------------------------------------------------
+*/
+
+async function runYtDlp(args) {
+
+    try {
+
+        return await execFileAsync(
+            PYTHON_BIN,
+            [
+                "-m",
+                "yt_dlp",
+                ...YTDLP_BASE_ARGS,
+                ...args
+            ],
+            {
+                windowsHide: true,
+                maxBuffer:
+                    8 * 1024 * 1024
+            }
+        );
+
+    } catch (error) {
+
+        const stderr =
+            String(
+                error?.stderr || ""
+            ).trim();
+
+        const stdout =
+            String(
+                error?.stdout || ""
+            ).trim();
+
+        throw new Error(
+            stderr ||
+            stdout ||
+            error?.message ||
+            "yt-dlp failed."
+        );
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Search YouTube
+|--------------------------------------------------------------------------
+*/
 
 async function searchYouTube(query) {
 
     const result =
-        await youtubeDl(
+        await runYtDlp([
             `ytsearch1:${query}`,
-            {
-                dumpSingleJson: true,
-                noWarnings: true,
-                noCheckCertificates: true,
-                skipDownload: true,
-                flatPlaylist: true,
+            "--dump-single-json",
+            "--skip-download",
+            "--flat-playlist",
+            "--no-warnings",
+            "--quiet"
+        ]);
 
-                extractorArgs:
-                    "youtube:player_client=mweb"
-            }
+    let data;
+
+    try {
+
+        data =
+            JSON.parse(
+                result.stdout
+            );
+
+    } catch {
+
+        throw new Error(
+            "Could not read the YouTube search result."
         );
+    }
 
     const entry =
-        result?.entries?.[0];
+        data?.entries?.[0];
 
     if (
         !entry?.webpage_url &&
         !entry?.url
     ) {
+
         throw new Error(
             "No YouTube result was found."
         );
@@ -82,9 +133,47 @@ async function searchYouTube(query) {
 
         title:
             entry.title ||
-            "JLEY-XMD Video"
+            "YouTube Video"
     };
 }
+
+/*
+|--------------------------------------------------------------------------
+| Resolve direct URL
+|--------------------------------------------------------------------------
+*/
+
+async function getYouTubeInfo(url) {
+
+    const result =
+        await runYtDlp([
+            url,
+            "--dump-single-json",
+            "--skip-download",
+            "--no-warnings",
+            "--quiet"
+        ]);
+
+    try {
+
+        return JSON.parse(
+            result.stdout
+        );
+
+    } catch {
+
+        return {
+            title: "YouTube Video",
+            webpage_url: url
+        };
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Plugin
+|--------------------------------------------------------------------------
+*/
 
 export default {
 
@@ -94,12 +183,12 @@ export default {
         "vid"
     ],
 
-    cooldown: 15,
+    cooldown: 10,
 
     category: "download",
 
     description:
-        "Download videos from YouTube",
+        "Find a YouTube video and send its link",
 
     usage:
         ".video <video name or YouTube URL>",
@@ -109,178 +198,94 @@ export default {
     async execute(ctx) {
 
         const query =
-            ctx.args
-                .join(" ")
-                .trim();
+            Array.isArray(ctx.args)
+                ? ctx.args.join(" ").trim()
+                : "";
 
         if (!query) {
 
-            return await ctx.reply(
-                `🎬 *JLEY-XMD VIDEO*\n\n` +
-                `Usage:\n` +
+            return ctx.reply(
+                "🎬 *JLEY-XMD VIDEO*\n\n" +
+
+                "Usage:\n" +
+
                 `${ctx.prefix}video <video name>\n` +
                 `${ctx.prefix}video <YouTube URL>\n\n` +
-                `Example:\n` +
-                `${ctx.prefix}video Alan Walker Faded`
+
+                "The command sends the YouTube link instead of uploading the video."
             );
-
         }
-
-        let directory = null;
 
         try {
 
             await ctx.reply(
-                "🔎 Searching for your video..."
+                "🔎 Finding your video..."
             );
 
-            let url = query;
-
-            let title =
-                "JLEY-XMD Video";
+            let result;
 
             if (
-                !isYouTubeUrl(query)
+                isYouTubeUrl(query)
             ) {
 
-                const result =
-                    await searchYouTube(
+                const info =
+                    await getYouTubeInfo(
                         query
                     );
 
-                url =
-                    result.url;
+                result = {
+                    url:
+                        info?.webpage_url ||
+                        query,
 
-                title =
-                    result.title;
+                    title:
+                        info?.title ||
+                        "YouTube Video"
+                };
+
+            } else {
+
+                result =
+                    await searchYouTube(
+                        query
+                    );
             }
 
-            directory =
-                createTempDirectory();
+            return ctx.reply(
+                "🎬 *" +
+                result.title +
+                "*\n\n" +
 
-            const outputTemplate =
-                path.join(
-                    directory,
-                    "%(title)s.%(ext)s"
-                );
-
-            await ctx.reply(
-                `⬇️ Downloading video:\n*${title}*`
+                "▶️ Watch on YouTube:\n" +
+                result.url
             );
-
-            await youtubeDl(
-                url,
-                {
-                    output:
-                        outputTemplate,
-
-                    noPlaylist:
-                        true,
-
-                    noWarnings:
-                        true,
-
-                    noCheckCertificates:
-                        true,
-
-                    quiet:
-                        true,
-
-                    ffmpegLocation:
-                        FFMPEG_DIR,
-
-                    extractorArgs:
-                        "youtube:player_client=mweb",
-
-                    /*
-                     * Prefer MP4 video with MP4 audio.
-                     * If separate streams are required,
-                     * yt-dlp + FFmpeg will merge them.
-                     */
-                    format:
-                        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/18",
-
-                    mergeOutputFormat:
-                        "mp4"
-                }
-            );
-
-            const files =
-                await fs.promises.readdir(
-                    directory
-                );
-
-            const videoFile =
-                files.find(
-                    file =>
-                        file
-                            .toLowerCase()
-                            .endsWith(".mp4")
-                );
-
-            if (!videoFile) {
-
-                throw new Error(
-                    "yt-dlp completed but no MP4 video was created."
-                );
-
-            }
-
-            const videoPath =
-                path.join(
-                    directory,
-                    videoFile
-                );
-
-            const video =
-                await fs.promises.readFile(
-                    videoPath
-                );
-
-            const stats =
-                await fs.promises.stat(
-                    videoPath
-                );
-
-            console.log(
-                `JLEY-XMD VIDEO: ${(
-                    stats.size /
-                    1024 /
-                    1024
-                ).toFixed(2)} MB`
-            );
-
-            await ctx.send({
-
-                video,
-
-                mimetype:
-                    "video/mp4",
-
-                fileName:
-                    `${sanitizeFileName(title)}.mp4`
-
-            });
 
         } catch (error) {
 
             console.error(
-                "VIDEO ERROR:",
+                "JLEY-XMD VIDEO ERROR:",
                 error
             );
 
-            await ctx.reply(
-                "❌ Sorry, I couldn't download that video. Please try another YouTube video."
+            const message =
+                String(
+                    error?.message || ""
+                );
+
+            if (
+                message.includes(
+                    "No YouTube result"
+                )
+            ) {
+
+                return ctx.reply(
+                    "❌ I couldn't find that video on YouTube."
+                );
+            }
+
+            return ctx.reply(
+                "❌ Sorry, I couldn't find that video. Please try another search or YouTube URL."
             );
-
-        } finally {
-
-            await cleanup(
-                directory
-            );
-
         }
-
     }
-
 };

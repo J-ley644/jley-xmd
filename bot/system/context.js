@@ -777,36 +777,66 @@ export default async function createContext(
 
         async download() {
 
-            if (
-                !isReply ||
-                !media
-            ) {
+    if (
+        !isReply ||
+        !media
+    ) {
 
-                throw new Error(
-                    "Reply to a media message."
-                );
+        throw new Error(
+            "Reply to a media message."
+        );
 
-            }
+    }
 
-            return downloadMediaMessage(
+    return downloadMediaMessage(
 
-                {
-                    message: quoted
-                },
+        {
+            message: quoted
+        },
 
-                "buffer",
+        "stream",
 
-                {},
+        {},
 
-                {
-                    logger: console
-                }
-
-            );
-
+        {
+            logger: console
         }
 
+    );
+
+},
+
+async downloadBuffer() {
+
+    if (
+        !isReply ||
+        !media
+    ) {
+
+        throw new Error(
+            "Reply to a media message."
+        );
+
+    }
+
+    return downloadMediaMessage(
+        {
+            message: quoted
+        },
+        "buffer",
+        {},
+        {
+            logger: console
+        }
+    );
+
+},
+
+
+
     };
+
+    
 
 
 

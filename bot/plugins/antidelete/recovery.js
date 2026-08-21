@@ -1,39 +1,37 @@
-import { downloadMediaMessage } from "@whiskeysockets/baileys";
-
+/*
+ * JLEY-XMD Anti-Delete Recovery
+ *
+ * Compatibility wrapper.
+ *
+ * The main antidelete plugin owns recovery logic.
+ * This file intentionally contains no media buffering,
+ * history storage, or duplicate recovery implementation.
+ */
 
 export async function recoverDeleted(
     ctx,
     item,
-    index
+    index = 1
 ) {
 
-    const original =
-        item?.message;
-
-    if (!original) {
+    if (!item) {
 
         return ctx.reply(
-            `? Deleted message #${index} is unavailable.`
+            `❌ Deleted message #${index} is unavailable.`
         );
 
     }
 
-    const sender =
-        item.sender || "Unknown";
+    const original =
+        item.message;
 
-    const deletedBy =
-        item.deletedBy || "Unknown";
+    if (!original) {
 
-    const senderNumber =
-        sender.split(":")[0].split("@")[0];
+        return ctx.reply(
+            `❌ Deleted message #${index} is unavailable.`
+        );
 
-    const deletedByNumber =
-        deletedBy.split(":")[0].split("@")[0];
-
-    const time =
-        item.deletedAt
-            ? new Date(item.deletedAt).toLocaleString()
-            : "Unknown";
+    }
 
     const content =
         original.message || {};
@@ -43,118 +41,67 @@ export async function recoverDeleted(
         content.extendedTextMessage?.text ||
         null;
 
+    const sender =
+        formatNumber(
+            item.sender
+        );
+
+    const deletedBy =
+        formatNumber(
+            item.deletedBy
+        );
+
+    const time =
+        item.deletedAt
+            ? new Date(
+                item.deletedAt
+            ).toLocaleString()
+            : "Unknown";
 
     if (text) {
 
         return ctx.reply(
 
-`??? DELETED MESSAGE #${index}
+`🗑️ DELETED MESSAGE #${index}
 
-?? Sent by: +${senderNumber}
-??? Deleted by: +${deletedByNumber}
-?? ${time}
+👤 Sent by: +${sender}
+🗑️ Deleted by: +${deletedBy}
+🕐 ${time}
 
-?? Message:
+💬 Message:
 ${text}`
 
         );
 
     }
 
-
-    let buffer = null;
-
-    try {
-
-        buffer =
-            await downloadMediaMessage(
-                original,
-                "buffer",
-                {},
-                {
-                    logger: console
-                }
-            );
-
-    } catch {
-
-        buffer = null;
-
-    }
-
-
-    if (
-        buffer &&
-        content.imageMessage
-    ) {
-
-        return ctx.send({
-
-            image: buffer,
-
-            caption:
-
-`??? DELETED IMAGE #${index}
-
-?? Sent by: +${senderNumber}
-??? Deleted by: +${deletedByNumber}
-?? ${time}`
-
-        });
-
-    }
-
-
-    if (
-        buffer &&
-        content.videoMessage
-    ) {
-
-        return ctx.send({
-
-            video: buffer,
-
-            caption:
-
-`??? DELETED VIDEO #${index}
-
-?? Sent by: +${senderNumber}
-??? Deleted by: +${deletedByNumber}
-?? ${time}`
-
-        });
-
-    }
-
-
-    if (
-        buffer &&
-        content.audioMessage
-    ) {
-
-        return ctx.send({
-
-            audio: buffer,
-
-            mimetype:
-                content.audioMessage.mimetype ||
-                "audio/mp4"
-
-        });
-
-    }
-
-
     return ctx.reply(
 
-`??? DELETED MESSAGE #${index}
+`🗑️ DELETED MESSAGE #${index}
 
-?? Sent by: +${senderNumber}
-??? Deleted by: +${deletedByNumber}
-?? ${time}
+👤 Sent by: +${sender}
+🗑️ Deleted by: +${deletedBy}
+🕐 ${time}
 
-?? The original message could not be restored.`
+⚠️ This recovery helper does not load media into memory.
+Use the main Anti-Delete recovery handler for media messages.`
 
     );
+
+}
+
+
+function formatNumber(jid) {
+
+    if (!jid) {
+
+        return "Unknown";
+
+    }
+
+    return String(jid)
+        .split(":")[0]
+        .split("@")[0]
+        .trim() || "Unknown";
 
 }

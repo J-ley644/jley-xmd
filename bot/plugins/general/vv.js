@@ -42,7 +42,7 @@ export default {
         try {
 
             const buffer =
-                await ctx.download();
+    await ctx.downloadBuffer();
 
 
             const media =

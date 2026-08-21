@@ -45,7 +45,7 @@ Reply to a photo then send
         try {
 
             const buffer =
-                await ctx.download();
+    await ctx.downloadBuffer();
 
             await menuStore.setBanner(
                 buffer

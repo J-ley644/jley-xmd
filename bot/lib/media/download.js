@@ -1,33 +1,32 @@
-import { downloadMediaMessage } from "@whiskeysockets/baileys";
+import {
+    downloadMediaMessage
+} from "@whiskeysockets/baileys";
 
 export async function downloadQuotedMedia(ctx) {
 
     if (!ctx.isReply) {
 
-        throw new Error("Reply to a media message.");
+        throw new Error(
+            "Reply to a media message."
+        );
 
     }
 
     if (!ctx.media) {
 
-        throw new Error("No media found.");
+        throw new Error(
+            "No media found."
+        );
 
     }
 
-    const stream = await downloadMediaMessage(
-
+    return downloadMediaMessage(
         {
             message: ctx.quoted
         },
-
-        "buffer",
-
+        "stream",
         {},
-
         {}
-
     );
-
-    return stream;
 
 }
