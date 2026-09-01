@@ -1,3 +1,4 @@
+
 import prisma from "../config/prisma.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -15,16 +16,20 @@ export async function register({
 }) {
 
     if (!name || !email || !password) {
+
         throw new Error(
             "Name, email and password are required."
         );
+
     }
 
 
     if (password.length < 6) {
+
         throw new Error(
             "Password must be at least 6 characters."
         );
+
     }
 
 
@@ -34,16 +39,20 @@ export async function register({
 
     const existingUser =
         await prisma.user.findUnique({
+
             where: {
                 email: normalizedEmail
             }
+
         });
 
 
     if (existingUser) {
+
         throw new Error(
             "Email already exists."
         );
+
     }
 
 
@@ -55,21 +64,13 @@ export async function register({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | CREATE USER + WALLET + WELCOME BONUS
-    |--------------------------------------------------------------------------
-    |
-    | Everything is created inside one transaction.
-    |
-    | New account:
-    |
-    | Wallet = 25 JL
-    |
-    | Ledger:
-    | WELCOME_BONUS +25 JL
-    |
-    */
-
+     * Create the user, wallet and welcome bonus
+     * atomically.
+     *
+     * Render + Supabase can sometimes take longer
+     * to acquire a transaction connection, so use
+     * a larger transaction wait/timeout.
+     */
 
     const user =
         await prisma.$transaction(
@@ -147,11 +148,20 @@ export async function register({
 
 
                 return {
+
                     ...newUser,
+
                     wallet
+
                 };
 
+            },
+
+            {
+                maxWait: 15000,
+                timeout: 30000
             }
+
         );
 
 
@@ -270,7 +280,9 @@ export async function getMe(
             },
 
             include: {
+
                 wallet: true
+
             }
 
         });
@@ -324,3 +336,4 @@ function sanitizeUser(
     };
 
 }
+
