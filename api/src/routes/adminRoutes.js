@@ -5,6 +5,7 @@ import admin from "../middleware/admin.js";
 
 import {
     getUsers,
+    creditUserWallet,
     getJLSettings,
     updateJLSettings
 } from "../controllers/adminController.js";
@@ -26,6 +27,12 @@ router.use(admin);
 router.get(
     "/users",
     getUsers
+);
+
+
+router.post(
+    "/users/credit",
+    creditUserWallet
 );
 
 

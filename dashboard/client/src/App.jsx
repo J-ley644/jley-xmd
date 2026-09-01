@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 import {
     apiGet,
@@ -17,14 +17,10 @@ import AdminApp from "./admin/AdminApp";
 
 
 function ComingSoon({ title, icon }) {
-
     return (
         <section className="page-section">
-
             <div className="page-header">
-
                 <div>
-
                     <h1>
                         {icon} {title}
                     </h1>
@@ -32,14 +28,10 @@ function ComingSoon({ title, icon }) {
                     <p>
                         JLEY-XMD dashboard module
                     </p>
-
                 </div>
-
             </div>
 
-
             <div className="dashboard-card">
-
                 <h2>
                     {title}
                 </h2>
@@ -49,51 +41,39 @@ function ComingSoon({ title, icon }) {
                     The dashboard foundation is already connected
                     and this module will be added here.
                 </p>
-
             </div>
-
         </section>
     );
 }
 
 
 function App() {
-
     const [mode, setMode] = useState("login");
 
     const [user, setUser] = useState(null);
-
     const [page, setPage] = useState("dashboard");
 
     const [name, setName] = useState("");
-
     const [email, setEmail] = useState("");
-
     const [password, setPassword] = useState("");
 
     const [botName, setBotName] = useState("");
 
     const [balance, setBalance] = useState(0);
-
     const [deployments, setDeployments] = useState([]);
 
     const [pairingId, setPairingId] = useState(null);
-
     const [qr, setQr] = useState(null);
-
     const [pairingCode, setPairingCode] = useState(null);
 
     const [loading, setLoading] = useState(false);
-
     const [deploying, setDeploying] = useState(false);
 
     const [message, setMessage] = useState("");
-
     const [error, setError] = useState("");
 
 
     useEffect(() => {
-
         const token = getToken();
 
         if (!token) {
@@ -101,78 +81,65 @@ function App() {
         }
 
         loadDashboard();
-
     }, []);
 
 
+    /*
+     * PAIRING STATUS POLLING
+     */
     useEffect(() => {
-
-    if (!pairingId) {
-        return;
-    }
-
-    const interval = setInterval(async () => {
-
-        try {
-
-            const data = await apiGet(
-    `/api/pairing/${pairingId}/status`
-);
-
-            const deployment =
-                data?.deployment || data;
-
-            // Update QR if the backend provides one
-            if (data?.qr) {
-                setQr(data.qr);
-            }
-
-            if (data?.code) {
-    setPairingCode(data.code);
-}
-
-            // WhatsApp successfully connected
-            if (
-                deployment?.connectionStatus ===
-                "CONNECTED"
-            ) {
-
-                setMessage(
-                    "WhatsApp connected successfully."
-                );
-
-                // Clear pairing UI
-                setQr(null);
-                setPairingCode(null);
-                setPairingId(null);
-
-                // Refresh deployment data
-                await loadDeployments();
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Pairing polling error:",
-                error
-            );
-
+        if (!pairingId) {
+            return;
         }
 
-    }, 3000);
+        const interval = setInterval(async () => {
+            try {
+                const data = await apiGet(
+                    `/api/pairing/${pairingId}/status`
+                );
 
-    return () => {
-        clearInterval(interval);
-    };
+                const deployment =
+                    data?.deployment || data;
 
-}, [pairingId]);
+                if (data?.qr) {
+                    setQr(data.qr);
+                }
 
+                if (data?.code) {
+                    setPairingCode(data.code);
+                }
+
+                if (
+                    deployment?.connectionStatus ===
+                    "CONNECTED"
+                ) {
+                    setMessage(
+                        "WhatsApp connected successfully."
+                    );
+
+                    setQr(null);
+                    setPairingCode(null);
+                    setPairingId(null);
+
+                    await loadDeployments();
+                }
+
+            } catch (error) {
+                console.error(
+                    "Pairing polling error:",
+                    error
+                );
+            }
+        }, 3000);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [pairingId]);
 
 
     async function loadDashboard() {
-
         try {
-
             const me = await apiGet(
                 "/api/auth/me"
             );
@@ -185,25 +152,19 @@ function App() {
             ]);
 
         } catch (error) {
-
             console.error(
                 "Dashboard loading error:",
                 error
             );
 
             clearToken();
-
             setUser(null);
-
         }
-
     }
 
 
     async function loadWallet() {
-
         try {
-
             const data = await apiGet(
                 "/api/wallet"
             );
@@ -213,21 +174,16 @@ function App() {
             );
 
         } catch (error) {
-
             console.error(
                 "Wallet error:",
                 error
             );
-
         }
-
     }
 
 
     async function loadDeployments() {
-
         try {
-
             const data = await apiGet(
                 "/api/deployments"
             );
@@ -239,28 +195,20 @@ function App() {
             );
 
         } catch (error) {
-
             console.error(
                 "Deployment error:",
                 error
             );
-
         }
-
     }
 
 
     async function login() {
-
         setLoading(true);
-
         setError("");
-
         setMessage("");
 
-
         try {
-
             const data = await apiPost(
                 "/api/auth/login",
                 {
@@ -269,24 +217,18 @@ function App() {
                 }
             );
 
-
             if (!data?.token) {
-
                 throw new Error(
                     data?.message ||
                     "Login failed. No token received."
                 );
-
             }
-
 
             saveToken(data.token);
 
             await loadDashboard();
 
-
         } catch (error) {
-
             console.error(
                 "Login error:",
                 error
@@ -298,25 +240,17 @@ function App() {
             );
 
         } finally {
-
             setLoading(false);
-
         }
-
     }
 
 
     async function register() {
-
         setLoading(true);
-
         setError("");
-
         setMessage("");
 
-
         try {
-
             await apiPost(
                 "/api/auth/register",
                 {
@@ -326,65 +260,48 @@ function App() {
                 }
             );
 
-
             setMessage(
                 "Account created successfully."
             );
 
             setMode("login");
 
-
         } catch (error) {
-
             setError(
                 error.message ||
                 "Registration failed."
             );
 
         } finally {
-
             setLoading(false);
-
         }
-
     }
 
 
     function logout() {
-
         clearToken();
 
         setUser(null);
-
         setDeployments([]);
-
         setBalance(0);
-
         setPage("dashboard");
 
         setPairingId(null);
-
         setQr(null);
-
+        setPairingCode(null);
     }
 
 
     async function deployBot() {
-
         if (!botName.trim()) {
             return;
         }
 
-
         setDeploying(true);
-
         setError("");
-
         setMessage("");
 
-
         try {
-
             const data = await apiPost(
                 "/api/deployments",
                 {
@@ -392,22 +309,16 @@ function App() {
                 }
             );
 
-
             setBotName("");
-
 
             if (data?.message) {
                 setMessage(data.message);
             }
 
-
             await loadDeployments();
-
             await loadWallet();
 
-
         } catch (error) {
-
             console.error(
                 "Deployment error:",
                 error
@@ -419,125 +330,128 @@ function App() {
             );
 
         } finally {
-
             setDeploying(false);
-
         }
-
     }
 
 
+    /*
+     * QR PAIRING
+     *
+     * Uses the dedicated pairing API:
+     * POST /api/pairing/:id/start
+     */
     async function pairBot(id) {
-    try {
-        setError("");
-        setMessage("");
-        setPairingId(id);
-        setPairingCode(null);
-        setQr(null);
+        try {
+            setError("");
+            setMessage("");
 
-        const data = await apiPost(
-            `/api/deployments/${id}/start`
-        );
+            setPairingId(id);
+            setPairingCode(null);
+            setQr(null);
 
-        if (data?.qr) {
-    setQr(data.qr);
-}
+            const data = await apiPost(
+                `/api/pairing/${id}/start`
+            );
 
-if (data?.code) {
-    setPairingCode(data.code);
-}
-
-const deployment =
-    data?.deployment ||
-    data;
-
-        await loadDeployments();
-
-    } catch (error) {
-        console.error("QR pairing error:", error);
-
-        setPairingId(null);
-        setQr(null);
-
-        setError(
-            error.message ||
-            "QR pairing failed."
-        );
-    }
-}
-
-
-    async function pairPhone(id) {
-
-    const phoneNumber = prompt(
-        "Enter WhatsApp number with country code"
-    );
-
-    if (!phoneNumber) return;
-
-    try {
-
-        setError("");
-        setMessage("");
-        setPairingId(id);
-        setQr(null);
-        setPairingCode(null);
-
-        const data = await apiPost(
-            `/api/deployments/${id}/pair`,
-            {
-                phoneNumber
+            if (data?.qr) {
+                setQr(data.qr);
             }
+
+            if (data?.code) {
+                setPairingCode(data.code);
+            }
+
+            await loadDeployments();
+
+        } catch (error) {
+            console.error(
+                "QR pairing error:",
+                error
+            );
+
+            setPairingId(null);
+            setQr(null);
+            setPairingCode(null);
+
+            setError(
+                error.message ||
+                "QR pairing failed."
+            );
+        }
+    }
+
+
+    /*
+     * PHONE / PAIRING CODE
+     *
+     * Uses the dedicated pairing API:
+     * POST /api/pairing/:id/code
+     */
+    async function pairPhone(id) {
+        const phoneNumber = prompt(
+            "Enter WhatsApp number with country code"
         );
 
-        if (data.code) {
-            setPairingCode(data.code);
+        if (!phoneNumber) {
+            return;
         }
 
-        await loadDeployments();
+        try {
+            setError("");
+            setMessage("");
 
-    } catch (error) {
+            setPairingId(id);
+            setQr(null);
+            setPairingCode(null);
 
-        console.error(
-            "Phone pairing error:",
-            error
-        );
+            const data = await apiPost(
+                `/api/pairing/${id}/code`,
+                {
+                    phoneNumber: phoneNumber.trim()
+                }
+            );
 
-        setPairingId(null);
-        setPairingCode(null);
+            if (data?.code) {
+                setPairingCode(data.code);
+            }
 
-        setError(
-            error.message ||
-            "Phone pairing failed."
-        );
+            await loadDeployments();
+
+        } catch (error) {
+            console.error(
+                "Phone pairing error:",
+                error
+            );
+
+            setPairingId(null);
+            setQr(null);
+            setPairingCode(null);
+
+            setError(
+                error.message ||
+                "Phone pairing failed."
+            );
+        }
     }
-}
 
 
     async function stopBot(id) {
-
         setError("");
-
         setMessage("");
 
-
         try {
-
             await apiPost(
                 `/api/deployments/${id}/stop`
             );
 
-
             await loadDeployments();
-
 
             setMessage(
                 "Deployment stopped."
             );
 
-
         } catch (error) {
-
             console.error(
                 "Stop bot error:",
                 error
@@ -547,14 +461,14 @@ const deployment =
                 error.message ||
                 "Failed to stop bot."
             );
-
         }
-
     }
 
 
+    /*
+     * AUTH SCREEN
+     */
     if (!user) {
-
         return (
             <div className="auth-container">
 
@@ -588,17 +502,15 @@ const deployment =
 
 
                     {mode === "login" ? (
-
                         <>
 
                             <input
                                 placeholder="Email"
                                 value={email}
-                                onChange={
-                                    e =>
-                                        setEmail(
-                                            e.target.value
-                                        )
+                                onChange={e =>
+                                    setEmail(
+                                        e.target.value
+                                    )
                                 }
                             />
 
@@ -607,11 +519,10 @@ const deployment =
                                 type="password"
                                 placeholder="Password"
                                 value={password}
-                                onChange={
-                                    e =>
-                                        setPassword(
-                                            e.target.value
-                                        )
+                                onChange={e =>
+                                    setPassword(
+                                        e.target.value
+                                    )
                                 }
                             />
 
@@ -640,19 +551,16 @@ const deployment =
                             </button>
 
                         </>
-
                     ) : (
-
                         <>
 
                             <input
                                 placeholder="Full Name"
                                 value={name}
-                                onChange={
-                                    e =>
-                                        setName(
-                                            e.target.value
-                                        )
+                                onChange={e =>
+                                    setName(
+                                        e.target.value
+                                    )
                                 }
                             />
 
@@ -660,11 +568,10 @@ const deployment =
                             <input
                                 placeholder="Email"
                                 value={email}
-                                onChange={
-                                    e =>
-                                        setEmail(
-                                            e.target.value
-                                        )
+                                onChange={e =>
+                                    setEmail(
+                                        e.target.value
+                                    )
                                 }
                             />
 
@@ -673,11 +580,10 @@ const deployment =
                                 type="password"
                                 placeholder="Password"
                                 value={password}
-                                onChange={
-                                    e =>
-                                        setPassword(
-                                            e.target.value
-                                        )
+                                onChange={e =>
+                                    setPassword(
+                                        e.target.value
+                                    )
                                 }
                             />
 
@@ -706,29 +612,31 @@ const deployment =
                             </button>
 
                         </>
-
                     )}
 
                 </div>
 
             </div>
         );
-
     }
 
+
+    /*
+     * ADMIN
+     */
     if (user.role === "ADMIN") {
+        return (
+            <AdminApp
+                onLogout={logout}
+            />
+        );
+    }
 
+
+    /*
+     * USER DASHBOARD
+     */
     return (
-        <AdminApp
-            onLogout={logout}
-        />
-    );
-
-}
-
-
-    return (
-
         <DashboardLayout
             user={user}
             balance={balance}
@@ -746,29 +654,270 @@ const deployment =
 
 
             {page === "deployments" && (
-    <Deployments
-        deployments={deployments}
-        onPair={pairBot}
-        onPairCode={pairPhone}
-        onStop={stopBot}
-        botName={botName}
-        setBotName={setBotName}
-        deployBot={deployBot}
-        deploying={deploying}
-        pairingId={pairingId}
-        qr={qr}
-        pairingCode={pairingCode}
-    />
-)}
-
-
-            {page === "pairing" && (
-                <ComingSoon
-                    title="Pairing"
-                    icon="📱"
+                <Deployments
+                    deployments={deployments}
+                    onPair={pairBot}
+                    onPairCode={pairPhone}
+                    onStop={stopBot}
+                    botName={botName}
+                    setBotName={setBotName}
+                    deployBot={deployBot}
+                    deploying={deploying}
+                    pairingId={pairingId}
+                    qr={qr}
+                    pairingCode={pairingCode}
                 />
             )}
 
+
+            {page === "pairing" && (
+    <section className="page-section">
+
+        <div className="page-header">
+            <div>
+                <h1>📱 WhatsApp Pairing</h1>
+                <p>
+                    Connect a WhatsApp account to one of your JLEY-XMD bots.
+                </p>
+            </div>
+        </div>
+
+
+        {error && (
+            <div className="error-box">
+                {error}
+            </div>
+        )}
+
+
+        {message && (
+            <div className="success-box">
+                {message}
+            </div>
+        )}
+
+
+        <div className="dashboard-card">
+
+            <div className="card-header">
+                <div>
+                    <h2>Select a deployment</h2>
+                    <p>
+                        Choose the bot you want to connect to WhatsApp.
+                    </p>
+                </div>
+            </div>
+
+
+            {deployments.length === 0 ? (
+
+                <div className="empty-state">
+                    <h3>No deployments available</h3>
+
+                    <p>
+                        Create a deployment first, then return here
+                        to connect WhatsApp.
+                    </p>
+                </div>
+
+            ) : (
+
+                <div className="deployment-cards">
+
+                    {deployments.map((deployment) => {
+
+                        const connected =
+                            deployment.connectionStatus === "CONNECTED" ||
+                            deployment.status === "RUNNING";
+
+                        const selected =
+                            pairingId === deployment.id;
+
+                        return (
+                            <div
+                                className="dashboard-card deployment-card"
+                                key={deployment.id}
+                            >
+
+                                <div className="deployment-card-header">
+
+                                    <div>
+                                        <h3>
+                                            {deployment.botName || "JLEY Bot"}
+                                        </h3>
+
+                                        <span className="deployment-id">
+                                            Deployment ID: {deployment.id}
+                                        </span>
+                                    </div>
+
+
+                                    <span
+                                        className={
+                                            connected
+                                                ? "status-badge status-online"
+                                                : "status-badge status-offline"
+                                        }
+                                    >
+                                        <span className="status-dot" />
+
+                                        {connected
+                                            ? "Connected"
+                                            : "Not connected"}
+                                    </span>
+
+                                </div>
+
+
+                                <div className="deployment-details">
+
+                                    <div className="deployment-detail">
+                                        <span>WhatsApp</span>
+
+                                        <strong>
+                                            {deployment.phoneNumber ||
+                                                "Not paired"}
+                                        </strong>
+                                    </div>
+
+
+                                    <div className="deployment-detail">
+                                        <span>Connection</span>
+
+                                        <strong>
+                                            {deployment.connectionStatus ||
+                                                "OFFLINE"}
+                                        </strong>
+                                    </div>
+
+                                </div>
+
+
+                                {!connected && (
+                                    <div className="deployment-card-actions">
+
+                                        <button
+                                            className="primary-button"
+                                            onClick={() =>
+                                                pairBot(deployment.id)
+                                            }
+                                        >
+                                            📷 Pair with QR
+                                        </button>
+
+
+                                        <button
+                                            className="secondary-button"
+                                            onClick={() =>
+                                                pairPhone(deployment.id)
+                                            }
+                                        >
+                                            🔢 Pair with Code
+                                        </button>
+
+                                    </div>
+                                )}
+
+                            </div>
+                        );
+                    })}
+
+                </div>
+
+            )}
+
+        </div>
+
+
+        {pairingId && (
+            <div className="dashboard-card pairing-panel">
+
+                <div className="card-header">
+
+                    <div>
+                        <h2>WhatsApp Pairing</h2>
+
+                        <p>
+                            Complete the connection using WhatsApp on your phone.
+                        </p>
+                    </div>
+
+                    <span className="status-badge status-online">
+                        <span className="status-dot" />
+                        Waiting
+                    </span>
+
+                </div>
+
+
+                <div className="pairing-content">
+
+                    {qr ? (
+
+                        <div className="qr-section">
+
+                            <div className="qr-frame">
+                                <img
+                                    src={qr}
+                                    alt="WhatsApp pairing QR code"
+                                />
+                            </div>
+
+                            <h3>
+                                Scan this QR code
+                            </h3>
+
+                            <p>
+                                Open WhatsApp → Linked Devices →
+                                Link a Device, then scan this QR code.
+                            </p>
+
+                        </div>
+
+                    ) : pairingCode ? (
+
+                        <div className="code-section">
+
+                            <div className="pairing-code">
+                                {pairingCode}
+                            </div>
+
+                            <h3>
+                                WhatsApp pairing code
+                            </h3>
+
+                            <p>
+                                Enter this code in WhatsApp when prompted
+                                to link the device.
+                            </p>
+
+                        </div>
+
+                    ) : (
+
+                        <div className="pairing-loading">
+
+                            <div className="loading-spinner" />
+
+                            <h3>
+                                Preparing WhatsApp connection...
+                            </h3>
+
+                            <p>
+                                Waiting for pairing information.
+                            </p>
+
+                        </div>
+
+                    )}
+
+                </div>
+
+            </div>
+        )}
+
+    </section>
+)}
 
             {page === "plugins" && (
                 <ComingSoon
@@ -817,25 +966,24 @@ const deployment =
                 />
             )}
 
+
             {page === "admin" && (
-    user?.role === "ADMIN"
-        ? (
-            <Admin
-                user={user}
-            />
-        )
-        : (
-            <ComingSoon
-                title="Access Denied"
-                icon="🛡️"
-            />
-        )
-)}
+                user?.role === "ADMIN"
+                    ? (
+                        <Admin
+                            user={user}
+                        />
+                    )
+                    : (
+                        <ComingSoon
+                            title="Access Denied"
+                            icon="🛡️"
+                        />
+                    )
+            )}
 
         </DashboardLayout>
-
     );
-
 }
 
 
