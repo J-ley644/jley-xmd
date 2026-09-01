@@ -88,7 +88,7 @@ model Deployment {
   connectionStatus String           @default("OFFLINE")
   pairingCode      String?
   phoneNumber      String?
-  sessionId        String?
+  sessionId        String? @unique
   activatedAt      DateTime?
   expiresAt        DateTime?
   owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)

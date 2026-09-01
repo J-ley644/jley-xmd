@@ -8,6 +8,8 @@ import QRCode from "qrcode";
 
 import prisma from "../../config/prisma.js";
 
+import { generateSessionId } from "../../utils/sessionId.js";
+
 import {
     CONNECTION,
     RECONNECT_INITIAL_DELAY,
@@ -344,36 +346,176 @@ export async function createSocket(
 
                     try {
 
-                        await prisma.deployment.update({
+    const deployment =
+        await prisma.deployment.findUnique({
+            where: {
+                id: key
+            }
+        });
 
-                            where: {
-                                id: key
-                            },
 
-                            data: {
+    if (!deployment) {
 
-                                status: "RUNNING",
+        console.error(
+            `Deployment ${key} not found while connecting.`
+        );
 
-                                connectionStatus:
-                                    "CONNECTED",
+        return;
 
-                                sessionReady: true,
+    }
 
-                                lastConnected:
-                                    new Date()
 
-                            }
+    /*
+     * Generate the application-level JLEY session ID
+     * only after WhatsApp has successfully connected.
+     *
+     * Existing deployments keep their original session ID
+     * across reconnects.
+     */
 
-                        });
+    let sessionId =
+        deployment.sessionId;
 
-                    } catch (error) {
 
-                        console.error(
-                            "DB connection update:",
-                            error.message
-                        );
+    if (!sessionId) {
 
+        sessionId =
+            generateSessionId();
+
+
+        /*
+         * Atomically claim the session ID.
+         *
+         * This prevents duplicate IDs/messages if WhatsApp
+         * emits the open event more than once.
+         */
+
+        const claimed =
+            await prisma.deployment.updateMany({
+
+                where: {
+
+                    id: key,
+
+                    sessionId: null
+
+                },
+
+                data: {
+
+                    sessionId
+
+                }
+
+            });
+
+
+        if (claimed.count === 0) {
+
+            const existing =
+                await prisma.deployment.findUnique({
+                    where: {
+                        id: key
+                    },
+                    select: {
+                        sessionId: true
                     }
+                });
+
+            sessionId =
+                existing?.sessionId || sessionId;
+
+        }
+
+    }
+
+
+    /*
+     * Mark deployment as fully connected.
+     */
+
+    await prisma.deployment.update({
+
+        where: {
+            id: key
+        },
+
+        data: {
+
+            status: "RUNNING",
+
+            connectionStatus:
+                "CONNECTED",
+
+            sessionReady: true,
+
+            lastConnected:
+                new Date()
+
+        }
+
+    });
+
+
+    /*
+     * Send the JLEY session ID to the linked
+     * WhatsApp account's own DM.
+     *
+     * sock.user.id is available after the socket
+     * successfully reaches the open state.
+     */
+
+    if (
+        sessionId &&
+        sock.user?.id &&
+        !deployment.sessionId
+    ) {
+
+        try {
+
+            await sock.sendMessage(
+                sock.user.id,
+                {
+                    text:
+                        `JLEY-XMD Session ID\n\n` +
+                        `${sessionId}\n\n` +
+                        `Keep this Session ID private. ` +
+                        `Paste it into the preserved-session ` +
+                        `configuration of your bot.`
+                }
+            );
+
+
+            console.log(
+                `JLEY session ID sent to WhatsApp for deployment ${key}`
+            );
+
+        } catch (error) {
+
+            /*
+             * The session ID is already safely stored in
+             * the database. If WhatsApp temporarily fails
+             * to deliver the DM, the deployment itself
+             * remains connected.
+             */
+
+            console.error(
+                "Failed to send JLEY session ID:",
+                error.message
+            );
+
+        }
+
+    }
+
+} catch (error) {
+
+    console.error(
+        "DB connection/session update:",
+        error.message
+    );
+
+}
 
 
                     console.log(
