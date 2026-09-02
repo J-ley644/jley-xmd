@@ -33,25 +33,34 @@ async function prepareGroupStatusMedia(
                     client.logger,
 
                 upload: async (
-                    stream,
-                    options = {}
-                ) => {
+    stream,
+    options = {}
+) => {
 
-                    const result =
-                        await client.waUploadToServer(
-                            stream,
-                            options
-                        );
+    const result =
+        await client.waUploadToServer(
+            stream,
+            options
+        );
 
-                    if (result?.handle) {
+    console.log(
+        "GROUP STATUS UPLOAD RESULT:",
+        {
+            hasHandle: Boolean(result?.handle),
+            handle: result?.handle,
+            hasMediaUrl: Boolean(result?.mediaUrl),
+            hasDirectPath: Boolean(result?.directPath)
+        }
+    );
 
-                        mediaHandle =
-                            result.handle;
+    mediaHandle =
+        result?.handle ||
+        result?.mediaUrl ||
+        result?.directPath ||
+        null;
 
-                    }
-
-                    return result;
-                }
+    return result;
+}
             }
         );
 
