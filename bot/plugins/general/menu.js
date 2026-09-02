@@ -39,11 +39,9 @@ export default {
                 requestedCategory
             );
 
-        /*
-         * If a banner is configured,
-         * send the banner together with
-         * the redesigned menu and channel button.
-         */
+        const menuWithChannel =
+            `${menu}\n\n📢 JLEY-XMD Channel\n${CHANNEL_URL}`;
+
         if (
             await menuStore.hasBanner()
         ) {
@@ -55,39 +53,19 @@ export default {
 
                 image: banner,
 
-                caption: menu,
+                caption: menuWithChannel,
 
-                templateButtons: [
-    {
-        index: 1,
-        urlButton: {
-            displayText: "View Channel",
-            url: CHANNEL_URL
-        }
-    }
-]
+                linkPreview: true
 
             });
 
         }
 
-        /*
-         * No banner:
-         * send the menu with the channel button.
-         */
         return ctx.send({
 
-            text: menu,
+            text: menuWithChannel,
 
-            templateButtons: [
-                {
-                    index: 1,
-                    urlButton: {
-                        displayText: "📢 View Channel",
-                        url: CHANNEL_URL
-                    }
-                }
-            ]
+            linkPreview: true
 
         });
 
