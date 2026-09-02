@@ -7,7 +7,7 @@ const icons = {
     general: "⚡",
     group: "👥",
     download: "📥",
-    owner: "👑",
+    developer: "👑",
     admin: "🛡️",
     tools: "🛠️",
     fun: "🎮",

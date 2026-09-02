@@ -1,21 +1,20 @@
-import menuStore from "../../system/menuStore.js";
-
 export default {
 
-    name: "setmenu",
+    name: "setpp",
 
     aliases: [
-        "menubanner"
+        "setprofilepic",
+        "setprofile"
     ],
 
-    category: "developer",
+    category: "general",
 
-    description: "Set the global menu banner",
+    description: "Set the bot's profile picture",
 
-    usage: ".setmenu (reply to an image)",
+    usage: ".setpp (reply to an image)",
 
     permissions: {
-        owner: true
+        botOwnerOrJleyOwner: true
     },
 
     async execute(ctx) {
@@ -29,7 +28,7 @@ Example:
 
 Reply to a photo then send
 
-.setmenu`
+.setpp`
             );
 
         }
@@ -45,27 +44,30 @@ Reply to a photo then send
         try {
 
             const buffer =
-    await ctx.downloadBuffer();
+                await ctx.downloadBuffer();
 
-            await menuStore.setBanner(
+            await ctx.client.updateProfilePicture(
+                ctx.client.user.id,
                 buffer
             );
 
             await ctx.reply(
-`✅ Menu banner updated successfully.
+`✅ Bot profile picture updated successfully.
 
-Every user will now receive the new banner when using .menu.`
+🤖 ${ctx.botName}
+
+The new profile picture is now active.`
             );
 
         } catch (error) {
 
             console.error(
-                "Menu banner update failed:",
+                "Profile picture update failed:",
                 error
             );
 
             await ctx.reply(
-                "❌ Failed to update the menu banner."
+                "❌ Failed to update the bot profile picture."
             );
 
         }

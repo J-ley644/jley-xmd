@@ -165,6 +165,35 @@ export default function checkPermissions(
 
     }
 
+    /*
+|--------------------------------------------------------------------------
+| BOT OWNER OR JLEY DEVELOPER
+|--------------------------------------------------------------------------
+|
+| Commands marked:
+|
+|     botOwnerOrJleyOwner: true
+|
+| are available to either the deployment owner
+| or the JLEY developer.
+|
+*/
+
+if (permissions.botOwnerOrJleyOwner) {
+
+    if (
+        !isBotOwner(ctx) &&
+        !isJleyOwner(ctx)
+    ) {
+
+        return (
+            "❌ This command is only available to the bot owner or JLEY developer."
+        );
+
+    }
+
+}
+
 
     /*
     |--------------------------------------------------------------------------

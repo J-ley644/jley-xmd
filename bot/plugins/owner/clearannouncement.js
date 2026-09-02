@@ -8,7 +8,7 @@ export default {
         "clearnews"
     ],
 
-    category: "owner",
+    category: "developer",
 
     description: "Remove the global menu announcement",
 

@@ -72,7 +72,7 @@ const categoryReactions = {
 
     download: "📥",
 
-    owner: "👑",
+    developer: "👑",
 
     admin: "🛡️",
 

@@ -9,7 +9,7 @@ export default {
         "announce"
     ],
 
-    category: "owner",
+    category: "developer",
 
     description: "Set the global menu announcement",
 
