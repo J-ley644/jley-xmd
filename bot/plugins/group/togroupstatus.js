@@ -33,11 +33,9 @@ export default {
 
     async execute(ctx) {
 
-        /*
-         * ----------------------------------------------------------
-         * Validate reply
-         * ----------------------------------------------------------
-         */
+        // ---------------------------------------------------------
+        // Validate reply
+        // ---------------------------------------------------------
 
         if (!ctx.isReply) {
 
@@ -54,16 +52,11 @@ Reply to a photo or video, then send:
         }
 
 
-        /*
-         * ----------------------------------------------------------
-         * Validate media type
-         * ----------------------------------------------------------
-         */
+        // ---------------------------------------------------------
+        // Validate media
+        // ---------------------------------------------------------
 
-        if (
-            !ctx.isImage &&
-            !ctx.isVideo
-        ) {
+        if (!ctx.isImage && !ctx.isVideo) {
 
             return ctx.reply(
                 "❌ The replied message must be an image or video."
@@ -77,11 +70,9 @@ Reply to a photo or video, then send:
             await ctx.react("📤");
 
 
-            /*
-             * ------------------------------------------------------
-             * Download replied media
-             * ------------------------------------------------------
-             */
+            // -----------------------------------------------------
+            // Download replied media
+            // -----------------------------------------------------
 
             const buffer =
                 await ctx.downloadBuffer();
@@ -100,12 +91,6 @@ Reply to a photo or video, then send:
             }
 
 
-            /*
-             * ------------------------------------------------------
-             * Debug information
-             * ------------------------------------------------------
-             */
-
             console.log(
                 "GROUP STATUS MEDIA:",
                 {
@@ -113,9 +98,6 @@ Reply to a photo or video, then send:
                         ctx.isImage
                             ? "image"
                             : "video",
-
-                    isBuffer:
-                        Buffer.isBuffer(buffer),
 
                     size:
                         buffer.length,
@@ -126,22 +108,9 @@ Reply to a photo or video, then send:
             );
 
 
-            /*
-             * ------------------------------------------------------
-             * Build normal WhatsApp media content.
-             *
-             * IMPORTANT:
-             *
-             * generateWAMessageContent() prepares/uploads
-             * the actual image/video and creates:
-             *
-             * imageMessage
-             *
-             * or
-             *
-             * videoMessage
-             * ------------------------------------------------------
-             */
+            // -----------------------------------------------------
+            // Prepare media
+            // -----------------------------------------------------
 
             const mediaContent =
                 ctx.isImage
@@ -153,7 +122,7 @@ Reply to a photo or video, then send:
                     };
 
 
-            const mediaMessage =
+            const preparedMedia =
                 await generateWAMessageContent(
                     mediaContent,
                     {
@@ -169,12 +138,6 @@ Reply to a photo or video, then send:
                 );
 
 
-            /*
-             * ------------------------------------------------------
-             * Make sure media generation succeeded.
-             * ------------------------------------------------------
-             */
-
             const mediaKey =
                 ctx.isImage
                     ? "imageMessage"
@@ -182,71 +145,43 @@ Reply to a photo or video, then send:
 
 
             if (
-                !mediaMessage ||
-                !mediaMessage[mediaKey]
+                !preparedMedia ||
+                !preparedMedia[mediaKey]
             ) {
 
                 throw new Error(
-                    `Failed to generate ${mediaKey}.`
+                    `Failed to prepare ${mediaKey}.`
                 );
 
             }
 
 
-            /*
-             * ------------------------------------------------------
-             * Generate a fresh message secret.
-             *
-             * Group Status V2 requires messageSecret.
-             * ------------------------------------------------------
-             */
+            // -----------------------------------------------------
+            // Group Status secret
+            // -----------------------------------------------------
 
             const messageSecret =
                 crypto.randomBytes(32);
 
 
-            /*
-             * ------------------------------------------------------
-             * Add Group Status context information.
-             * ------------------------------------------------------
-             */
+            // -----------------------------------------------------
+            // Build Group Status V2
+            // -----------------------------------------------------
 
-            mediaMessage[mediaKey].contextInfo = {
-
-                ...(mediaMessage[mediaKey].contextInfo || {}),
-
-                isGroupStatus:
-                    true
-
-            };
-
-
-            /*
-             * ------------------------------------------------------
-             * Build Group Status V2 message.
-             *
-             * This is the important part.
-             * ------------------------------------------------------
-             */
-
-            const groupStatusContent = {
+            const statusMessage = {
 
                 messageContextInfo: {
-
                     messageSecret
-
                 },
 
                 groupStatusMessageV2: {
 
                     message: {
 
-                        ...mediaMessage,
+                        ...preparedMedia,
 
                         messageContextInfo: {
-
                             messageSecret
-
                         }
 
                     }
@@ -256,19 +191,40 @@ Reply to a photo or video, then send:
             };
 
 
-            /*
-             * ------------------------------------------------------
-             * Convert the protobuf content into a complete
-             * WhatsApp WebMessageInfo.
-             *
-             * We DO NOT use sendMessage() here.
-             * ------------------------------------------------------
-             */
+            console.log(
+                "GROUP STATUS BUILD:",
+                {
+                    type:
+                        ctx.isImage
+                            ? "image"
+                            : "video",
+
+                    group:
+                        ctx.chat,
+
+                    mediaKey,
+
+                    hasSecret:
+                        Boolean(messageSecret),
+
+                    hasMedia:
+                        Boolean(
+                            statusMessage
+                                .groupStatusMessageV2
+                                .message[mediaKey]
+                        )
+                }
+            );
+
+
+            // -----------------------------------------------------
+            // Generate complete WhatsApp message
+            // -----------------------------------------------------
 
             const generatedMessage =
                 generateWAMessageFromContent(
                     ctx.chat,
-                    groupStatusContent,
+                    statusMessage,
                     {
                         userJid:
                             ctx.client.user?.id
@@ -288,14 +244,26 @@ Reply to a photo or video, then send:
             }
 
 
-            /*
-             * ------------------------------------------------------
-             * Relay the already-generated protobuf message.
-             *
-             * This avoids sendMessage() trying to process
-             * groupStatusMessageV2 as normal media.
-             * ------------------------------------------------------
-             */
+            console.log(
+                "GROUP STATUS RELAY:",
+                {
+                    remoteJid:
+                        generatedMessage.key?.remoteJid,
+
+                    messageId:
+                        generatedMessage.key?.id,
+
+                    contentType:
+                        Object.keys(
+                            generatedMessage.message || {}
+                        )
+                }
+            );
+
+
+            // -----------------------------------------------------
+            // Relay Group Status
+            // -----------------------------------------------------
 
             await ctx.client.relayMessage(
                 ctx.chat,
@@ -310,11 +278,9 @@ Reply to a photo or video, then send:
             );
 
 
-            /*
-             * ------------------------------------------------------
-             * Success
-             * ------------------------------------------------------
-             */
+            // -----------------------------------------------------
+            // Success
+            // -----------------------------------------------------
 
             await ctx.react("✅");
 
@@ -325,12 +291,6 @@ Reply to a photo or video, then send:
 
 
         } catch (error) {
-
-            /*
-             * ------------------------------------------------------
-             * Detailed error logging
-             * ------------------------------------------------------
-             */
 
             console.error(
                 "======================================"
