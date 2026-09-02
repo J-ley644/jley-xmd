@@ -1,4 +1,3 @@
-
 import config from "../config/config.js";
 import menuStore from "../system/menuStore.js";
 
@@ -16,40 +15,26 @@ const icons = {
     other: "📌"
 };
 
-const CHANNEL_URL =
-    "https://whatsapp.com/channel/0029Vb8fXJpEquiKJsG56i29";
-
-
 function greeting() {
 
-    const hour =
-        new Date().getHours();
+    const hour = new Date().getHours();
 
-    if (hour < 12) {
-        return "𝐆𝐨𝐨𝐝 𝐌𝐨𝐫𝐧𝐢𝐧𝐠";
-    }
-
-    if (hour < 17) {
-        return "𝐆𝐨𝐨𝐝 𝐀𝐟𝐭𝐞𝐫𝐧𝐨𝐨𝐧";
-    }
-
-    if (hour < 21) {
-        return "𝐆𝐨𝐨𝐝 𝐄𝐯𝐞𝐧𝐢𝐧𝐠";
-    }
+    if (hour < 12) return "𝐆𝐨𝐨𝐝 𝐌𝐨𝐫𝐧𝐢𝐧𝐠";
+    if (hour < 17) return "𝐆𝐨𝐨𝐝 𝐀𝐟𝐭𝐞𝐫𝐧𝐨𝐨𝐧";
+    if (hour < 21) return "𝐆𝐨𝐨𝐝 𝐄𝐯𝐞𝐧𝐢𝐧𝐠";
 
     return "𝐆𝐨𝐨𝐝 𝐍𝐢𝐠𝐡𝐭";
 }
 
-
-function buildCategories(plugins) {
+function generateMenu(
+    plugins,
+    ctx,
+    requestedCategory = null
+) {
 
     const categories = {};
 
     for (const [, command] of plugins) {
-
-        if (!command) {
-            continue;
-        }
 
         const category =
             command.category || "other";
@@ -61,86 +46,47 @@ function buildCategories(plugins) {
         categories[category].push(command);
     }
 
-    return categories;
-}
-
-
-function sortedCategoryNames(categories) {
-
-    return Object.keys(categories)
-        .sort((a, b) =>
-            a.localeCompare(b)
-        );
-
-}
-
-
-function generateMenu(
-    plugins,
-    ctx,
-    requestedCategory = null
-) {
-
-    const categories =
-        buildCategories(plugins);
-
-    const names =
-        sortedCategoryNames(categories);
+    const names = Object.keys(categories)
+        .sort();
 
     const prefix =
-        ctx?.prefix ||
-        config.prefix ||
-        ".";
+        ctx?.prefix || config.prefix;
 
     const user =
-        ctx?.pushName ||
-        "User";
+        ctx?.pushName || "User";
 
     const version =
-        ctx?.version ||
-        "Unknown";
+        ctx?.version || "Unknown";
 
     const uptime =
         ctx?.runtime?.formatUptime?.() ||
         "Unknown";
 
     const total =
-        typeof plugins?.size === "number"
-            ? plugins.size
-            : Array.isArray(plugins)
-                ? plugins.length
-                : 0;
-
-
-    /*
-     * CATEGORY MENU
-     */
+        plugins.size || plugins.length || 0;
 
     const category =
         requestedCategory
             ?.trim()
             .toLowerCase();
 
-
     if (category) {
 
         const actual =
             names.find(
                 name =>
-                    name.toLowerCase() ===
-                    category
+                    name.toLowerCase() === category
             );
-
 
         if (!actual) {
 
             return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
 
-  ❌ 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐘 𝐍𝐎𝐓 𝐅𝐎𝐔𝐍𝐃
+  ❌ 𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲 𝐍𝐨𝐭 𝐅𝐨𝐮𝐧𝐝
 
   "${requestedCategory}"
 
-  𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄:
+  𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞:
 ${names.map(
     name =>
         `  ${icons[name] || "•"} ${name.toUpperCase()}`
@@ -152,17 +98,13 @@ ${names.map(
 
         }
 
-
         const commands =
             categories[actual]
                 .slice()
                 .sort(
                     (a, b) =>
-                        a.name.localeCompare(
-                            b.name
-                        )
+                        a.name.localeCompare(b.name)
                 );
-
 
         return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
 
@@ -185,14 +127,8 @@ ${commands.map(
 
     }
 
-
-    /*
-     * MAIN MENU
-     */
-
     const announcement =
         menuStore.getAnnouncement();
-
 
     let menu = `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
 
@@ -210,15 +146,7 @@ ${commands.map(
 
 `;
 
-
-    /*
-     * ANNOUNCEMENT
-     */
-
-    if (
-        announcement?.announcementEnabled &&
-        announcement?.announcement
-    ) {
+    if (announcement.announcementEnabled) {
 
         menu += `  📢 𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐌𝐄𝐍𝐓
   ─────────────────
@@ -227,11 +155,6 @@ ${commands.map(
 `;
 
     }
-
-
-    /*
-     * COMMAND CENTER
-     */
 
     menu += `  𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑
   ─────────────────
@@ -250,46 +173,7 @@ ${names.map(
 
 ╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
 
-
     return menu;
-
 }
-
-
-/*
- * The menu command can import these if desired.
- *
- * This keeps the channel configuration in one place
- * instead of duplicating the URL throughout the bot.
- */
-
-export function getChannelUrl() {
-
-    return CHANNEL_URL;
-
-}
-
-
-export function getChannelButton() {
-
-    return {
-
-        index: 1,
-
-        urlButton: {
-
-            displayText:
-                "📢 View Channel",
-
-            url:
-                CHANNEL_URL
-
-        }
-
-    };
-
-}
-
 
 export default generateMenu;
-

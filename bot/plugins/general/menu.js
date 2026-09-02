@@ -1,361 +1,96 @@
-import config from "../config/config.js";
-import menuStore from "../system/menuStore.js";
+import generateMenu from "../../lib/menu.js";
+import pluginStore from "../../system/pluginStore.js";
+import menuStore from "../../system/menuStore.js";
 
 const CHANNEL_URL =
     "https://whatsapp.com/channel/0029Vb8fXJpEquiKJsG56i29";
 
-const icons = {
-    general: "⚡",
-    group: "👥",
-    download: "📥",
-    owner: "👑",
-    admin: "🛡️",
-    tools: "🛠️",
-    fun: "🎮",
-    automation: "🤖",
-    media: "🎬",
-    antidelete: "🗑️",
-    other: "📌"
-};
+export default {
 
+    name: "menu",
 
-function greeting() {
+    aliases: [
+        "commands",
+        "list"
+    ],
 
-    const hour =
-        new Date().getHours();
+    category: "general",
 
-    if (hour < 12) {
-        return "𝐆𝐨𝐨𝐝 𝐌𝐨𝐫𝐧𝐢𝐧𝐠";
-    }
+    description: "Display available bot commands.",
 
-    if (hour < 17) {
-        return "𝐆𝐨𝐨𝐝 𝐀𝐟𝐭𝐞𝐫𝐧𝐨𝐨𝐧";
-    }
+    usage: ".menu [category]",
 
-    if (hour < 21) {
-        return "𝐆𝐨𝐨𝐝 𝐄𝐯𝐞𝐧𝐢𝐧𝐠";
-    }
+    cooldown: 5,
 
-    return "𝐆𝐨𝐨𝐝 𝐍𝐢𝐠𝐡𝐭";
-}
+    permissions: {},
 
+    async execute(ctx) {
 
-function generateMenu(
-    plugins,
-    ctx,
-    requestedCategory = null
-) {
+        const plugins =
+            pluginStore.getAll();
 
-    const categories = {};
+        const requestedCategory =
+            ctx.args?.join(" ").trim() || null;
 
-    for (const [, command] of plugins) {
-
-        const category =
-            command.category || "other";
-
-        if (!categories[category]) {
-            categories[category] = [];
-        }
-
-        categories[category].push(command);
-
-    }
-
-
-    const names =
-        Object.keys(categories).sort();
-
-
-    const prefix =
-        ctx?.prefix ||
-        config.prefix;
-
-
-    const user =
-        ctx?.pushName ||
-        "User";
-
-
-    const version =
-        ctx?.version ||
-        "Unknown";
-
-
-    const uptime =
-        ctx?.runtime?.formatUptime?.() ||
-        "Unknown";
-
-
-    const total =
-        plugins.size ||
-        plugins.length ||
-        0;
-
-
-    const category =
-        requestedCategory
-            ?.trim()
-            .toLowerCase();
-
-
-    /*
-     * CATEGORY MENU
-     */
-
-    if (category) {
-
-        const actual =
-            names.find(
-                name =>
-                    name.toLowerCase() === category
+        const menu =
+            generateMenu(
+                plugins,
+                ctx,
+                requestedCategory
             );
 
+        /*
+         * If a banner is configured,
+         * send the banner together with
+         * the redesigned menu and channel button.
+         */
+        if (
+            await menuStore.hasBanner()
+        ) {
 
-        if (!actual) {
+            const banner =
+                await menuStore.getBanner();
 
-            return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
+            return ctx.send({
 
-  ❌ 𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲 𝐍𝐨𝐭 𝐅𝐨𝐮𝐧𝐝
+                image: banner,
 
-  "${requestedCategory}"
+                caption: menu,
 
-  𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞:
-${names.map(
-    name =>
-        `  ${icons[name] || "•"} ${name.toUpperCase()}`
-).join("\n")}
+                templateButtons: [
+                    {
+                        index: 1,
+                        urlButton: {
+                            displayText: "📢 View Channel",
+                            url: CHANNEL_URL
+                        }
+                    }
+                ]
 
-  › ${prefix}menu <category>
-
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
+            });
 
         }
 
-
-        const commands =
-            categories[actual]
-                .slice()
-                .sort(
-                    (a, b) =>
-                        a.name.localeCompare(b.name)
-                );
-
-
-        return `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
-
-  ${icons[actual] || "📌"} 𝐌𝐄𝐍𝐔
-  𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐘 • ${actual.toUpperCase()}
-
-  ─────────────────
-
-${commands.map(
-    (cmd, i) =>
-        `  ${String(i + 1).padStart(2, "0")} › ${prefix}${cmd.name}`
-).join("\n")}
-
-  ─────────────────
-
-  › ${prefix}help <command>
-  › ${prefix}menu
-
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
-
-    }
-
-
-    /*
-     * ANNOUNCEMENT
-     */
-
-    const announcement =
-        menuStore.getAnnouncement();
-
-
-    let menu = `╭─〔 𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃 〕─╮
-
-  ${greeting()}, ${user} 👋
-
-  𝐒𝐘𝐒𝐓𝐄𝐌
-  ─────────────────
-  ◇ User       ${user}
-  ◇ Version    ${version}
-  ◇ Status     ${config.status || "Online"}
-  ◇ Mode       ${config.mode || "Public"}
-  ◇ Uptime     ${uptime}
-  ◇ Commands   ${total}
-  ◇ Categories ${names.length}
-
-`;
-
-
-    if (announcement.announcementEnabled) {
-
-        menu += `  📢 𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐌𝐄𝐍𝐓
-  ─────────────────
-  ${announcement.announcement}
-
-`;
-
-    }
-
-
-    menu += `  𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑
-  ─────────────────
-${names.map(
-    (name, i) =>
-        `  ${String(i + 1).padStart(2, "0")} › ${icons[name] || "📌"} ${name.toUpperCase()}`
-).join("\n")}
-
-  ─────────────────
-
-  › ${prefix}menu <category>
-  › ${prefix}help <command>
-
-  𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃
-  Deploy: https://jley-xmd.netlify.app
-
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
-
-
-    return menu;
-
-}
-
-
-/*
- * Build the menu message.
- *
- * Banner is fetched once.
- * We intentionally do NOT use hasBanner()
- * followed by getBanner(), because that would
- * perform two database queries.
- */
-
-export async function buildMenuMessage(
-    plugins,
-    ctx,
-    requestedCategory = null
-) {
-
-    const menu =
-        generateMenu(
-            plugins,
-            ctx,
-            requestedCategory
-        );
-
-
-    /*
-     * Category menus don't need a database
-     * banner lookup.
-     */
-
-    if (requestedCategory?.trim()) {
-
-        return {
+        /*
+         * No banner:
+         * send the menu with the channel button.
+         */
+        return ctx.send({
 
             text: menu,
 
             templateButtons: [
                 {
                     index: 1,
-
                     urlButton: {
-                        displayText:
-                            "📢 View Channel",
-
-                        url:
-                            CHANNEL_URL
+                        displayText: "📢 View Channel",
+                        url: CHANNEL_URL
                     }
                 }
             ]
 
-        };
+        });
 
     }
 
-
-    /*
-     * One database request instead of:
-     *
-     * hasBanner()
-     * +
-     * getBanner()
-     */
-
-    let banner = null;
-
-    try {
-
-        banner =
-            await menuStore.getBanner();
-
-    } catch (error) {
-
-        console.error(
-            "Menu banner error:",
-            error.message
-        );
-
-    }
-
-
-    /*
-     * Banner menu
-     */
-
-    if (banner) {
-
-        return {
-
-            image: banner,
-
-            caption: menu,
-
-            templateButtons: [
-                {
-                    index: 1,
-
-                    urlButton: {
-                        displayText:
-                            "📢 View Channel",
-
-                        url:
-                            CHANNEL_URL
-                    }
-                }
-            ]
-
-        };
-
-    }
-
-
-    /*
-     * Normal text menu
-     */
-
-    return {
-
-        text: menu,
-
-        templateButtons: [
-            {
-                index: 1,
-
-                urlButton: {
-                    displayText:
-                        "📢 View Channel",
-
-                    url:
-                        CHANNEL_URL
-                }
-            }
-        ]
-
-    };
-
-}
-
-
-export default generateMenu;
+};
