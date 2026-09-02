@@ -58,14 +58,14 @@ export default {
                 caption: menu,
 
                 templateButtons: [
-                    {
-                        index: 1,
-                        urlButton: {
-                            displayText: "📢 View Channel",
-                            url: CHANNEL_URL
-                        }
-                    }
-                ]
+    {
+        index: 1,
+        urlButton: {
+            displayText: "View Channel",
+            url: CHANNEL_URL
+        }
+    }
+]
 
             });
 
