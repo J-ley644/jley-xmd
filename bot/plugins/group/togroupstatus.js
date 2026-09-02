@@ -1,40 +1,33 @@
-﻿import crypto from "crypto";
-
-import {
-generateWAMessageContent
-} from "@whiskeysockets/baileys";
-
+﻿
 export default {
 
+    name: "togroupstatus",
 
-name: "togroupstatus",
+    aliases: [
+        "groupstatus",
+        "statusgroup"
+    ],
 
-aliases: [
-    "groupstatus",
-    "statusgroup"
-],
+    category: "group",
 
-category: "group",
+    description:
+        "Post a replied image or video as a Group Status",
 
-description:
-    "Post a replied image or video as a Group Status",
+    usage:
+        ".togroupstatus (reply to image/video)",
 
-usage:
-    ".togroupstatus (reply to image/video)",
+    permissions: {
+        group: true,
+        botAdmin: true,
+        botOwnerOrJleyOwner: true
+    },
 
-permissions: {
-    group: true,
-    botAdmin: true,
-    botOwnerOrJleyOwner: true
-},
+    async execute(ctx) {
 
-async execute(ctx) {
+        // Make sure the command is replying to something
+        if (!ctx.isReply) {
 
-    if (!ctx.isReply) {
-
-        return ctx.reply(
-
-
+            return ctx.reply(
 `❌ Reply to an image or video.
 
 Example:
@@ -42,129 +35,104 @@ Example:
 Reply to a photo or video, then send:
 
 .togroupstatus`
-);
-
-
-    }
-
-    if (
-        !ctx.isImage &&
-        !ctx.isVideo
-    ) {
-
-        return ctx.reply(
-            "❌ The replied message must be an image or video."
-        );
-
-    }
-
-    try {
-
-        await ctx.react("📤");
-
-        const buffer =
-            await ctx.downloadBuffer();
-
-        if (!buffer) {
-
-            throw new Error(
-                "Failed to download media"
             );
 
         }
 
-        const content =
-            ctx.isImage
-                ? {
-                    image: buffer
-                }
-                : {
-                    video: buffer
-                };
+        // Only allow images and videos
+        if (!ctx.isImage && !ctx.isVideo) {
 
-        const mediaMessage =
-            await generateWAMessageContent(
-                content,
-                {
-                    upload:
-                        ctx.client.waUploadToServer,
-
-                    logger:
-                        ctx.client.logger,
-
-                    jid:
-                        ctx.chat
-                }
-            );
-
-        const mediaKey =
-            ctx.isImage
-                ? "imageMessage"
-                : "videoMessage";
-
-        const media =
-            mediaMessage[mediaKey];
-
-        if (!media) {
-
-            throw new Error(
-                "Failed to generate media message"
+            return ctx.reply(
+                "❌ The replied message must be an image or video."
             );
 
         }
 
-        media.contextInfo = {
-            ...(media.contextInfo || {}),
+        try {
 
-            isGroupStatus:
-                true
-        };
+            await ctx.react("📤");
 
-        const groupStatusMessage = {
+            // Download the replied media
+            const buffer =
+                await ctx.downloadBuffer();
 
-            messageContextInfo: {
+            if (!buffer) {
 
-                messageSecret:
-                    crypto.randomBytes(32)
-
-            },
-
-            groupStatusMessageV2: {
-
-                message:
-                    mediaMessage
+                throw new Error(
+                    "Failed to download media"
+                );
 
             }
 
-        };
+            /*
+             * Send the media as a Group Status.
+             *
+             * We intentionally do NOT use:
+             *
+             * generateWAMessageContent()
+             *
+             * or:
+             *
+             * groupStatusMessageV2
+             *
+             *
+             * Baileys handles the media preparation
+             * when the groupStatusMessage object is
+             * passed directly to sendMessage().
+             */
 
-        await ctx.client.sendMessage(
-            ctx.chat,
-            groupStatusMessage
-        );
+            if (ctx.isImage) {
 
-        await ctx.react("✅");
+                await ctx.client.sendMessage(
+                    ctx.chat,
+                    {
+                        groupStatusMessage: {
+                            image: buffer
+                        }
+                    }
+                );
 
-        return ctx.reply(
-            "✅ Group Status posted successfully."
-        );
+            } else {
 
-    } catch (error) {
+                await ctx.client.sendMessage(
+                    ctx.chat,
+                    {
+                        groupStatusMessage: {
+                            video: buffer
+                        }
+                    }
+                );
 
-        console.error(
-            "Group Status error:",
-            error
-        );
+            }
 
-        await ctx.react("❌");
+            // Success reaction
+            await ctx.react("✅");
 
-        return ctx.reply(
-            "❌ Failed to post Group Status."
-        );
+            return ctx.reply(
+                "✅ Group Status posted successfully."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Group Status error:",
+                error
+            );
+
+            // Failure reaction
+            try {
+                await ctx.react("❌");
+            } catch {}
+
+            return ctx.reply(
+                `❌ Failed to post Group Status.
+
+Error: ${error?.message || "Unknown error"}`
+            );
+
+        }
 
     }
 
-}
-
-
 };
+
