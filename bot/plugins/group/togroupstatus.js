@@ -7,6 +7,317 @@ import {
 } from "@whiskeysockets/baileys";
 
 
+/*
+ * Prepare media while capturing the WhatsApp
+ * media handle. Group Status V2 requires the
+ * media_id on the outer relay attributes.
+ */
+async function prepareGroupStatusMedia(
+    client,
+    groupJid,
+    content
+) {
+
+    let mediaHandle = null;
+
+    const prepared =
+        await generateWAMessageContent(
+            content,
+            {
+                jid: groupJid,
+
+                userJid:
+                    client.user?.id,
+
+                logger:
+                    client.logger,
+
+                upload: async (
+                    stream,
+                    options = {}
+                ) => {
+
+                    const result =
+                        await client.waUploadToServer(
+                            stream,
+                            options
+                        );
+
+                    if (result?.handle) {
+
+                        mediaHandle =
+                            result.handle;
+
+                    }
+
+                    return result;
+                }
+            }
+        );
+
+
+    if (!prepared) {
+
+        throw new Error(
+            "Failed to prepare Group Status media."
+        );
+
+    }
+
+
+    return {
+        prepared,
+        mediaHandle
+    };
+
+}
+
+
+/*
+ * Determine the media type expected by
+ * WhatsApp's outer message stanza.
+ */
+function getGroupStatusMediaType(
+    message
+) {
+
+    if (message?.imageMessage) {
+
+        return "image";
+
+    }
+
+    if (message?.videoMessage) {
+
+        return message.videoMessage
+            .gifPlayback
+            ? "gif"
+            : "video";
+
+    }
+
+    if (message?.audioMessage) {
+
+        return message.audioMessage.ptt
+            ? "ptt"
+            : "audio";
+
+    }
+
+    if (message?.documentMessage) {
+
+        return "document";
+
+    }
+
+    if (message?.stickerMessage) {
+
+        return "sticker";
+
+    }
+
+    return null;
+
+}
+
+
+/*
+ * Send Group Status V2 using the existing
+ * RC14 socket.
+ *
+ * Important:
+ *
+ * - Destination remains groupJid.
+ * - We do NOT use status@broadcast.
+ * - We do NOT use sendMessage().
+ * - We do NOT manually modify node_modules.
+ * - media_id is supplied to relayMessage().
+ */
+async function sendGroupStatus(
+    client,
+    groupJid,
+    content
+) {
+
+    if (
+        !groupJid ||
+        !groupJid.endsWith("@g.us")
+    ) {
+
+        throw new Error(
+            "Group Status requires a @g.us group JID."
+        );
+
+    }
+
+
+    if (!client?.user?.id) {
+
+        throw new Error(
+            "WhatsApp socket is not ready."
+        );
+
+    }
+
+
+    /*
+     * Prepare the actual image/video message.
+     */
+    const {
+        prepared,
+        mediaHandle
+    } =
+        await prepareGroupStatusMedia(
+            client,
+            groupJid,
+            content
+        );
+
+
+    const mediaType =
+        getGroupStatusMediaType(
+            prepared
+        );
+
+
+    if (!mediaType) {
+
+        throw new Error(
+            "Could not determine Group Status media type."
+        );
+
+    }
+
+
+    /*
+     * Group Status V2 wrapper.
+     *
+     * The message secret is included in the
+     * outer and inner message context.
+     */
+    const messageSecret =
+        crypto.randomBytes(32);
+
+
+    const statusMessage = {
+
+        messageContextInfo: {
+            messageSecret
+        },
+
+        groupStatusMessageV2: {
+
+            message: {
+
+                ...prepared,
+
+                messageContextInfo: {
+                    messageSecret
+                }
+
+            }
+
+        }
+
+    };
+
+
+    /*
+     * Build the final WAMessage.
+     */
+    const generated =
+        generateWAMessageFromContent(
+            groupJid,
+            statusMessage,
+            {
+                userJid:
+                    client.user.id
+            }
+        );
+
+
+    if (
+        !generated?.message
+    ) {
+
+        throw new Error(
+            "Failed to generate Group Status message."
+        );
+
+    }
+
+
+    /*
+     * CRITICAL:
+     *
+     * Group Status media needs these attributes
+     * on the OUTER relay.
+     *
+     * media_id comes from waUploadToServer().
+     */
+    const additionalAttributes = {
+
+        mediatype:
+            mediaType
+
+    };
+
+
+    if (mediaHandle) {
+
+        additionalAttributes.media_id =
+            mediaHandle;
+
+    }
+
+
+    console.log(
+        "GROUP STATUS RELAY:",
+        {
+            group: groupJid,
+
+            mediaType,
+
+            hasMediaId:
+                Boolean(mediaHandle),
+
+            messageId:
+                generated.key?.id,
+
+            contentType:
+                Object.keys(
+                    generated.message || {}
+                )
+        }
+    );
+
+
+    /*
+     * Use the existing RC14 group encryption
+     * and relay implementation.
+     */
+    await client.relayMessage(
+        groupJid,
+        generated.message,
+        {
+
+            messageId:
+                generated.key.id,
+
+            useCachedGroupMetadata:
+                true,
+
+            additionalAttributes
+
+        }
+    );
+
+
+    return generated;
+
+}
+
+
 export default {
 
     name: "togroupstatus",
@@ -25,41 +336,34 @@ export default {
         ".togroupstatus (reply to image/video)",
 
     permissions: {
+
         group: true,
+
         botAdmin: true,
+
         botOwnerOrJleyOwner: true
+
     },
 
 
     async execute(ctx) {
 
-        // ---------------------------------------------------------
-        // Validate reply
-        // ---------------------------------------------------------
-
         if (!ctx.isReply) {
 
             return ctx.reply(
-`❌ Reply to an image or video.
-
-Example:
-
-Reply to a photo or video, then send:
-
-.togroupstatus`
+                "❌ Reply to an image or video."
             );
 
         }
 
 
-        // ---------------------------------------------------------
-        // Validate media
-        // ---------------------------------------------------------
-
-        if (!ctx.isImage && !ctx.isVideo) {
+        if (
+            !ctx.isImage &&
+            !ctx.isVideo
+        ) {
 
             return ctx.reply(
-                "❌ The replied message must be an image or video."
+                "❌ The replied message must contain an image or video."
             );
 
         }
@@ -70,10 +374,9 @@ Reply to a photo or video, then send:
             await ctx.react("📤");
 
 
-            // -----------------------------------------------------
-            // Download replied media
-            // -----------------------------------------------------
-
+            /*
+             * Download the replied media.
+             */
             const buffer =
                 await ctx.downloadBuffer();
 
@@ -91,221 +394,69 @@ Reply to a photo or video, then send:
             }
 
 
+            const type =
+                ctx.isImage
+                    ? "image"
+                    : "video";
+
+
             console.log(
-                "GROUP STATUS MEDIA:",
+                "GROUP STATUS PREPARE:",
                 {
-                    type:
-                        ctx.isImage
-                            ? "image"
-                            : "video",
+                    type,
 
                     size:
                         buffer.length,
 
-                    jid:
+                    group:
                         ctx.chat
                 }
             );
 
 
-            // -----------------------------------------------------
-            // Prepare media
-            // -----------------------------------------------------
-
+            /*
+             * Prepare the normal Baileys media
+             * content.
+             *
+             * Do NOT put groupStatusMessageV2
+             * inside generateWAMessageContent().
+             */
             const mediaContent =
                 ctx.isImage
+
                     ? {
                         image: buffer
                     }
+
                     : {
                         video: buffer
                     };
 
 
-            const preparedMedia =
-                await generateWAMessageContent(
-                    mediaContent,
-                    {
-                        upload:
-                            ctx.client.waUploadToServer,
-
-                        logger:
-                            ctx.client.logger,
-
-                        jid:
-                            ctx.chat
-                    }
-                );
-
-
-            const mediaKey =
-                ctx.isImage
-                    ? "imageMessage"
-                    : "videoMessage";
-
-
-            if (
-                !preparedMedia ||
-                !preparedMedia[mediaKey]
-            ) {
-
-                throw new Error(
-                    `Failed to prepare ${mediaKey}.`
-                );
-
-            }
-
-
-            // -----------------------------------------------------
-            // IMPORTANT:
-            // Mark the actual media as Group Status.
-            // -----------------------------------------------------
-
-            preparedMedia[mediaKey].contextInfo = {
-
-                ...(preparedMedia[mediaKey].contextInfo || {}),
-
-                isGroupStatus: true
-
-            };
-
-
-            // -----------------------------------------------------
-            // Generate Group Status secret
-            // -----------------------------------------------------
-
-            const messageSecret =
-                crypto.randomBytes(32);
-
-
-            // -----------------------------------------------------
-            // Build Group Status V2 message
-            // -----------------------------------------------------
-
-            const statusMessage = {
-
-                messageContextInfo: {
-
-                    messageSecret
-
-                },
-
-                groupStatusMessageV2: {
-
-                    message: {
-
-                        ...preparedMedia,
-
-                        messageContextInfo: {
-
-                            messageSecret
-
-                        }
-
-                    }
-
-                }
-
-            };
-
-
-            console.log(
-                "GROUP STATUS BUILD:",
-                {
-                    type:
-                        ctx.isImage
-                            ? "image"
-                            : "video",
-
-                    group:
-                        ctx.chat,
-
-                    mediaKey,
-
-                    hasSecret:
-                        Boolean(messageSecret),
-
-                    hasMedia:
-                        Boolean(
-                            statusMessage
-                                .groupStatusMessageV2
-                                .message[mediaKey]
-                        ),
-
-                    isGroupStatus:
-                        Boolean(
-                            preparedMedia[mediaKey]
-                                .contextInfo
-                                ?.isGroupStatus
-                        )
-                }
-            );
-
-
-            // -----------------------------------------------------
-            // Generate complete WhatsApp message
-            // -----------------------------------------------------
-
-            const generatedMessage =
-                generateWAMessageFromContent(
+            /*
+             * Send Group Status V2.
+             */
+            const result =
+                await sendGroupStatus(
+                    ctx.client,
                     ctx.chat,
-                    statusMessage,
-                    {
-                        userJid:
-                            ctx.client.user?.id
-                    }
+                    mediaContent
                 );
-
-
-            if (
-                !generatedMessage ||
-                !generatedMessage.message
-            ) {
-
-                throw new Error(
-                    "Failed to generate Group Status message."
-                );
-
-            }
 
 
             console.log(
-                "GROUP STATUS RELAY:",
+                "GROUP STATUS SENT:",
                 {
-                    remoteJid:
-                        generatedMessage.key?.remoteJid,
+                    group:
+                        result.key?.remoteJid,
 
                     messageId:
-                        generatedMessage.key?.id,
+                        result.key?.id,
 
-                    contentType:
-                        Object.keys(
-                            generatedMessage.message || {}
-                        )
+                    type
                 }
             );
 
-
-            // -----------------------------------------------------
-            // Relay Group Status
-            // -----------------------------------------------------
-
-            await ctx.client.relayMessage(
-                ctx.chat,
-                generatedMessage.message,
-                {
-                    messageId:
-                        generatedMessage.key.id,
-
-                    useCachedGroupMetadata:
-                        true
-                }
-            );
-
-
-            // -----------------------------------------------------
-            // Success
-            // -----------------------------------------------------
 
             await ctx.react("✅");
 
@@ -348,9 +499,10 @@ Reply to a photo or video, then send:
 
 
             return ctx.reply(
-                `❌ Failed to post Group Status.
-
-Error: ${error?.message || "Unknown error"}`
+                `❌ Failed to post Group Status.\n\nError: ${
+                    error?.message ||
+                    "Unknown error"
+                }`
             );
 
         }
