@@ -157,7 +157,21 @@ Reply to a photo or video, then send:
 
 
             // -----------------------------------------------------
-            // Group Status secret
+            // IMPORTANT:
+            // Mark the actual media as Group Status.
+            // -----------------------------------------------------
+
+            preparedMedia[mediaKey].contextInfo = {
+
+                ...(preparedMedia[mediaKey].contextInfo || {}),
+
+                isGroupStatus: true
+
+            };
+
+
+            // -----------------------------------------------------
+            // Generate Group Status secret
             // -----------------------------------------------------
 
             const messageSecret =
@@ -165,13 +179,15 @@ Reply to a photo or video, then send:
 
 
             // -----------------------------------------------------
-            // Build Group Status V2
+            // Build Group Status V2 message
             // -----------------------------------------------------
 
             const statusMessage = {
 
                 messageContextInfo: {
+
                     messageSecret
+
                 },
 
                 groupStatusMessageV2: {
@@ -181,7 +197,9 @@ Reply to a photo or video, then send:
                         ...preparedMedia,
 
                         messageContextInfo: {
+
                             messageSecret
+
                         }
 
                     }
@@ -212,6 +230,13 @@ Reply to a photo or video, then send:
                             statusMessage
                                 .groupStatusMessageV2
                                 .message[mediaKey]
+                        ),
+
+                    isGroupStatus:
+                        Boolean(
+                            preparedMedia[mediaKey]
+                                .contextInfo
+                                ?.isGroupStatus
                         )
                 }
             );
