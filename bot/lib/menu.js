@@ -33,8 +33,26 @@ function generateMenu(
 ) {
 
     const categories = {};
+    const seen = new Set();
 
+    /*
+     * pluginStore contains both commands and aliases.
+     * Only add each real command once to the menu.
+     */
     for (const [, command] of plugins) {
+
+        if (!command?.name) {
+            continue;
+        }
+
+        const commandName =
+            String(command.name).trim().toLowerCase();
+
+        if (seen.has(commandName)) {
+            continue;
+        }
+
+        seen.add(commandName);
 
         const category =
             command.category || "other";
@@ -62,8 +80,10 @@ function generateMenu(
         ctx?.runtime?.formatUptime?.() ||
         "Unknown";
 
-    const total =
-        plugins.size || plugins.length || 0;
+    /*
+     * Count real commands, not aliases.
+     */
+    const total = seen.size;
 
     const category =
         requestedCategory
@@ -94,7 +114,7 @@ ${names.map(
 
   › ${prefix}menu <category>
 
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐄𝐍𝐆𝐈𝐍𝐄𝐒 〕─╯`;
 
         }
 
@@ -123,7 +143,7 @@ ${commands.map(
   › ${prefix}help <command>
   › ${prefix}menu
 
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐄𝐍𝐆𝐈𝐍𝐄𝐒 〕─╯`;
 
     }
 
@@ -168,10 +188,10 @@ ${names.map(
   › ${prefix}menu <category>
   › ${prefix}help <command>
 
-  𝐉𝐋𝐄𝐘 • 𝐗𝐌𝐃
+  𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐄𝐍𝐆𝐈𝐍𝐄𝐒
   Deploy: https://jley-xmd.netlify.app
 
-╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘 〕─╯`;
+╰─〔 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐄𝐍𝐆𝐈𝐍𝐄𝐒 〕─╯`;
 
     return menu;
 }

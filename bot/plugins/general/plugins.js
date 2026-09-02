@@ -23,34 +23,39 @@ export default {
 
         const categories = {};
 
-
+        const seen = new Set();
 
         for (const [, plugin] of plugins) {
+
+            if (!plugin?.name) {
+                continue;
+            }
+
+            const pluginName =
+                String(plugin.name).trim().toLowerCase();
+
+            if (seen.has(pluginName)) {
+                continue;
+            }
+
+            seen.add(pluginName);
 
             const category =
                 plugin.category || "other";
 
             if (!categories[category]) {
-
                 categories[category] = [];
-
             }
 
-            categories[category]
-                .push(plugin.name);
-
+            categories[category].push(plugin.name);
         }
-
-
 
         let text =
 `╭━━━━━━━━〔 🧩 PLUGIN SYSTEM 〕━━━━━━━━╮
 ┃
-┃  📦 Loaded Plugins • ${pluginStore.size()}
+┃  📦 Loaded Plugins • ${seen.size}
 ┃
 `;
-
-
 
         Object
             .keys(categories)
@@ -74,15 +79,11 @@ export default {
 
             });
 
-
-
         text +=
 `┃
 ┃  🤖 ${ctx.botName}
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`;
-
-
 
         return ctx.reply(text);
 
