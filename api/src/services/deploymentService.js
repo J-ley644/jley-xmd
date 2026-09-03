@@ -1,6 +1,9 @@
 
 import prisma from "../config/prisma.js";
 
+import * as systemSettingService
+    from "./systemSettingService.js";
+
 import {
     startDeploymentSession,
     getDeploymentStatus,
@@ -9,7 +12,7 @@ import {
 
 const DEPLOYMENT_LIFESPAN_DAYS = 32;
 
-const JL_DEPLOYMENT_COST = 50;
+
 
 
 /*
@@ -23,6 +26,14 @@ export async function createDeployment(
     botName
 ) {
 
+    const settings =
+        await systemSettingService
+            .getJLSettings();
+
+    const deploymentCost =
+        settings.deploymentCost;
+
+
     const wallet =
         await prisma.wallet.findUnique({
             where: {
@@ -35,9 +46,9 @@ export async function createDeployment(
     }
 
 
-    if (wallet.balance < JL_DEPLOYMENT_COST) {
+    if (wallet.balance < deploymentCost) {
         throw new Error(
-            `Insufficient JL balance. You need ${JL_DEPLOYMENT_COST} JL.`
+            `Insufficient JL balance. You need ${deploymentCost} JL.`
         );
     }
 
@@ -63,7 +74,7 @@ export async function createDeployment(
                     },
                     data: {
                         balance: {
-                            decrement: JL_DEPLOYMENT_COST
+                            decrement: deploymentCost
                         }
                     }
                 });
@@ -73,7 +84,7 @@ export async function createDeployment(
                 await tx.deployment.create({
                     data: {
                         botName: botName.trim(),
-                        jlCost: JL_DEPLOYMENT_COST,
+                        jlCost: deploymentCost,
                         ownerId: userId,
                         status: "PENDING",
                         connectionStatus: "OFFLINE",
