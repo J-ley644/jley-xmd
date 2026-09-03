@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import Deployments from "./pages/Deployments";
 import Admin from "./pages/Admin";
 import AdminApp from "./admin/AdminApp";
+import Wallet from "./pages/Wallet";
 
 
 function ComingSoon({ title, icon }) {
@@ -944,11 +945,10 @@ function App() {
 
 
             {page === "wallet" && (
-                <ComingSoon
-                    title="JL Wallet"
-                    icon="💰"
-                />
-            )}
+    <Wallet
+        balance={balance}
+    />
+)}
 
 
             {page === "updates" && (

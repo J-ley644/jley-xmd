@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    JLEY-XMD DASHBOARD
    Clean UI Foundation
    ========================================================= */
@@ -2657,4 +2657,380 @@ nav {
 .admin-empty,
 .admin-access-card p {
     color: rgba(245, 247, 250, 0.75);
+}
+
+/* ========================================
+   JL WALLET
+======================================== */
+
+.wallet-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 32px;
+    margin-bottom: 24px;
+
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.03)
+        );
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.1);
+}
+
+
+.wallet-hero-content {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.wallet-label {
+    font-size: 14px;
+
+    opacity: 0.7;
+
+    margin-bottom: 8px;
+}
+
+
+.wallet-hero h2 {
+    font-size: 48px;
+
+    margin: 0;
+}
+
+
+.wallet-hero h2 span {
+    font-size: 20px;
+
+    margin-left: 8px;
+
+    opacity: 0.7;
+}
+
+
+.wallet-hero p {
+    margin-top: 12px;
+
+    opacity: 0.7;
+
+    max-width: 500px;
+}
+
+
+.wallet-hero-icon {
+    font-size: 72px;
+}
+
+
+/* ========================================
+   BUY JL
+======================================== */
+
+.coming-soon-badge {
+    padding: 8px 14px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    background:
+        rgba(255, 193, 7, 0.12);
+
+    border:
+        1px solid
+        rgba(255, 193, 7, 0.25);
+}
+
+
+.jl-packages {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 18px;
+
+    margin-top: 24px;
+}
+
+
+.jl-package {
+    padding: 22px;
+
+    border-radius: 16px;
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+
+    background:
+        rgba(255, 255, 255, 0.03);
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+
+.jl-package h3 {
+    margin: 0 0 8px;
+}
+
+
+.jl-package strong {
+    font-size: 28px;
+}
+
+
+.jl-package p {
+    margin: 0;
+
+    opacity: 0.7;
+
+    min-height: 44px;
+}
+
+
+.jl-package button {
+    width: 100%;
+
+    padding: 12px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    cursor: not-allowed;
+
+    opacity: 0.6;
+}
+
+
+.featured-package {
+    transform:
+        translateY(-4px);
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.2);
+}
+
+
+.wallet-info-box {
+    margin-top: 24px;
+
+    padding: 18px;
+
+    border-radius: 14px;
+
+    background:
+        rgba(255, 255, 255, 0.04);
+}
+
+
+.wallet-info-box strong {
+    display: block;
+
+    margin-bottom: 8px;
+}
+
+
+.wallet-info-box p {
+    margin: 0;
+
+    line-height: 1.6;
+
+    opacity: 0.75;
+}
+
+
+/* ========================================
+   TRANSACTIONS
+======================================== */
+
+.transaction-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+    margin-top: 20px;
+}
+
+
+.transaction-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    padding: 18px;
+
+    border-radius: 14px;
+
+    background:
+        rgba(255, 255, 255, 0.03);
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.06);
+}
+
+
+.transaction-icon {
+    width: 44px;
+
+    height: 44px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background:
+        rgba(255, 255, 255, 0.06);
+
+    font-size: 18px;
+}
+
+
+.transaction-main {
+    flex: 1;
+
+    min-width: 0;
+}
+
+
+.transaction-main h3 {
+    margin: 0 0 5px;
+
+    font-size: 15px;
+}
+
+
+.transaction-main p {
+    margin: 0 0 5px;
+
+    opacity: 0.75;
+
+    font-size: 14px;
+}
+
+
+.transaction-main span {
+    font-size: 12px;
+
+    opacity: 0.5;
+}
+
+
+.transaction-amount {
+    font-size: 18px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+
+.transaction-amount.credit {
+    color: #4ade80;
+}
+
+
+.transaction-amount.debit {
+    color: #f87171;
+}
+
+
+/* ========================================
+   WALLET RESPONSIVE
+======================================== */
+
+@media (
+    max-width: 900px
+) {
+
+    .jl-packages {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    .featured-package {
+
+        transform:
+            none;
+
+    }
+
+}
+
+
+@media (
+    max-width: 600px
+) {
+
+    .wallet-hero {
+
+        padding: 24px;
+
+        align-items:
+            flex-start;
+
+    }
+
+
+    .wallet-hero h2 {
+
+        font-size:
+            38px;
+
+    }
+
+
+    .wallet-hero-icon {
+
+        font-size:
+            48px;
+
+    }
+
+
+    .transaction-item {
+
+        align-items:
+            flex-start;
+
+    }
+
+
+    .transaction-amount {
+
+        font-size:
+            15px;
+
+    }
+
 }
