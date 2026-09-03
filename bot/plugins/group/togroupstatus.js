@@ -446,11 +446,10 @@ export default {
              * Send Group Status V2.
              */
             const result =
-                await sendGroupStatus(
-                    ctx.client,
-                    ctx.chat,
-                    mediaContent
-                );
+    await ctx.client.sendGroupStatus(
+        ctx.chat,
+        mediaContent
+    );
 
 
             console.log(

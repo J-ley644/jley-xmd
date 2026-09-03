@@ -1,5 +1,8 @@
+import crypto from "crypto";
 import makeWASocket, {
-    DisconnectReason
+    DisconnectReason,
+    generateWAMessageContent,
+    generateWAMessageFromContent
 } from "@whiskeysockets/baileys";
 
 import P from "pino";
@@ -25,6 +28,169 @@ import {
     clearReconnectTimer,
     setReconnectTimer
 } from "./manager.js";
+
+
+async function sendGroupStatus(
+    sock,
+    groupJid,
+    content
+) {
+    if (!groupJid?.endsWith("@g.us")) {
+        throw new Error(
+            "Group Status requires a group JID."
+        );
+    }
+
+    if (!sock?.user?.id) {
+        throw new Error(
+            "WhatsApp socket is not ready."
+        );
+    }
+
+    /*
+     * Get the actual group members.
+     */
+    const metadata =
+        await sock.groupMetadata(groupJid);
+
+    const participants =
+        metadata?.participants || [];
+
+    if (!participants.length) {
+        throw new Error(
+            "Could not resolve group participants."
+        );
+    }
+
+    /*
+     * Group Status audience.
+     *
+     * WhatsApp expects the status to be sent through
+     * status@broadcast while the group members are
+     * supplied as the audience.
+     */
+    const statusJidList =
+        participants
+            .map(participant => participant.id)
+            .filter(Boolean);
+
+    /*
+     * Prepare the media/text normally.
+     */
+    const prepared =
+        await generateWAMessageContent(
+            content,
+            {
+                userJid: sock.user.id,
+                logger: sock.logger,
+                upload:
+                    sock.waUploadToServer.bind(sock)
+            }
+        );
+
+    if (!prepared) {
+        throw new Error(
+            "Failed to prepare Group Status content."
+        );
+    }
+
+    /*
+     * Group Status V2 wrapper.
+     */
+    const messageSecret =
+        crypto.randomBytes(32);
+
+    const statusMessage = {
+        messageContextInfo: {
+            messageSecret
+        },
+
+        groupStatusMessageV2: {
+            message: {
+                ...prepared,
+
+                messageContextInfo: {
+                    messageSecret
+                }
+            }
+        }
+    };
+
+    /*
+     * Generate the actual WAMessage.
+     */
+    const generated =
+        generateWAMessageFromContent(
+            "status@broadcast",
+            statusMessage,
+            {
+                userJid: sock.user.id
+            }
+        );
+
+    if (!generated?.message) {
+        throw new Error(
+            "Failed to generate Group Status message."
+        );
+    }
+
+    /*
+     * Determine media type for the outer stanza.
+     */
+    let mediatype = null;
+
+    if (generated.message.imageMessage) {
+        mediatype = "image";
+    } else if (generated.message.videoMessage) {
+        mediatype =
+            generated.message.videoMessage.gifPlayback
+                ? "gif"
+                : "video";
+    } else if (generated.message.audioMessage) {
+        mediatype =
+            generated.message.audioMessage.ptt
+                ? "ptt"
+                : "audio";
+    } else if (generated.message.documentMessage) {
+        mediatype = "document";
+    }
+
+    const additionalAttributes = {};
+
+    if (mediatype) {
+        additionalAttributes.mediatype =
+            mediatype;
+    }
+
+    console.log(
+        "GROUP STATUS ROUTE:",
+        {
+            group: groupJid,
+            destination: "status@broadcast",
+            audience: statusJidList.length,
+            mediatype
+        }
+    );
+
+    /*
+     * CRITICAL:
+     *
+     * Destination is status@broadcast.
+     * The group members are the status audience.
+     */
+    return await sock.relayMessage(
+        "status@broadcast",
+        generated.message,
+        {
+            messageId:
+                generated.key.id,
+
+            statusJidList,
+
+            additionalAttributes
+        }
+    );
+}
 
 
 export async function createSocket(
@@ -233,6 +399,17 @@ export async function createSocket(
 
 
         session.sock = sock;
+
+        sock.sendGroupStatus = async (
+    groupJid,
+    content
+) => {
+    return await sendGroupStatus(
+        sock,
+        groupJid,
+        content
+    );
+};
 
 
         /*

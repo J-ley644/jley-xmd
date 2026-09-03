@@ -2,8 +2,7 @@ import generateMenu from "../../lib/menu.js";
 import pluginStore from "../../system/pluginStore.js";
 import menuStore from "../../system/menuStore.js";
 
-const CHANNEL_URL =
-    "https://whatsapp.com/channel/0029Vb8fXJpEquiKJsG56i29";
+
 
 export default {
 
@@ -39,8 +38,6 @@ export default {
                 requestedCategory
             );
 
-        const menuWithChannel =
-            `${menu}\n\n📢 JLEY-XMD Channel\n${CHANNEL_URL}`;
 
         if (
             await menuStore.hasBanner()
@@ -53,7 +50,7 @@ export default {
 
                 image: banner,
 
-                caption: menuWithChannel,
+                caption: menu,
 
                 linkPreview: true
 
@@ -63,11 +60,9 @@ export default {
 
         return ctx.send({
 
-            text: menuWithChannel,
+    text: menu
 
-            linkPreview: true
-
-        });
+});
 
     }
 
