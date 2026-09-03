@@ -169,8 +169,8 @@ function App() {
                 "/api/wallet"
             );
 
-            setBalance(
-                data.balance ?? 0
+                        setBalance(
+                data.wallet?.balance ?? 0
             );
 
         } catch (error) {
