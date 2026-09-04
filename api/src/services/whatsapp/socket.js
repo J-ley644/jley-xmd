@@ -35,64 +35,101 @@ async function sendGroupStatus(
     groupJid,
     content
 ) {
-    if (!groupJid?.endsWith("@g.us")) {
+
+    if (
+        !groupJid ||
+        !groupJid.endsWith("@g.us")
+    ) {
+
         throw new Error(
-            "Group Status requires a group JID."
+            "Group Status requires a @g.us group JID."
         );
+
     }
 
+
     if (!sock?.user?.id) {
+
         throw new Error(
             "WhatsApp socket is not ready."
         );
+
     }
 
-    /*
-     * Get the actual group members.
-     */
-    const metadata =
-        await sock.groupMetadata(groupJid);
-
-    const participants =
-        metadata?.participants || [];
-
-    if (!participants.length) {
-        throw new Error(
-            "Could not resolve group participants."
-        );
-    }
 
     /*
-     * Group Status audience.
-     *
-     * WhatsApp expects the status to be sent through
-     * status@broadcast while the group members are
-     * supplied as the audience.
-     */
-    const statusJidList =
-        participants
-            .map(participant => participant.id)
-            .filter(Boolean);
-
-    /*
-     * Prepare the media/text normally.
+     * Prepare the media normally.
      */
     const prepared =
         await generateWAMessageContent(
             content,
             {
-                userJid: sock.user.id,
-                logger: sock.logger,
+
+                jid: groupJid,
+
+                userJid:
+                    sock.user.id,
+
+                logger:
+                    sock.logger,
+
                 upload:
-                    sock.waUploadToServer.bind(sock)
+                    sock.waUploadToServer.bind(
+                        sock
+                    )
+
             }
         );
 
+
     if (!prepared) {
+
         throw new Error(
             "Failed to prepare Group Status content."
         );
+
     }
+
+
+    /*
+     * Determine media type.
+     */
+    let mediaType = null;
+
+
+    if (prepared.imageMessage) {
+
+        mediaType = "image";
+
+    } else if (prepared.videoMessage) {
+
+        mediaType =
+            prepared.videoMessage.gifPlayback
+                ? "gif"
+                : "video";
+
+    } else if (prepared.audioMessage) {
+
+        mediaType =
+            prepared.audioMessage.ptt
+                ? "ptt"
+                : "audio";
+
+    } else if (prepared.documentMessage) {
+
+        mediaType = "document";
+
+    }
+
+
+    if (!mediaType) {
+
+        throw new Error(
+            "Could not determine Group Status media type."
+        );
+
+    }
+
 
     /*
      * Group Status V2 wrapper.
@@ -100,96 +137,114 @@ async function sendGroupStatus(
     const messageSecret =
         crypto.randomBytes(32);
 
+
     const statusMessage = {
+
         messageContextInfo: {
+
             messageSecret
+
         },
 
+
         groupStatusMessageV2: {
+
             message: {
+
                 ...prepared,
 
+
                 messageContextInfo: {
+
                     messageSecret
+
                 }
+
             }
+
         }
+
     };
 
+
     /*
-     * Generate the actual WAMessage.
+     * Generate message using the actual group JID.
      */
     const generated =
         generateWAMessageFromContent(
-            "status@broadcast",
+            groupJid,
             statusMessage,
             {
-                userJid: sock.user.id
+
+                userJid:
+                    sock.user.id
+
             }
         );
 
+
     if (!generated?.message) {
+
         throw new Error(
             "Failed to generate Group Status message."
         );
+
     }
+
 
     /*
-     * Determine media type for the outer stanza.
+     * Group Status media attributes.
      */
-    let mediatype = null;
+    const additionalAttributes = {
 
-    if (generated.message.imageMessage) {
-        mediatype = "image";
-    } else if (generated.message.videoMessage) {
-        mediatype =
-            generated.message.videoMessage.gifPlayback
-                ? "gif"
-                : "video";
-    } else if (generated.message.audioMessage) {
-        mediatype =
-            generated.message.audioMessage.ptt
-                ? "ptt"
-                : "audio";
-    } else if (generated.message.documentMessage) {
-        mediatype = "document";
-    }
+        mediatype:
+            mediaType
 
-    const additionalAttributes = {};
+    };
 
-    if (mediatype) {
-        additionalAttributes.mediatype =
-            mediatype;
-    }
 
     console.log(
         "GROUP STATUS ROUTE:",
         {
-            group: groupJid,
-            destination: "status@broadcast",
-            audience: statusJidList.length,
-            mediatype
+
+            group:
+                groupJid,
+
+            destination:
+                groupJid,
+
+            mediatype:
+                mediaType,
+
+            messageId:
+                generated.key?.id
+
         }
     );
 
+
     /*
-     * CRITICAL:
-     *
-     * Destination is status@broadcast.
-     * The group members are the status audience.
+     * Relay directly to the group.
      */
-    return await sock.relayMessage(
-        "status@broadcast",
+    await sock.relayMessage(
+        groupJid,
         generated.message,
         {
+
             messageId:
                 generated.key.id,
 
-            statusJidList,
+            useCachedGroupMetadata:
+                true,
 
             additionalAttributes
+
         }
     );
+
+
+    return generated;
+
 }
 
 
