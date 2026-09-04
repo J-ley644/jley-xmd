@@ -1,72 +1,36 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
-const PYTHON_BIN = "python";
-
-const BGUTIL_URL =
-    "https://jley-xmd-bgutil.onrender.com";
-
-const YTDLP_BASE_ARGS = [
-    "--ignore-config",
-    "--remote-components",
-    "ejs:github",
-    "--extractor-args",
-    "youtube:player_client=mweb",
-    "--extractor-args",
-    `youtubepot-bgutilhttp:base_url=${BGUTIL_URL}`
-];
-
-
 /*
 |--------------------------------------------------------------------------
-| Temporary directory
+| JLEY-XMD PLAY
+|--------------------------------------------------------------------------
+|
+| Music downloader
+|
+| Flow:
+|   .play <song name>
+|   .play <YouTube URL>
+|   .song <song name>
+|
+| This plugin intentionally does NOT use yt-dlp directly against YouTube.
+| Instead:
+|
+|   1. Search YouTube when a song name is supplied.
+|   2. Resolve the YouTube URL through an external audio API.
+|   3. Send the returned audio URL directly through ctx.send().
+|
 |--------------------------------------------------------------------------
 */
 
-async function createTempDirectory() {
+const SEARCH_API =
+    "https://apiziaul.vercel.app/api/downloader/ytplaymp3";
 
-    return fs.promises.mkdtemp(
-        path.join(
-            os.tmpdir(),
-            "jley-xmd-audio-"
-        )
-    );
+const YTDL_API =
+    "https://api.sidycoders.xyz/api/ytdl";
 
-}
+const YTDL_API_KEY =
+    "memberdycoders";
 
-
-/*
-|--------------------------------------------------------------------------
-| Cleanup
-|--------------------------------------------------------------------------
-*/
-
-async function cleanup(directory) {
-
-    if (!directory) {
-        return;
-    }
-
-    try {
-
-        await fs.promises.rm(
-            directory,
-            {
-                recursive: true,
-                force: true
-            }
-        );
-
-    } catch {
-        // Ignore cleanup failures.
-    }
-
-}
+const REQUEST_TIMEOUT =
+    45_000;
 
 
 /*
@@ -116,52 +80,85 @@ function isYouTubeUrl(text) {
 
 /*
 |--------------------------------------------------------------------------
-| Run yt-dlp
+| HTTP JSON helper
 |--------------------------------------------------------------------------
 */
 
-async function runYtDlp(args) {
+async function fetchJson(
+    url,
+    options = {}
+) {
+
+    const controller =
+        new AbortController();
+
+    const timeout =
+        setTimeout(
+            () => controller.abort(),
+            REQUEST_TIMEOUT
+        );
 
     try {
 
-        return await execFileAsync(
-            PYTHON_BIN,
-            [
-                "-m",
-                "yt_dlp",
-                ...YTDLP_BASE_ARGS,
-                ...args
-            ],
-            {
-                windowsHide: true,
+        const response =
+            await fetch(
+                url,
+                {
+                    ...options,
+                    signal:
+                        controller.signal
+                }
+            );
 
-                /*
-                | yt-dlp JSON output can be large.
-                | This does NOT buffer downloaded media.
-                */
+        const text =
+            await response.text();
 
-                maxBuffer:
-                    8 * 1024 * 1024
-            }
-        );
+        let data = null;
+
+        try {
+
+            data =
+                JSON.parse(text);
+
+        } catch {
+
+            throw new Error(
+                `Downloader API returned invalid JSON (${response.status}).`
+            );
+
+        }
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.message ||
+                data?.error ||
+                `Downloader API returned HTTP ${response.status}.`
+            );
+
+        }
+
+        return data;
 
     } catch (error) {
 
-        const stderr =
-            String(
-                error?.stderr || ""
-            ).trim();
+        if (
+            error?.name ===
+            "AbortError"
+        ) {
 
-        const stdout =
-            String(
-                error?.stdout || ""
-            ).trim();
+            throw new Error(
+                "The audio service took too long to respond."
+            );
 
-        throw new Error(
-            stderr ||
-            stdout ||
-            error?.message ||
-            "yt-dlp failed."
+        }
+
+        throw error;
+
+    } finally {
+
+        clearTimeout(
+            timeout
         );
 
     }
@@ -173,43 +170,37 @@ async function runYtDlp(args) {
 |--------------------------------------------------------------------------
 | Search YouTube
 |--------------------------------------------------------------------------
+|
+| Uses the reference bot's search API.
+|
+| Expected response:
+|
+| {
+|   status: true,
+|   result: {
+|      title: "...",
+|      downloadUrl: "..."
+|   }
+| }
+|
+| The actual response can vary, so several common fields are checked.
+|--------------------------------------------------------------------------
 */
 
-async function searchYouTube(query) {
+async function searchSong(
+    query
+) {
 
-    const result =
-        await runYtDlp([
-            `ytsearch1:${query}`,
-            "--dump-single-json",
-            "--skip-download",
-            "--flat-playlist",
-            "--no-warnings",
-            "--quiet"
-        ]);
+    const url =
+        `${SEARCH_API}?query=${encodeURIComponent(query)}`;
 
-    let data;
-
-    try {
-
-        data =
-            JSON.parse(
-                result.stdout
-            );
-
-    } catch {
-
-        throw new Error(
-            "Could not read the YouTube search result."
+    const data =
+        await fetchJson(
+            url
         );
 
-    }
-
-    const entry =
-        data?.entries?.[0];
-
     if (
-        !entry?.webpage_url &&
-        !entry?.url
+        data?.status === false
     ) {
 
         throw new Error(
@@ -218,15 +209,37 @@ async function searchYouTube(query) {
 
     }
 
+    const result =
+        data?.result ||
+        data?.data ||
+        data;
+
+    const audioUrl =
+        result?.downloadUrl ||
+        result?.download_url ||
+        result?.url ||
+        data?.downloadUrl ||
+        data?.download_url;
+
+    if (!audioUrl) {
+
+        throw new Error(
+            "The search service did not return an audio URL."
+        );
+
+    }
+
+    const title =
+        result?.title ||
+        result?.name ||
+        data?.title ||
+        "JLEY-XMD Audio";
+
     return {
 
-        url:
-            entry.webpage_url ||
-            entry.url,
+        audioUrl,
 
-        title:
-            entry.title ||
-            "JLEY-XMD Audio"
+        title
 
     };
 
@@ -235,112 +248,83 @@ async function searchYouTube(query) {
 
 /*
 |--------------------------------------------------------------------------
-| Get YouTube information
-|--------------------------------------------------------------------------
-*/
-
-async function getYouTubeInfo(url) {
-
-    const result =
-        await runYtDlp([
-            url,
-            "--dump-single-json",
-            "--skip-download",
-            "--no-warnings",
-            "--quiet"
-        ]);
-
-    try {
-
-        return JSON.parse(
-            result.stdout
-        );
-
-    } catch {
-
-        return {
-            title: "JLEY-XMD Audio"
-        };
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Download audio
+| Resolve YouTube URL
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
+| Uses the reference bot's YouTube downloader API.
 |
-| Audio is downloaded directly to disk.
+| Expected response:
 |
-| We do NOT use fs.readFile().
+| {
+|   status: true,
+|   cdn: "https://..."
+| }
 |
 |--------------------------------------------------------------------------
 */
 
-async function downloadAudio(
-    url,
-    directory
+async function resolveYouTubeAudio(
+    youtubeUrl
 ) {
 
-    const outputTemplate =
-        path.join(
-            directory,
-            "audio.%(ext)s"
+    const params =
+        new URLSearchParams({
+
+            url:
+                youtubeUrl,
+
+            format:
+                "mp3",
+
+            apikey:
+                YTDL_API_KEY
+
+        });
+
+    const endpoint =
+        `${YTDL_API}?${params.toString()}`;
+
+    const data =
+        await fetchJson(
+            endpoint
         );
 
-    await runYtDlp([
-
-        url,
-
-        "--no-playlist",
-
-        "--no-warnings",
-
-        "--quiet",
-
-        /*
-        | Prefer audio-only formats.
-        | This avoids downloading video unnecessarily.
-        */
-
-        "-f",
-
-        "bestaudio[ext=m4a]/bestaudio/best",
-
-        "--output",
-
-        outputTemplate
-
-    ]);
-
-    const files =
-        await fs.promises.readdir(
-            directory
-        );
-
-    const audioFile =
-        files.find(
-            file =>
-                /\.(m4a|mp3|webm|opus|aac|wav)$/i
-                    .test(file)
-        );
-
-    if (!audioFile) {
+    if (
+        data?.status === false
+    ) {
 
         throw new Error(
-            "yt-dlp completed but no audio file was created."
+            data?.message ||
+            "The YouTube audio service rejected the request."
         );
 
     }
 
-    return path.join(
-        directory,
-        audioFile
-    );
+    const audioUrl =
+        data?.cdn ||
+        data?.downloadUrl ||
+        data?.download_url ||
+        data?.result?.downloadUrl ||
+        data?.result?.url;
+
+    if (!audioUrl) {
+
+        throw new Error(
+            "The YouTube audio service did not return an audio URL."
+        );
+
+    }
+
+    return {
+
+        audioUrl,
+
+        title:
+            data?.title ||
+            data?.result?.title ||
+            "JLEY-XMD Audio"
+
+    };
 
 }
 
@@ -353,15 +337,18 @@ async function downloadAudio(
 
 export default {
 
-    name: "play",
+    name:
+        "play",
 
     aliases: [
         "song"
     ],
 
-    cooldown: 10,
+    cooldown:
+        10,
 
-    category: "download",
+    category:
+        "download",
 
     description:
         "Download YouTube songs as audio",
@@ -379,6 +366,12 @@ export default {
                 ? ctx.args.join(" ").trim()
                 : "";
 
+        /*
+        |--------------------------------------------------------------------------
+        | Empty query
+        |--------------------------------------------------------------------------
+        */
+
         if (!query) {
 
             return ctx.reply(
@@ -391,11 +384,10 @@ export default {
 
         }
 
-        let directory = null;
-
         try {
 
-            let url = query;
+            let audioUrl =
+                null;
 
             let title =
                 "JLEY-XMD Audio";
@@ -403,40 +395,30 @@ export default {
 
             /*
             |--------------------------------------------------------------------------
-            | Search
+            | YouTube URL
             |--------------------------------------------------------------------------
             */
 
-            if (!isYouTubeUrl(query)) {
-
-                await ctx.reply(
-                    "🔎 Searching YouTube..."
-                );
-
-                const result =
-                    await searchYouTube(
-                        query
-                    );
-
-                url =
-                    result.url;
-
-                title =
-                    result.title;
-
-            } else {
+            if (
+                isYouTubeUrl(
+                    query
+                )
+            ) {
 
                 await ctx.reply(
                     "🔎 Reading YouTube audio..."
                 );
 
-                const info =
-                    await getYouTubeInfo(
+                const result =
+                    await resolveYouTubeAudio(
                         query
                     );
 
+                audioUrl =
+                    result.audioUrl;
+
                 title =
-                    info?.title ||
+                    result.title ||
                     title;
 
             }
@@ -444,46 +426,72 @@ export default {
 
             /*
             |--------------------------------------------------------------------------
-            | Temporary directory
+            | Song search
             |--------------------------------------------------------------------------
             */
 
-            directory =
-                await createTempDirectory();
+            else {
 
-
-            await ctx.reply(
-                `⬇️ *Downloading audio:*\n${title}`
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Download directly to disk
-            |--------------------------------------------------------------------------
-            */
-
-            const audioPath =
-                await downloadAudio(
-                    url,
-                    directory
+                await ctx.reply(
+                    "🔎 Searching for the song..."
                 );
 
+                const result =
+                    await searchSong(
+                        query
+                    );
+
+                audioUrl =
+                    result.audioUrl;
+
+                title =
+                    result.title ||
+                    title;
+
+            }
+
 
             /*
             |--------------------------------------------------------------------------
-            | Send from disk
+            | Validate resolver result
+            |--------------------------------------------------------------------------
+            */
+
+            if (!audioUrl) {
+
+                throw new Error(
+                    "No audio URL was returned."
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Send audio
             |--------------------------------------------------------------------------
             |
-            | Passing a file path avoids creating another
-            | giant Buffer with fs.readFile().
+            | Important:
             |
+            | ctx.send() already supports:
+            |
+            |   audio: { url: "https://..." }
+            |
+            | So we don't download the file to the JLEY-XMD server.
+            |
+            |--------------------------------------------------------------------------
             */
+
+            await ctx.reply(
+                `⬇️ *Sending audio:*\n${title}`
+            );
+
 
             await ctx.send({
 
                 audio: {
-                    url: audioPath
+                    url:
+                        audioUrl
                 },
 
                 mimetype:
@@ -492,9 +500,11 @@ export default {
                 fileName:
                     `${sanitizeFileName(title)}.mp3`,
 
-                ptt: false
+                ptt:
+                    false
 
             });
+
 
         } catch (error) {
 
@@ -505,8 +515,16 @@ export default {
 
             const message =
                 String(
-                    error?.message || ""
+                    error?.message ||
+                    ""
                 );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Search failure
+            |--------------------------------------------------------------------------
+            */
 
             if (
                 message.includes(
@@ -520,14 +538,34 @@ export default {
 
             }
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Timeout
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                message.includes(
+                    "too long to respond"
+                )
+            ) {
+
+                return ctx.reply(
+                    "❌ The audio service took too long to respond. Please try again."
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Generic failure
+            |--------------------------------------------------------------------------
+            */
+
             return ctx.reply(
                 "❌ Sorry, I couldn't download that audio. Please try another song or YouTube URL."
-            );
-
-        } finally {
-
-            await cleanup(
-                directory
             );
 
         }
