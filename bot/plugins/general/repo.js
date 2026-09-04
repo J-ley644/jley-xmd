@@ -1,3 +1,4 @@
+
 import config from "../../config/config.js";
 
 
@@ -21,16 +22,26 @@ export default {
 
     async execute(ctx) {
 
+        const repoUrl =
+            "https://github.com/J-ley644/jley-xmd-v2";
 
         const text =
 
-`╭━━━〔 🌐 JLEY-XMD PROJECT 〕━━━╮
+`╭━━━〔 🌐 JLEY-XMD REPOSITORY 〕━━━╮
 
-🤖 Project
+🤖 Bot Name
 ${config.botName}
 
 📦 Version
 ${config.version}
+
+━━━━━━━━━━━━━━━━━━
+
+🔗 GitHub Repository
+${repoUrl}
+
+⭐ Remember to START this repo
+🍴 Remember to FORK this repo
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -61,3 +72,4 @@ ${config.owner.name}
     }
 
 };
+

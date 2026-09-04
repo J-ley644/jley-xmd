@@ -53,10 +53,37 @@ const DEFAULT_SETTINGS = {
 
     autorecording: false,
 
-    autolikeEmoji: "❤️",
+    autolikeEmoji:
+        "❤️",
 
     autoreplyText:
-        "Hello! I'm currently unavailable. I'll respond as soon as possible."
+        "Hello! I'm currently unavailable. I'll respond as soon as possible.",
+
+    /*
+    |--------------------------------------------------------------------------
+    | Anti-Call
+    |--------------------------------------------------------------------------
+    |
+    | anticall:
+    |   Master switch.
+    |
+    | anticallMode:
+    |   off
+    |   decline
+    |   reply
+    |
+    | anticallReply:
+    |   Message sent to callers when reply mode is enabled.
+    |
+    */
+
+    anticall: false,
+
+    anticallMode:
+        "off",
+
+    anticallReply:
+        "Sorry, I don't take WhatsApp calls. Please send me a message instead."
 
 };
 
@@ -207,53 +234,65 @@ function get(user) {
 
     if (!db[user]) {
 
-    db[user] =
-        createBotSettings();
+        db[user] =
+            createBotSettings();
 
-    save(db);
+        save(db);
 
-} else {
+    } else {
 
-    let changed = false;
+        let changed = false;
 
 
-    for (
-        const [key, value]
-        of Object.entries(DEFAULT_SETTINGS)
-    ) {
+        /*
+        |--------------------------------------------------------------------------
+        | Add missing default settings
+        |--------------------------------------------------------------------------
+        */
 
-        if (
-            db[user][key] === undefined
+        for (
+            const [key, value]
+            of Object.entries(DEFAULT_SETTINGS)
         ) {
 
-            db[user][key] =
-                value;
+            if (
+                db[user][key] === undefined
+            ) {
+
+                db[user][key] =
+                    value;
+
+                changed = true;
+
+            }
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Ensure chats object exists
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !db[user].chats
+        ) {
+
+            db[user].chats = {};
 
             changed = true;
 
         }
 
-    }
 
+        if (changed) {
 
-    if (
-        !db[user].chats
-    ) {
+            save(db);
 
-        db[user].chats = {};
-
-        changed = true;
+        }
 
     }
-
-
-    if (changed) {
-
-        save(db);
-
-    }
-
-}
 
 
     /*

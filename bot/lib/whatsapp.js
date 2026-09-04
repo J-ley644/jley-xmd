@@ -21,6 +21,7 @@ import {
     markDeleted,
     isEnabled
 } from "../system/antideleteStore.js";
+import automationStore from "../system/automationStore.js";
 
 
 
@@ -224,6 +225,255 @@ const sessionPath =
 
 }
 
+
+        }
+    );
+
+        /*
+    |--------------------------------------------------------------------------
+    | Call Engine
+    |--------------------------------------------------------------------------
+    |
+    | Handles incoming WhatsApp calls.
+    |
+    | Supported modes:
+    |
+    | anticall = false
+    |     Nothing happens.
+    |
+    | anticallMode = "decline"
+    |     Incoming call is automatically rejected.
+    |
+    | anticallMode = "reply"
+    |     Incoming call is rejected and the caller receives
+    |     the configured reply message.
+    |
+    |--------------------------------------------------------------------------
+    */
+
+    socket.ev.on(
+        "call",
+        async (calls) => {
+
+            try {
+
+                if (!Array.isArray(calls)) {
+                    calls = [calls];
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Deployment identity
+                |--------------------------------------------------------------------------
+                */
+
+                const botIdentity =
+                    socket.deploymentId ||
+                    socket.user?.lid ||
+                    socket.user?.id;
+
+
+                if (!botIdentity) {
+
+                    logger.warn(
+                        `Call event ignored: unable to identify deployment ${deploymentId}`
+                    );
+
+                    return;
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Load deployment settings
+                |--------------------------------------------------------------------------
+                */
+
+                const settings =
+                    automationStore.get(
+                        botIdentity
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Anti-call disabled
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    !settings?.anticall ||
+                    settings?.anticallMode === "off"
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Process incoming calls
+                |--------------------------------------------------------------------------
+                */
+
+                for (
+                    const call
+                    of calls
+                ) {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | We only act on incoming call offers.
+                    |--------------------------------------------------------------------------
+                    */
+
+                    if (
+                        call?.status &&
+                        call.status !== "offer"
+                    ) {
+
+                        continue;
+
+                    }
+
+
+                    const callId =
+                        call?.id;
+
+
+                    const caller =
+                        call?.from;
+
+
+                    if (
+                        !callId ||
+                        !caller
+                    ) {
+
+                        logger.warn(
+                            "[ANTICALL] Invalid incoming call event."
+                        );
+
+                        continue;
+
+                    }
+
+
+                    logger.info(
+                        `[ANTICALL] Incoming call from ${caller} (${callId})`
+                    );
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Decline call
+                    |--------------------------------------------------------------------------
+                    */
+
+                    try {
+
+                        await socket.rejectCall(
+                            callId,
+                            caller
+                        );
+
+
+                        logger.info(
+                            `[ANTICALL] Call declined from ${caller}`
+                        );
+
+                    }
+                    catch (error) {
+
+                        logger.error(
+                            `[ANTICALL] Failed to decline call from ${caller}: ${
+                                error?.message ||
+                                error
+                            }`
+                        );
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Do not send the reply if the call couldn't
+                        | be rejected successfully.
+                        |--------------------------------------------------------------------------
+                        */
+
+                        continue;
+
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Reply mode
+                    |--------------------------------------------------------------------------
+                    */
+
+                    if (
+                        settings.anticallMode ===
+                        "reply"
+                    ) {
+
+                        const reply =
+                            String(
+                                settings.anticallReply ||
+                                ""
+                            ).trim();
+
+
+                        if (!reply) {
+
+                            continue;
+
+                        }
+
+
+                        try {
+
+                            await socket.sendMessage(
+                                caller,
+                                {
+                                    text: reply
+                                }
+                            );
+
+
+                            logger.info(
+                                `[ANTICALL] Reply sent to ${caller}`
+                            );
+
+                        }
+                        catch (error) {
+
+                            logger.error(
+                                `[ANTICALL] Failed to send reply to ${caller}: ${
+                                    error?.message ||
+                                    error
+                                }`
+                            );
+
+                        }
+
+                    }
+
+                }
+
+            }
+            catch (error) {
+
+                logger.error(
+                    `[ANTICALL] Call engine error: ${
+                        error?.message ||
+                        error
+                    }`
+                );
+
+            }
 
         }
     );
