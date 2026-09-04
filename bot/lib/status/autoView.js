@@ -5,16 +5,80 @@ import {
 } from "./helpers.js";
 
 
+/**
+ * Resolve a WhatsApp LID to its real phone JID.
+ *
+ * Baileys v7 provides the native LID mapping store:
+ *
+ * signalRepository.lidMapping.getPNForLID()
+ *
+ * If resolution fails, we keep the original JID as
+ * a best-effort fallback.
+ */
+async function resolveParticipant(
+    socket,
+    participant
+) {
+
+    if (!participant) {
+        return null;
+    }
+
+    // Already a normal WhatsApp phone JID
+    if (!participant.endsWith("@lid")) {
+        return participant;
+    }
+
+    try {
+
+        const lidMapping =
+            socket?.signalRepository?.lidMapping;
+
+        if (!lidMapping) {
+            console.log(
+                "[AUTOVIEW] Baileys LID mapping unavailable."
+            );
+
+            return participant;
+        }
+
+        const resolved =
+            await lidMapping.getPNForLID(
+                participant
+            );
+
+        if (
+            resolved &&
+            typeof resolved === "string" &&
+            !resolved.endsWith("@lid")
+        ) {
+
+            console.log(
+                "[AUTOVIEW] LID resolved:",
+                participant,
+                "→",
+                resolved
+            );
+
+            return resolved;
+        }
+
+    } catch (error) {
+
+        console.error(
+            "[AUTOVIEW] LID resolution failed:",
+            error?.message || error
+        );
+    }
+
+    return participant;
+}
+
+
 async function handleAutoView(
     socket,
     message
 ) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | STATUS DIAGNOSTIC
-    |--------------------------------------------------------------------------
-    */
 
     console.log(
         "[AUTOVIEW] Event received:",
@@ -22,7 +86,13 @@ async function handleAutoView(
             remoteJid:
                 message?.key?.remoteJid,
 
-            participant:
+            topLevelParticipant:
+                message?.participant,
+
+            participantPn:
+                message?.key?.participantPn,
+
+            keyParticipant:
                 message?.key?.participant,
 
             messageId:
@@ -34,27 +104,46 @@ async function handleAutoView(
     );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Only process WhatsApp status messages
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !isStatus(message)
-    ) {
-
+    if (!isStatus(message)) {
         return;
-
     }
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Bot Identity
-    |--------------------------------------------------------------------------
-    */
+     * Atassa's implementation shows that the status
+     * sender can exist at different locations.
+     *
+     * Prefer the top-level participant.
+     */
+    const rawParticipant =
+        message?.participant ||
+        message?.key?.participantPn ||
+        message?.key?.participant ||
+        null;
 
+
+    console.log(
+        "[AUTOVIEW] Raw participant:",
+        rawParticipant
+    );
+
+
+    const participantJid =
+        await resolveParticipant(
+            socket,
+            rawParticipant
+        );
+
+
+    console.log(
+        "[AUTOVIEW] Resolved participant:",
+        participantJid
+    );
+
+
+    /*
+     * Identify this bot account.
+     */
     const botLid =
         socket?.user?.lid ||
         null;
@@ -86,16 +175,12 @@ async function handleAutoView(
         );
 
         return;
-
     }
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Read Configuration
-    |--------------------------------------------------------------------------
-    */
-
+     * Load automation settings.
+     */
     const settings =
         automationStore.get(
             botIdentity
@@ -108,54 +193,59 @@ async function handleAutoView(
     );
 
 
-    if (
-        !settings?.autoview
-    ) {
+    if (!settings?.autoview) {
 
         console.log(
             "[AUTOVIEW] Disabled."
         );
 
         return;
-
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate Status Key
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !message?.key?.id
-    ) {
+    if (!message?.key?.id) {
 
         console.log(
             "[AUTOVIEW] Status has no message ID."
         );
 
         return;
-
     }
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Mark Status As Read
-    |--------------------------------------------------------------------------
-    */
+     * Build the status read key.
+     *
+     * If WhatsApp supplied a LID participant but
+     * Baileys knows the real phone JID, use the
+     * resolved participant.
+     */
+    let readKey = message.key;
+
+
+    if (
+        participantJid &&
+        participantJid !== message?.key?.participant
+    ) {
+
+        readKey = {
+            ...message.key,
+            participant: participantJid
+        };
+
+    }
+
+
+    console.log(
+        "[AUTOVIEW] Attempting to view status:",
+        readKey
+    );
+
 
     try {
 
-        console.log(
-            "[AUTOVIEW] Attempting to view status:",
-            message.key
-        );
-
-
         await socket.readMessages([
-            message.key
+            readKey
         ]);
 
 
@@ -163,14 +253,11 @@ async function handleAutoView(
             "[AUTOVIEW] Status viewed successfully."
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         console.error(
-            "[AUTOVIEW] Failed:",
-            error?.message ||
-            error
+            "[AUTOVIEW] Failed to view status:",
+            error?.message || error
         );
 
     }
