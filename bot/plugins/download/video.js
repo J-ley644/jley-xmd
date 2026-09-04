@@ -1,23 +1,22 @@
-import { execFile } from "child_process";
-import { promisify } from "util";
+/*
+|--------------------------------------------------------------------------
+| JLEY-XMD VIDEO
+|--------------------------------------------------------------------------
+|
+| .video <video name>
+| .video <YouTube URL>
+|
+| IMPORTANT:
+|
+| This command NEVER downloads or uploads the video.
+|
+| It only searches for the YouTube video and sends the YouTube link.
+|
+|--------------------------------------------------------------------------
+*/
 
-const execFileAsync =
-    promisify(execFile);
+import youtubeSearchApi from "youtube-search-api";
 
-const PYTHON_BIN = "python";
-
-const BGUTIL_URL =
-    "https://jley-xmd-bgutil.onrender.com";
-
-const YTDLP_BASE_ARGS = [
-    "--ignore-config",
-    "--remote-components",
-    "ejs:github",
-    "--extractor-args",
-    "youtube:player_client=mweb",
-    "--extractor-args",
-    `youtubepot-bgutilhttp:base_url=${BGUTIL_URL}`
-];
 
 /*
 |--------------------------------------------------------------------------
@@ -31,53 +30,9 @@ function isYouTubeUrl(text) {
         .test(
             String(text).trim()
         );
+
 }
 
-/*
-|--------------------------------------------------------------------------
-| Run yt-dlp metadata only
-|--------------------------------------------------------------------------
-*/
-
-async function runYtDlp(args) {
-
-    try {
-
-        return await execFileAsync(
-            PYTHON_BIN,
-            [
-                "-m",
-                "yt_dlp",
-                ...YTDLP_BASE_ARGS,
-                ...args
-            ],
-            {
-                windowsHide: true,
-                maxBuffer:
-                    8 * 1024 * 1024
-            }
-        );
-
-    } catch (error) {
-
-        const stderr =
-            String(
-                error?.stderr || ""
-            ).trim();
-
-        const stdout =
-            String(
-                error?.stdout || ""
-            ).trim();
-
-        throw new Error(
-            stderr ||
-            stdout ||
-            error?.message ||
-            "yt-dlp failed."
-        );
-    }
-}
 
 /*
 |--------------------------------------------------------------------------
@@ -87,87 +42,46 @@ async function runYtDlp(args) {
 
 async function searchYouTube(query) {
 
-    const result =
-        await runYtDlp([
-            `ytsearch1:${query}`,
-            "--dump-single-json",
-            "--skip-download",
-            "--flat-playlist",
-            "--no-warnings",
-            "--quiet"
-        ]);
-
-    let data;
-
-    try {
-
-        data =
-            JSON.parse(
-                result.stdout
-            );
-
-    } catch {
-
-        throw new Error(
-            "Could not read the YouTube search result."
+    const data =
+        await youtubeSearchApi.GetListByKeyword(
+            query,
+            false,
+            1,
+            [
+                {
+                    type: "video"
+                }
+            ]
         );
-    }
 
-    const entry =
-        data?.entries?.[0];
+    const item =
+        data?.items?.find(
+            result =>
+                result?.type === "video" &&
+                result?.id
+        );
 
-    if (
-        !entry?.webpage_url &&
-        !entry?.url
-    ) {
+    if (!item) {
 
         throw new Error(
             "No YouTube result was found."
         );
+
     }
 
     return {
+
         url:
-            entry.webpage_url ||
-            entry.url,
+            `https://www.youtube.com/watch?v=${item.id}`,
 
         title:
-            entry.title ||
+            item.title ||
             "YouTube Video"
+
     };
+
 }
 
-/*
-|--------------------------------------------------------------------------
-| Resolve direct URL
-|--------------------------------------------------------------------------
-*/
-
-async function getYouTubeInfo(url) {
-
-    const result =
-        await runYtDlp([
-            url,
-            "--dump-single-json",
-            "--skip-download",
-            "--no-warnings",
-            "--quiet"
-        ]);
-
-    try {
-
-        return JSON.parse(
-            result.stdout
-        );
-
-    } catch {
-
-        return {
-            title: "YouTube Video",
-            webpage_url: url
-        };
-    }
-}
 
 /*
 |--------------------------------------------------------------------------
@@ -177,15 +91,18 @@ async function getYouTubeInfo(url) {
 
 export default {
 
-    name: "video",
+    name:
+        "video",
 
     aliases: [
         "vid"
     ],
 
-    cooldown: 10,
+    cooldown:
+        10,
 
-    category: "download",
+    category:
+        "download",
 
     description:
         "Find a YouTube video and send its link",
@@ -202,62 +119,99 @@ export default {
                 ? ctx.args.join(" ").trim()
                 : "";
 
+        /*
+        |--------------------------------------------------------------------------
+        | Empty query
+        |--------------------------------------------------------------------------
+        */
+
         if (!query) {
 
             return ctx.reply(
+
                 "🎬 *JLEY-XMD VIDEO*\n\n" +
 
                 "Usage:\n" +
 
                 `${ctx.prefix}video <video name>\n` +
+
                 `${ctx.prefix}video <YouTube URL>\n\n` +
 
-                "The command sends the YouTube link instead of uploading the video."
+                "The command finds the video and sends its YouTube link."
+
             );
+
         }
 
         try {
 
-            await ctx.reply(
-                "🔎 Finding your video..."
-            );
-
             let result;
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Existing YouTube URL
+            |--------------------------------------------------------------------------
+            |
+            | Don't search again.
+            |
+            */
+
             if (
-                isYouTubeUrl(query)
+                isYouTubeUrl(
+                    query
+                )
             ) {
 
-                const info =
-                    await getYouTubeInfo(
-                        query
-                    );
-
                 result = {
+
                     url:
-                        info?.webpage_url ||
                         query,
 
                     title:
-                        info?.title ||
                         "YouTube Video"
+
                 };
 
-            } else {
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Search by name
+            |--------------------------------------------------------------------------
+            */
+
+            else {
+
+                await ctx.reply(
+                    "🔎 Finding your video..."
+                );
 
                 result =
                     await searchYouTube(
                         query
                     );
+
             }
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Send ONLY the YouTube link
+            |--------------------------------------------------------------------------
+            */
+
             return ctx.reply(
+
                 "🎬 *" +
                 result.title +
                 "*\n\n" +
 
-                "▶️ Watch on YouTube:\n" +
+                "▶️ *Watch on YouTube:*\n" +
+
                 result.url
+
             );
 
         } catch (error) {
@@ -269,8 +223,16 @@ export default {
 
             const message =
                 String(
-                    error?.message || ""
+                    error?.message ||
+                    ""
                 );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | No result
+            |--------------------------------------------------------------------------
+            */
 
             if (
                 message.includes(
@@ -281,11 +243,25 @@ export default {
                 return ctx.reply(
                     "❌ I couldn't find that video on YouTube."
                 );
+
             }
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Generic search failure
+            |--------------------------------------------------------------------------
+            */
+
             return ctx.reply(
-                "❌ Sorry, I couldn't find that video. Please try another search or YouTube URL."
+
+                "❌ Sorry, I couldn't find that video. " +
+                "Please try another search or YouTube URL."
+
             );
+
         }
+
     }
+
 };
