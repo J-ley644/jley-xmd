@@ -8,12 +8,14 @@ export default {
 
     category: "group",
 
-    description: "Make the bot leave the group",
+    description:
+        "Remove the user who typed the command from the group",
 
     usage: ".leave",
 
     permissions: {
-        group: true
+        group: true,
+        botAdmin: true
     },
 
     async execute(ctx) {
@@ -22,23 +24,56 @@ export default {
 
             await ctx.react("🚪");
 
-            await ctx.reply(
-                "👋 JLEY-XMD is leaving this group. Goodbye!"
+
+            /*
+             * The command sender, not the bot.
+             */
+            const target =
+                ctx.sender;
+
+
+            if (!target) {
+
+                throw new Error(
+                    "Could not identify the command sender."
+                );
+
+            }
+
+
+            /*
+             * Remove the sender from the group.
+             *
+             * groupParticipantsUpdate() requires
+             * the bot to be a group admin.
+             */
+            await ctx.client.groupParticipantsUpdate(
+                ctx.chat,
+                [target],
+                "remove"
             );
 
-            await ctx.client.groupLeave(
-                ctx.chat
-            );
 
         } catch (error) {
 
             console.error(
-                "Leave group error:",
+                "Leave command error:",
                 error
             );
 
+
+            try {
+
+                await ctx.react("❌");
+
+            } catch {}
+
+
             await ctx.reply(
-                "❌ Failed to leave the group."
+                `❌ Failed to remove you from the group.\n\n${
+                    error.message ||
+                    "Unknown error"
+                }`
             );
 
         }
