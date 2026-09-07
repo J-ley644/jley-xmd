@@ -1,5 +1,3 @@
-import config from "../../config/config.js";
-
 function normalizeJid(jid) {
     if (!jid) return null;
 
@@ -22,100 +20,13 @@ function jidFromNumber(value) {
     return `${number}@s.whatsapp.net`;
 }
 
-function getConfiguredDeveloperJids(config) {
-    const candidates = [
-        config?.developer?.number,
-        config?.developer?.phone,
-        config?.developer?.jid,
-        config?.developerNumber,
-        config?.developerPhone,
-        config?.developerJid
-    ];
-
-    return candidates
-        .filter(Boolean)
-        .flatMap(value => {
-            const stringValue = String(value).trim();
-
-            if (stringValue.includes("@")) {
-                return [normalizeJid(stringValue)];
-            }
-
-            const jid = jidFromNumber(stringValue);
-
-            return jid ? [jid] : [];
-        });
-}
-
-function getConfiguredOwnerJids(config) {
-    const candidates = [
-        config?.owner?.number,
-        config?.owner?.phone,
-        config?.owner?.jid
-    ];
-
-    return candidates
-        .filter(Boolean)
-        .flatMap(value => {
-            const stringValue = String(value).trim();
-
-            if (stringValue.includes("@")) {
-                return [normalizeJid(stringValue)];
-            }
-
-            const jid = jidFromNumber(stringValue);
-
-            return jid ? [jid] : [];
-        });
-}
-
-function isAuthorized(ctx) {
-    const sender = normalizeJid(ctx.sender);
-
-    if (!sender) {
-        return false;
-    }
-
-    const activeConfig = ctx.config || config;
-
-    const developerJids =
-        getConfiguredDeveloperJids(activeConfig);
-
-    if (
-        developerJids.some(
-            jid => normalizeJid(jid) === sender
-        )
-    ) {
-        return true;
-    }
-
-    const ownerJids =
-        getConfiguredOwnerJids(activeConfig);
-
-    if (
-        ownerJids.some(
-            jid => normalizeJid(jid) === sender
-        )
-    ) {
-        return true;
-    }
-
-    if (ctx.isBotOwner === true) {
-        return true;
-    }
-
-    if (ctx.botOwner === true) {
-        return true;
-    }
-
-    return false;
-}
-
 function getTarget(ctx) {
+    // Mentioned/replied target from context
     if (ctx.target && ctx.target !== ctx.sender) {
         return normalizeJid(ctx.target);
     }
 
+    // Number supplied as argument
     const argument = ctx.args?.[0];
 
     if (argument) {
@@ -130,6 +41,7 @@ function getTarget(ctx) {
         }
     }
 
+    // Quoted message participant
     const quotedParticipant =
         ctx.message
             ?.message
@@ -145,7 +57,7 @@ function getTarget(ctx) {
 }
 
 export default {
-    name: "uban",
+    name: "unban",
 
     aliases: [
         "unblock"
@@ -157,29 +69,24 @@ export default {
         "Unblock a WhatsApp user. Restricted to the bot owner and developer.",
 
     usage:
-        ".uban @user | reply to a message | .uban 2547XXXXXXXX",
+        ".unban @user | reply to a message | .unban 2547XXXXXXXX",
 
     permissions: {
         botOwner: true
     },
 
     async execute(ctx) {
-
-        if (!isAuthorized(ctx)) {
-            return ctx.reply(
-                "❌ This command is restricted to the bot owner and JLEY-XMD developer."
-            );
-        }
-
         const target = getTarget(ctx);
 
         if (!target) {
             return ctx.reply(
                 "❌ Please reply to a user's message, mention them, or provide their WhatsApp number.\n\n" +
-                `Example: ${ctx.prefix}uban @2547XXXXXXXX\n` +
-                `Example: ${ctx.prefix}uban 2547XXXXXXXX`
+                `Example: ${ctx.prefix}unban @2547XXXXXXXX\n` +
+                `Example: ${ctx.prefix}unban 2547XXXXXXXX`
             );
         }
+
+        const normalizedTarget = normalizeJid(target);
 
         const botJids = [
             ctx.client?.user?.id,
@@ -188,14 +95,14 @@ export default {
             .filter(Boolean)
             .map(normalizeJid);
 
-        if (botJids.includes(normalizeJid(target))) {
+        if (botJids.includes(normalizedTarget)) {
             return ctx.reply(
                 "❌ I cannot unblock the bot's own account."
             );
         }
 
         if (
-            normalizeJid(target) ===
+            normalizedTarget ===
             normalizeJid(ctx.sender)
         ) {
             return ctx.reply(
@@ -205,14 +112,14 @@ export default {
 
         try {
             await ctx.client.updateBlockStatus(
-                target,
+                normalizedTarget,
                 "unblock"
             );
 
             return ctx.reply(
                 `╭━━━〔 🔓 USER UNBLOCKED 〕━━━╮\n\n` +
                 `👤 User\n` +
-                `${target}\n\n` +
+                `${normalizedTarget}\n\n` +
                 `🔓 Status\n` +
                 `Unblocked successfully.\n\n` +
                 `🛡️ Authorized by\n` +
@@ -222,12 +129,12 @@ export default {
 
         } catch (error) {
             console.error(
-                "[UBAN] Failed to unblock user:",
+                "[UNBAN] Failed to unblock user:",
                 error
             );
 
             return ctx.reply(
-                `❌ Failed to unblock ${target}.\n\n` +
+                `❌ Failed to unblock ${normalizedTarget}.\n\n` +
                 `Reason: ${error?.message || "Unknown error"}`
             );
         }
