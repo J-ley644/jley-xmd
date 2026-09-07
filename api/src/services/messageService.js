@@ -53,97 +53,65 @@ async function handleAutoTyping(
     message,
     jid
 ) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ignore invalid messages
-    |--------------------------------------------------------------------------
-    */
-
     if (
         !sock ||
         !message ||
         !jid
     ) {
-
         return;
-
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Ignore bot's own messages
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        message.key?.fromMe
-    ) {
-
-        return;
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ignore WhatsApp status
-    |--------------------------------------------------------------------------
-    */
-
+    // Ignore WhatsApp status
     if (
         jid === "status@broadcast" ||
         jid.endsWith("status@broadcast")
     ) {
-
         return;
-
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Bot Identity
-    |--------------------------------------------------------------------------
-    */
 
     const botIdentity =
         getBotIdentity(sock);
 
-
     if (!botIdentity) {
-
         return;
-
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Load Bot Settings
-    |--------------------------------------------------------------------------
-    */
 
     const settings =
         automationStore.get(
             botIdentity
         );
 
-
     /*
-    |--------------------------------------------------------------------------
-    | Chat-Specific Override
-    |--------------------------------------------------------------------------
-    */
-
-    let enabled =
-        settings?.autotyping === true;
-
+     * If Auto Recording is enabled for this
+     * chat, recording takes priority over typing.
+     */
+    let recordingEnabled =
+        settings?.autorecording === true;
 
     const chatSettings =
         settings?.chats?.[jid];
 
+    if (
+        chatSettings &&
+        Object.prototype.hasOwnProperty.call(
+            chatSettings,
+            "autorecording"
+        )
+    ) {
+        recordingEnabled =
+            chatSettings.autorecording === true;
+    }
+
+    if (recordingEnabled) {
+        return;
+    }
+
+    /*
+     * Auto Typing
+     */
+    let enabled =
+        settings?.autotyping === true;
 
     if (
         chatSettings &&
@@ -152,31 +120,13 @@ async function handleAutoTyping(
             "autotyping"
         )
     ) {
-
         enabled =
             chatSettings.autotyping === true;
-
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Disabled
-    |--------------------------------------------------------------------------
-    */
 
     if (!enabled) {
-
         return;
-
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Show Typing
-    |--------------------------------------------------------------------------
-    */
 
     try {
 
@@ -185,33 +135,22 @@ async function handleAutoTyping(
             jid
         );
 
-
         /*
-        |--------------------------------------------------------------------------
-        | Stop Typing After Delay
-        |--------------------------------------------------------------------------
-        */
-
+         * Keep typing visible for 5 seconds.
+         */
         setTimeout(
             async () => {
-
                 try {
-
                     await sock.sendPresenceUpdate(
                         "paused",
                         jid
                     );
-
                 } catch {
-
                     // Ignore presence cleanup errors.
-
                 }
-
             },
-            2000
+            5000
         );
-
 
     } catch (error) {
 
@@ -220,9 +159,111 @@ async function handleAutoTyping(
             error?.message ||
             error
         );
+    }
+}
 
+
+async function handleAutoRecording(
+    sock,
+    message,
+    jid
+) {
+    if (
+        !sock ||
+        !message ||
+        !jid
+    ) {
+        return;
     }
 
+
+    // Ignore WhatsApp status
+    if (
+        jid === "status@broadcast" ||
+        jid.endsWith("status@broadcast")
+    ) {
+        return;
+    }
+
+    const botIdentity =
+        getBotIdentity(sock);
+
+    if (!botIdentity) {
+        return;
+    }
+
+    const settings =
+        automationStore.get(
+            botIdentity
+        );
+
+    /*
+     * Global setting
+     */
+    let enabled =
+        settings?.autorecording === true;
+
+    /*
+     * Chat-specific override
+     */
+    const chatSettings =
+        settings?.chats?.[jid];
+
+    if (
+        chatSettings &&
+        Object.prototype.hasOwnProperty.call(
+            chatSettings,
+            "autorecording"
+        )
+    ) {
+        enabled =
+            chatSettings.autorecording === true;
+    }
+
+    if (!enabled) {
+        return;
+    }
+
+    try {
+
+        console.log(
+            "[AutoRecording] Recording:",
+            jid
+        );
+
+        await sock.sendPresenceUpdate(
+            "recording",
+            jid
+        );
+
+        /*
+         * Keep recording indicator visible
+         * for 5 seconds.
+         */
+        setTimeout(
+            async () => {
+                try {
+
+                    await sock.sendPresenceUpdate(
+                        "paused",
+                        jid
+                    );
+
+                } catch {
+                    // Ignore presence cleanup errors.
+                }
+            },
+            5000
+        );
+
+    } catch (error) {
+
+        console.error(
+            "AutoRecording error:",
+            error?.message ||
+            error
+        );
+    }
 }
 
 
@@ -350,12 +391,25 @@ export async function handleMessage(
     |
     */
 
-    void handleAutoTyping(
-        sock,
-        message,
-        jid
-    );
+    /*
+ * Auto Recording
+ *
+ * Recording takes priority over typing.
+ */
+void handleAutoRecording(
+    sock,
+    message,
+    jid
+);
 
+/*
+ * Auto Typing
+ */
+void handleAutoTyping(
+    sock,
+    message,
+    jid
+);
 
     /*
     |--------------------------------------------------------------------------

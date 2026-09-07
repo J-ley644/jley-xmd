@@ -5,76 +5,6 @@ import {
 } from "./helpers.js";
 
 
-/**
- * Resolve a WhatsApp LID to its real phone JID.
- *
- * Baileys v7 provides the native LID mapping store:
- *
- * signalRepository.lidMapping.getPNForLID()
- *
- * If resolution fails, we keep the original JID as
- * a best-effort fallback.
- */
-async function resolveParticipant(
-    socket,
-    participant
-) {
-
-    if (!participant) {
-        return null;
-    }
-
-    // Already a normal WhatsApp phone JID
-    if (!participant.endsWith("@lid")) {
-        return participant;
-    }
-
-    try {
-
-        const lidMapping =
-            socket?.signalRepository?.lidMapping;
-
-        if (!lidMapping) {
-            console.log(
-                "[AUTOVIEW] Baileys LID mapping unavailable."
-            );
-
-            return participant;
-        }
-
-        const resolved =
-            await lidMapping.getPNForLID(
-                participant
-            );
-
-        if (
-            resolved &&
-            typeof resolved === "string" &&
-            !resolved.endsWith("@lid")
-        ) {
-
-            console.log(
-                "[AUTOVIEW] LID resolved:",
-                participant,
-                "→",
-                resolved
-            );
-
-            return resolved;
-        }
-
-    } catch (error) {
-
-        console.error(
-            "[AUTOVIEW] LID resolution failed:",
-            error?.message || error
-        );
-    }
-
-    return participant;
-}
-
-
 async function handleAutoView(
     socket,
     message
@@ -104,46 +34,29 @@ async function handleAutoView(
     );
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Status Detection
+    |--------------------------------------------------------------------------
+    */
+
     if (!isStatus(message)) {
+
         return;
+
     }
 
 
     /*
-     * Atassa's implementation shows that the status
-     * sender can exist at different locations.
-     *
-     * Prefer the top-level participant.
-     */
-    const rawParticipant =
-        message?.participant ||
-        message?.key?.participantPn ||
-        message?.key?.participant ||
-        null;
+    |--------------------------------------------------------------------------
+    | Bot Identity
+    |--------------------------------------------------------------------------
+    |
+    | This MUST match the identity used by autoview.js when
+    | saving the setting.
+    |
+    */
 
-
-    console.log(
-        "[AUTOVIEW] Raw participant:",
-        rawParticipant
-    );
-
-
-    const participantJid =
-        await resolveParticipant(
-            socket,
-            rawParticipant
-        );
-
-
-    console.log(
-        "[AUTOVIEW] Resolved participant:",
-        participantJid
-    );
-
-
-    /*
-     * Identify this bot account.
-     */
     const botLid =
         socket?.user?.lid ||
         null;
@@ -175,12 +88,16 @@ async function handleAutoView(
         );
 
         return;
+
     }
 
 
     /*
-     * Load automation settings.
-     */
+    |--------------------------------------------------------------------------
+    | Load Automation Settings
+    |--------------------------------------------------------------------------
+    */
+
     const settings =
         automationStore.get(
             botIdentity
@@ -200,8 +117,15 @@ async function handleAutoView(
         );
 
         return;
+
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Original Message Key
+    |--------------------------------------------------------------------------
+    */
 
     if (!message?.key?.id) {
 
@@ -210,37 +134,70 @@ async function handleAutoView(
         );
 
         return;
+
+    }
+
+
+    if (
+        message?.key?.remoteJid !==
+        "status@broadcast"
+    ) {
+
+        console.log(
+            "[AUTOVIEW] Invalid status remote JID."
+        );
+
+        return;
+
     }
 
 
     /*
-     * Build the status read key.
-     *
-     * If WhatsApp supplied a LID participant but
-     * Baileys knows the real phone JID, use the
-     * resolved participant.
-     */
-    let readKey = message.key;
+    |--------------------------------------------------------------------------
+    | CRITICAL:
+    |
+    | Keep the ORIGINAL Baileys message key.
+    |
+    | Do NOT:
+    |   - resolve @lid to @s.whatsapp.net
+    |   - rebuild the key
+    |   - replace key.participant
+    |
+    | Baileys v7 may require the original LID participant
+    | for Signal/encryption lookup.
+    |--------------------------------------------------------------------------
+    */
 
-
-    if (
-        participantJid &&
-        participantJid !== message?.key?.participant
-    ) {
-
-        readKey = {
-            ...message.key,
-            participant: participantJid
-        };
-
-    }
+    const readKey =
+        message.key;
 
 
     console.log(
-        "[AUTOVIEW] Attempting to view status:",
-        readKey
+        "[AUTOVIEW] Attempting to view status using ORIGINAL key:",
+        {
+            remoteJid:
+                readKey?.remoteJid,
+
+            participant:
+                readKey?.participant,
+
+            participantPn:
+                readKey?.participantPn,
+
+            id:
+                readKey?.id,
+
+            fromMe:
+                readKey?.fromMe
+        }
     );
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | View Status
+    |--------------------------------------------------------------------------
+    */
 
     try {
 
@@ -253,12 +210,67 @@ async function handleAutoView(
             "[AUTOVIEW] Status viewed successfully."
         );
 
+
     } catch (error) {
 
         console.error(
             "[AUTOVIEW] Failed to view status:",
-            error?.message || error
+            error?.message ||
+            error
         );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Fallback
+        |--------------------------------------------------------------------------
+        |
+        | Some Baileys/WhatsApp combinations may reject readMessages().
+        | Try the read receipt using the ORIGINAL participant.
+        |
+        */
+
+        try {
+
+            const participant =
+                readKey?.participant ||
+                readKey?.participantPn;
+
+
+            if (!participant) {
+
+                console.log(
+                    "[AUTOVIEW] No participant available for read receipt."
+                );
+
+                return;
+
+            }
+
+
+            await socket.sendReadReceipt(
+                "status@broadcast",
+                participant,
+                [
+                    readKey.id
+                ]
+            );
+
+
+            console.log(
+                "[AUTOVIEW] Status read receipt sent successfully."
+            );
+
+
+        } catch (fallbackError) {
+
+            console.error(
+                "[AUTOVIEW] Read receipt fallback failed:",
+                fallbackError?.message ||
+                fallbackError
+            );
+
+        }
 
     }
 
