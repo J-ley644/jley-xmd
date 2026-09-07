@@ -130,27 +130,23 @@ async function handleAutoTyping(
 
     try {
 
-        await sock.sendPresenceUpdate(
-            "composing",
-            jid
-        );
+        await sock.sendPresenceUpdate("composing", jid);
 
-        /*
-         * Keep typing visible for 5 seconds.
-         */
-        setTimeout(
-            async () => {
-                try {
-                    await sock.sendPresenceUpdate(
-                        "paused",
-                        jid
-                    );
-                } catch {
-                    // Ignore presence cleanup errors.
-                }
-            },
-            5000
-        );
+const typingInterval = setInterval(async () => {
+    try {
+        await sock.sendPresenceUpdate("composing", jid);
+    } catch {}
+}, 3000);
+
+setTimeout(async () => {
+    clearInterval(typingInterval);
+
+    try {
+        await sock.sendPresenceUpdate("paused", jid);
+    } catch {
+        // Ignore presence cleanup errors.
+    }
+}, 10000);
 
     } catch (error) {
 
@@ -231,30 +227,23 @@ async function handleAutoRecording(
             jid
         );
 
-        await sock.sendPresenceUpdate(
-            "recording",
-            jid
-        );
+        await sock.sendPresenceUpdate("recording", jid);
 
-        /*
-         * Keep recording indicator visible
-         * for 5 seconds.
-         */
-        setTimeout(
-            async () => {
-                try {
+const recordingInterval = setInterval(async () => {
+    try {
+        await sock.sendPresenceUpdate("recording", jid);
+    } catch {}
+}, 3000);
 
-                    await sock.sendPresenceUpdate(
-                        "paused",
-                        jid
-                    );
+setTimeout(async () => {
+    clearInterval(recordingInterval);
 
-                } catch {
-                    // Ignore presence cleanup errors.
-                }
-            },
-            5000
-        );
+    try {
+        await sock.sendPresenceUpdate("paused", jid);
+    } catch {
+        // Ignore presence cleanup errors.
+    }
+}, 10000);
 
     } catch (error) {
 
