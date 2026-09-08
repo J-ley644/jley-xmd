@@ -39,6 +39,8 @@ const DB_PATH =
 
 const DEFAULT_SETTINGS = {
 
+    mode: "public",
+
     autoview: false,
 
     autoread: false,

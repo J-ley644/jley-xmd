@@ -4,6 +4,8 @@ import checkPermissions from "../lib/permissions.js";
 import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
+import { isBotOwner } from "../lib/permissions.js";
+import automationStore from "../system/automationStore.js";
 
 
 /*
@@ -244,6 +246,41 @@ async function handleCommand(
     );
             ctx.command =
     commandName;
+
+    /*
+|--------------------------------------------------------------------------
+| Bot Mode
+|--------------------------------------------------------------------------
+|
+| PRIVATE:
+| Only the bot owner can execute commands.
+|
+| PUBLIC:
+| Everyone can execute commands normally.
+|
+*/
+
+const botIdentity =
+    client?.user?.lid ||
+    client?.user?.id ||
+    null;
+
+const botMode =
+    botIdentity
+        ? (
+            automationStore.getValue(
+                botIdentity,
+                "mode"
+            ) || "public"
+        )
+        : "public";
+
+if (
+    botMode === "private" &&
+    !isBotOwner(ctx)
+) {
+    return;
+}
 
 
         /*
