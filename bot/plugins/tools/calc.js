@@ -6,7 +6,7 @@ export default {
         "calculate"
     ],
 
-    category: "general",
+    category: "tools",
 
     description: "Perform mathematical calculations",
 
