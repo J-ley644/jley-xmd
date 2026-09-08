@@ -6,17 +6,13 @@ export default {
         "demoteadmins"
     ],
 
-    category: "group",
+    category: "owner",
 
     description: "Demote all group admins",
 
     usage: ".demoteall",
 
-    permissions: {
-        group: true,
-        botOwner: true,
-        botAdmin: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

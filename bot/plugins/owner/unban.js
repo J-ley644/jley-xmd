@@ -63,7 +63,7 @@ export default {
         "unblock"
     ],
 
-    category: "general",
+    category: "owner",
 
     description:
         "Unblock a WhatsApp user. Restricted to the bot owner and developer.",
@@ -71,9 +71,7 @@ export default {
     usage:
         ".unban @user | reply to a message | .unban 2547XXXXXXXX",
 
-    permissions: {
-        botOwner: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
         const target = getTarget(ctx);

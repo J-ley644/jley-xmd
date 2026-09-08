@@ -6,15 +6,13 @@ export default {
         "viewonce"
     ],
 
-    category: "general",
+    category: "owner",
 
     description: "Reveal a replied view-once image or video",
 
     usage: ".vv",
 
-    permissions: {
-    botOwner: true
-},
+    permissions: { botOwner: true },
 
 
     async execute(ctx) {

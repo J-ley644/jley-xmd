@@ -6,7 +6,7 @@ export default {
         "block"
     ],
 
-    category: "general",
+    category: "owner",
 
     description:
         "Block a WhatsApp user. Restricted to the bot owner and JLEY-XMD developer.",
@@ -14,9 +14,7 @@ export default {
     usage:
         ".ban @user | reply to a message | .ban 2547XXXXXXXX",
 
-    permissions: {
-        botOwner: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

@@ -6,13 +6,13 @@ export default {
         "uptime"
     ],
 
-    category: "general",
+    category: "owner",
 
     description: "Show bot uptime",
 
     usage: ".runtime",
 
-    permissions: {},
+    permissions: { botOwner: true },
 
 
     async execute(ctx) {

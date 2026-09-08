@@ -4,13 +4,13 @@ export default {
 
     aliases: [],
 
-    category: "general",
+    category: "owner",
 
     description: "Show current chat JID information",
 
     usage: ".jid",
 
-    permissions: {},
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

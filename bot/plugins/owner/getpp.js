@@ -7,15 +7,13 @@ export default {
         "profilepic"
     ],
 
-    category: "general",
+    category: "owner",
 
     description: "View a user's profile picture",
 
     usage: ".getpp [@user]",
 
-    permissions: {
-        botOwner: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

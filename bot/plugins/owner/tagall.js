@@ -6,16 +6,13 @@ export default {
         "everyone"
     ],
 
-    category: "group",
+    category: "owner",
 
     description: "Mention all group members",
 
     usage: ".tagall [message]",
 
-    permissions: {
-        group: true,
-        admin: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

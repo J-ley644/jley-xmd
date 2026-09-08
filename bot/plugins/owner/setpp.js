@@ -7,15 +7,13 @@ export default {
         "setprofile"
     ],
 
-    category: "general",
+    category: "owner",
 
     description: "Set the bot's profile picture",
 
     usage: ".setpp (reply to an image)",
 
-    permissions: {
-        botOwnerOrJleyOwner: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 

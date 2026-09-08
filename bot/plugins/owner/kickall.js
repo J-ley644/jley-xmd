@@ -6,17 +6,13 @@ export default {
         "removeall"
     ],
 
-    category: "group",
+    category: "owner",
 
     description: "Remove all group members except the bot",
 
     usage: ".kickall",
 
-    permissions: {
-        group: true,
-        botOwner: true,
-        botAdmin: true
-    },
+    permissions: { botOwner: true },
 
     async execute(ctx) {
 
