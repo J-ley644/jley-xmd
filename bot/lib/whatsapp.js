@@ -948,6 +948,17 @@ const text =
     Anti-Link System
 */
 
+const botJid =
+    socket.user?.id?.split(":")[0] ||
+    socket.user?.lid;
+
+const normalizedSender =
+    sender?.split(":")[0];
+
+const isBot =
+    message.key?.fromMe ||
+    normalizedSender === botJid?.split(":")[0];
+
 
 if(chat.endsWith("@g.us")){
 
@@ -982,10 +993,12 @@ if(chat.endsWith("@g.us")){
 
 
         if(
-            containsLink(text)
-            &&
-            !isAdmin
-        ){
+    containsLink(text)
+    &&
+    !isAdmin
+    &&
+    !isBot
+){
 
 
 
