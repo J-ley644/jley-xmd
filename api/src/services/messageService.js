@@ -4,143 +4,155 @@ import config from "../../../bot/config/config.js";
 import automationStore from "../../../bot/system/automationStore.js";
 import relationshipTracker from "../../../bot/system/relationshipTracker.js";
 
+import groupSettings from "../../../bot/system/groupSettings.js";
+import { containsLink } from "../../../bot/lib/antilink.js";
+
 import {
     isEnabled,
     storeMessage,
     markDeleted
 } from "../../../bot/system/antideleteStore.js";
 
-import groupSettings from "../../../bot/system/groupSettings.js";
-import { containsLink } from "../../../bot/lib/antilink.js";
-import { getAllSessions } from "../whatsapp/manager.js";
 
-
-let pluginsLoaded = false;
-
-
-/*
-|--------------------------------------------------------------------------
-| Anti-Delete Listener Registry
-|--------------------------------------------------------------------------
-*/
-
-const antiDeleteSockets = new WeakSet();
-
-
-/*
-|--------------------------------------------------------------------------
-| Ensure Plugins
-|--------------------------------------------------------------------------
-*/
-
-async function ensurePluginsLoaded() {
-
-    if (pluginsLoaded) {
-        return;
-    }
-
-    await loadPlugins();
-
-    pluginsLoaded = true;
-
-    console.log(
-        "JLEY-XMD advanced plugins loaded."
-    );
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Deployment ID
-|--------------------------------------------------------------------------
-|
-| Resolves the deployment from the socket first, then falls back to the
-| WhatsApp session manager. This keeps per-deployment features isolated.
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   DEPLOYMENT ID
+========================================================= */
 
 function getDeploymentId(sock) {
-
-    if (sock?.deploymentId) {
-        return String(sock.deploymentId);
-    }
-
-    try {
-
-        const session = getAllSessions().find(
-            item =>
-                item?.sock === sock ||
-                item?.socket === sock
-        );
-
-        return String(
-            session?.deploymentId ||
-            session?.id ||
-            "main"
-        );
-
-    } catch {
-
-        return "main";
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Automation Identity
-|--------------------------------------------------------------------------
-*/
-
-function getBotIdentity(sock) {
-
-    return (
-        sock?.user?.lid ||
-        sock?.user?.id ||
-        null
+    return String(
+        sock?.deploymentId ||
+        "main"
     );
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Message Text
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   TEXT EXTRACTION
+========================================================= */
 
-function getMessageText(message) {
+function extractText(message) {
+    const msg = message?.message;
+
+    if (!msg) return "";
 
     return (
-        message?.message?.conversation ||
-        message?.message?.extendedTextMessage?.text ||
-        message?.message?.imageMessage?.caption ||
-        message?.message?.videoMessage?.caption ||
+        msg.conversation ||
+        msg.extendedTextMessage?.text ||
+        msg.imageMessage?.caption ||
+        msg.videoMessage?.caption ||
+        msg.documentMessage?.caption ||
+        msg.buttonsResponseMessage?.selectedButtonId ||
+        msg.listResponseMessage?.singleSelectReply?.selectedRowId ||
+        msg.templateButtonReplyMessage?.selectedId ||
         ""
     );
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Anti-Link Enforcement
-|--------------------------------------------------------------------------
-|
-| This runs before the command engine.
-|
-| Rules:
-| - Only applies to groups.
-| - Must be enabled with .antilink on.
-| - Bot's own messages are ignored.
-| - Group admins are protected.
-| - Detected links are deleted.
-| - A warning is sent to the offending sender.
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   AUTO TYPING
+========================================================= */
+
+async function startAutoTyping(sock, chat) {
+    try {
+        const settings = automationStore.get(chat);
+
+        if (!settings?.autotyping) {
+            return;
+        }
+
+        await sock.sendPresenceUpdate(
+            "composing",
+            chat
+        );
+
+        setTimeout(async () => {
+            try {
+                await sock.sendPresenceUpdate(
+                    "paused",
+                    chat
+                );
+            } catch {}
+        }, 2500);
+
+    } catch (error) {
+        console.error(
+            "AutoTyping error:",
+            error?.message || error
+        );
+    }
+}
+
+
+/* =========================================================
+   AUTO RECORDING
+========================================================= */
+
+async function startAutoRecording(sock, chat) {
+    try {
+        const settings = automationStore.get(chat);
+
+        if (!settings?.autorecording) {
+            return;
+        }
+
+        await sock.sendPresenceUpdate(
+            "recording",
+            chat
+        );
+
+        setTimeout(async () => {
+            try {
+                await sock.sendPresenceUpdate(
+                    "paused",
+                    chat
+                );
+            } catch {}
+        }, 2500);
+
+    } catch (error) {
+        console.error(
+            "AutoRecording error:",
+            error?.message || error
+        );
+    }
+}
+
+
+/* =========================================================
+   RELATIONSHIP TRACKING
+========================================================= */
+
+async function trackRelationship(
+    deploymentId,
+    message,
+    chat,
+    sender,
+    text
+) {
+    try {
+        if (!text) return;
+
+        await relationshipTracker.trackMessage(
+            deploymentId,
+            message,
+            chat,
+            sender,
+            text
+        );
+
+    } catch (error) {
+        console.error(
+            "Relationship tracking error:",
+            error?.message || error
+        );
+    }
+}
+
+
+/* =========================================================
+   ANTI-LINK
+========================================================= */
 
 async function enforceAntiLink(
     sock,
@@ -149,7 +161,6 @@ async function enforceAntiLink(
     sender,
     text
 ) {
-
     if (!chat?.endsWith("@g.us")) {
         return false;
     }
@@ -162,8 +173,7 @@ async function enforceAntiLink(
         return false;
     }
 
-    const settings =
-        groupSettings.get(chat);
+    const settings = groupSettings.get(chat);
 
     if (!settings?.antilink) {
         return false;
@@ -174,9 +184,7 @@ async function enforceAntiLink(
     }
 
     try {
-
-        const metadata =
-            await sock.groupMetadata(chat);
+        const metadata = await sock.groupMetadata(chat);
 
         const participant =
             metadata?.participants?.find(
@@ -194,38 +202,29 @@ async function enforceAntiLink(
         /*
          * Never remove links sent by group admins.
          */
-
         if (isAdmin) {
             return false;
         }
 
         /*
-         * Delete the offending message.
+         * Delete offending message.
          */
-
-        await sock.sendMessage(
-            chat,
-            {
-                delete: message.key
-            }
-        );
+        await sock.sendMessage(chat, {
+            delete: message.key
+        });
 
         /*
-         * Warn the sender.
+         * Warn sender.
          */
-
-        await sock.sendMessage(
-            chat,
-            {
-                text:
+        await sock.sendMessage(chat, {
+            text:
 `🚫 *ANTI-LINK*
 
 Links are not allowed in this group.
 
 @${String(sender).split("@")[0]}, please remove the link.`,
-                mentions: [sender]
-            }
-        );
+            mentions: [sender]
+        });
 
         console.log(
             `[Anti-Link] Removed link from ${sender} in ${chat}`
@@ -234,1099 +233,301 @@ Links are not allowed in this group.
         return true;
 
     } catch (error) {
-
         console.error(
             "Anti-link error:",
             error?.message || error
         );
 
         return false;
-
     }
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Anti-Delete Recovery
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   ANTIDELETE LISTENER
+========================================================= */
 
-async function recoverDeletedMessage(
-    sock,
-    deleted
-) {
+const antiDeleteListeners = new WeakSet();
 
-    if (!deleted?.message) {
+function installAntiDeleteListener(sock) {
+    if (!sock || antiDeleteListeners.has(sock)) {
         return;
     }
 
-    const chat =
-        deleted.chat;
-
-    if (!chat) {
-        return;
-    }
-
-    const original =
-        deleted.message;
-
-    const sender =
-        deleted.sender ||
-        deleted.key?.participant ||
-        deleted.key?.remoteJid ||
-        "Unknown";
-
-    const deletedBy =
-        deleted.deletedBy ||
-        "Unknown";
-
-    const time =
-        deleted.deletedAt
-            ? new Date(
-                deleted.deletedAt
-            ).toLocaleString()
-            : new Date().toLocaleString();
-
-    const text =
-        original.conversation ||
-        original.extendedTextMessage?.text ||
-        original.imageMessage?.caption ||
-        original.videoMessage?.caption ||
-        "";
-
-    try {
-
-        /*
-         * Text message
-         */
-
-        if (text) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    text:
-`🗑️ *ANTI-DELETE*
-
-👤 Sent by: +${formatNumber(sender)}
-
-🗑️ Deleted by: +${formatNumber(deletedBy)}
-
-🕐 ${time}
-
-💬 *Deleted Message:*
-
-${text}`
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Image
-         */
-
-        if (original.imageMessage) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    image:
-                        original.imageMessage,
-                    caption:
-`🗑️ *ANTI-DELETE*
-
-👤 Sent by: +${formatNumber(sender)}
-
-🗑️ Deleted by: +${formatNumber(deletedBy)}
-
-🕐 ${time}
-
-📷 Deleted image recovered.`
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Video
-         */
-
-        if (original.videoMessage) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    video:
-                        original.videoMessage,
-                    caption:
-`🗑️ *ANTI-DELETE*
-
-👤 Sent by: +${formatNumber(sender)}
-
-🗑️ Deleted by: +${formatNumber(deletedBy)}
-
-🕐 ${time}
-
-🎥 Deleted video recovered.`
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Audio
-         */
-
-        if (original.audioMessage) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    audio:
-                        original.audioMessage,
-                    mimetype:
-                        original.audioMessage.mimetype ||
-                        "audio/mp4"
-                }
-            );
-
-            await sock.sendMessage(
-                chat,
-                {
-                    text:
-`🗑️ *ANTI-DELETE*
-
-👤 Sent by: +${formatNumber(sender)}
-
-🗑️ Deleted by: +${formatNumber(deletedBy)}
-
-🕐 ${time}
-
-🎵 Deleted audio recovered.`
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Sticker
-         */
-
-        if (original.stickerMessage) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    sticker:
-                        original.stickerMessage
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Document
-         */
-
-        if (original.documentMessage) {
-
-            await sock.sendMessage(
-                chat,
-                {
-                    document:
-                        original.documentMessage,
-                    mimetype:
-                        original.documentMessage.mimetype ||
-                        "application/octet-stream",
-                    fileName:
-                        original.documentMessage.fileName ||
-                        "deleted-file"
-                }
-            );
-
-            return;
-
-        }
-
-
-        /*
-         * Fallback
-         */
-
-        await sock.sendMessage(
-            chat,
-            {
-                text:
-`🗑️ *ANTI-DELETE*
-
-👤 Sent by: +${formatNumber(sender)}
-
-🗑️ Deleted by: +${formatNumber(deletedBy)}
-
-🕐 ${time}
-
-⚠️ A deleted message was detected, but its content could not be reconstructed.`
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Anti-Delete recovery error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Deleted Message Handler
-|--------------------------------------------------------------------------
-*/
-
-async function handleDeletedMessage(
-    sock,
-    update
-) {
-
-    try {
-
-        if (!update) {
-            return;
-        }
-
-
-        const key =
-            update.key ||
-            update.update?.key;
-
-
-        /*
-         * Different Baileys versions expose
-         * revoke events differently.
-         */
-
-        const message =
-            update.update?.message ||
-            update.message;
-
-
-        const protocol =
-            message?.protocolMessage;
-
-
-        const stubType =
-            update.update?.messageStubType ||
-            update.messageStubType;
-
-
-        const isProtocolRevoke =
-            protocol?.type === 0 ||
-            protocol?.type === "REVOKE" ||
-            String(protocol?.type || "")
-                .toUpperCase()
-                .includes("REVOKE");
-
-
-        const isStubRevoke =
-            String(stubType || "")
-                .toUpperCase()
-                .includes("REVOKE");
-
-
-        if (
-            !isProtocolRevoke &&
-            !isStubRevoke
-        ) {
-            return;
-        }
-
-
-        const messageKey =
-            protocol?.key ||
-            update.update?.key ||
-            update.key;
-
-
-        const messageId =
-            messageKey?.id ||
-            key?.id;
-
-
-        if (!messageId) {
-            return;
-        }
-
-
-        const deploymentId =
-            getDeploymentId(sock);
-
-
-        /*
-         * Only process Anti-Delete when enabled.
-         */
-
-        if (
-            !isEnabled(
-                deploymentId
-            )
-        ) {
-            return;
-        }
-
-
-        const deletedBy =
-            update.update?.participant ||
-            update.participant ||
-            sock?.user?.id ||
-            "Unknown";
-
-
-        const recovered =
-            markDeleted(
-                deploymentId,
-                messageId,
-                deletedBy
-            );
-
-
-        if (!recovered) {
-
-            console.log(
-                `[Anti-Delete] Message ${messageId} was deleted but was not found in history.`
-            );
-
-            return;
-
-        }
-
-
-        console.log(
-            `[Anti-Delete] Recovering deleted message ${messageId}`
-        );
-
-
-        await recoverDeletedMessage(
-            sock,
-            recovered
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Anti-Delete detection error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Install Anti-Delete Listener
-|--------------------------------------------------------------------------
-*/
-
-function ensureAntiDeleteListener(
-    sock
-) {
-
-    if (!sock?.ev) {
-        return;
-    }
-
-
-    /*
-     * Prevent duplicate listeners
-     * on the same socket.
-     */
-
-    if (
-        antiDeleteSockets.has(sock)
-    ) {
-        return;
-    }
-
-
-    antiDeleteSockets.add(sock);
-
+    antiDeleteListeners.add(sock);
 
     sock.ev.on(
         "messages.update",
         async updates => {
+            try {
+                for (const update of updates || []) {
+                    const key = update?.key;
 
-            if (!Array.isArray(updates)) {
-                return;
-            }
+                    if (!key) {
+                        continue;
+                    }
 
+                    /*
+                     * WhatsApp deleted-message update.
+                     */
+                    const messageUpdate =
+                        update?.update?.message;
 
-            for (
-                const update of updates
-            ) {
+                    if (
+                        !messageUpdate &&
+                        !update?.update?.messageStubType
+                    ) {
+                        continue;
+                    }
 
-                try {
+                    const deploymentId =
+                        getDeploymentId(sock);
 
-                    await handleDeletedMessage(
-                        sock,
-                        update
-                    );
+                    const enabled =
+                        isEnabled(deploymentId);
 
-                } catch (error) {
+                    if (!enabled) {
+                        continue;
+                    }
 
-                    console.error(
-                        "Anti-Delete update error:",
-                        error?.message ||
-                        error
-                    );
+                    /*
+                     * Recover the stored message.
+                     */
+                    const stored =
+                        markDeleted(
+                            deploymentId,
+                            key
+                        );
 
+                    if (!stored) {
+                        continue;
+                    }
+
+                    const chat =
+                        stored?.key?.remoteJid ||
+                        key?.remoteJid;
+
+                    if (!chat) {
+                        continue;
+                    }
+
+                    const originalMessage =
+                        stored?.message ||
+                        stored;
+
+                    if (!originalMessage) {
+                        continue;
+                    }
+
+                    try {
+                        await sock.sendMessage(
+                            chat,
+                            {
+                                text:
+`🛡️ *ANTI-DELETE*
+
+A deleted message was detected.
+
+👤 Sender:
+@${String(
+    key?.participant ||
+    key?.remoteJid ||
+    ""
+).split("@")[0]}
+
+📩 Message:
+${extractText({
+    message: originalMessage
+}) || "[Media / Unsupported message]"}`,
+                                mentions: [
+                                    key?.participant ||
+                                    key?.remoteJid
+                                ].filter(Boolean)
+                            }
+                        );
+
+                    } catch (error) {
+                        console.error(
+                            "AntiDelete recovery error:",
+                            error?.message || error
+                        );
+                    }
                 }
 
+            } catch (error) {
+                console.error(
+                    "AntiDelete update error:",
+                    error?.message || error
+                );
             }
-
         }
     );
-
-
-    console.log(
-        "[Anti-Delete] Message deletion listener attached."
-    );
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Store Incoming Message
-|--------------------------------------------------------------------------
-*/
-
-function captureMessageForAntiDelete(
-    sock,
-    message
-) {
-
-    try {
-
-        const deploymentId =
-            getDeploymentId(sock);
-
-
-        if (
-            !isEnabled(
-                deploymentId
-            )
-        ) {
-            return;
-        }
-
-
-        if (
-            !message?.key?.id ||
-            !message?.message
-        ) {
-            return;
-        }
-
-
-        const chat =
-            message.key.remoteJid;
-
-
-        if (!chat) {
-            return;
-        }
-
-
-        /*
-         * Don't store status broadcasts.
-         */
-
-        if (
-            chat ===
-            "status@broadcast"
-        ) {
-            return;
-        }
-
-
-        storeMessage(
-            deploymentId,
-            {
-                id:
-                    message.key.id,
-
-                chat,
-
-                sender:
-                    message.key.participant ||
-                    message.key.remoteJid,
-
-                senderName:
-                    message.pushName ||
-                    "Unknown",
-
-                key:
-                    message.key,
-
-                message:
-                    message.message,
-
-                timestamp:
-                    message.messageTimestamp
-                        ? Number(
-                            message.messageTimestamp
-                        ) * 1000
-                        : Date.now()
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Anti-Delete message capture error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| AutoTyping
-|--------------------------------------------------------------------------
-*/
-
-async function handleAutoTyping(
-    sock,
-    message,
-    jid
-) {
-
-    if (
-        !sock ||
-        !message ||
-        !jid
-    ) {
-        return;
-    }
-
-
-    if (
-        jid === "status@broadcast" ||
-        jid.endsWith(
-            "status@broadcast"
-        )
-    ) {
-        return;
-    }
-
-
-    const botIdentity =
-        getBotIdentity(sock);
-
-
-    if (!botIdentity) {
-        return;
-    }
-
-
-    const settings =
-        automationStore.get(
-            botIdentity
-        );
-
-
-    let recordingEnabled =
-        settings?.autorecording === true;
-
-
-    const chatSettings =
-        settings?.chats?.[jid];
-
-
-    if (
-        chatSettings &&
-        Object.prototype.hasOwnProperty.call(
-            chatSettings,
-            "autorecording"
-        )
-    ) {
-
-        recordingEnabled =
-            chatSettings.autorecording === true;
-
-    }
-
-
-    if (recordingEnabled) {
-        return;
-    }
-
-
-    let enabled =
-        settings?.autotyping === true;
-
-
-    if (
-        chatSettings &&
-        Object.prototype.hasOwnProperty.call(
-            chatSettings,
-            "autotyping"
-        )
-    ) {
-
-        enabled =
-            chatSettings.autotyping === true;
-
-    }
-
-
-    if (!enabled) {
-        return;
-    }
-
-
-    try {
-
-        await sock.sendPresenceUpdate(
-            "composing",
-            jid
-        );
-
-
-        const typingInterval =
-            setInterval(
-                async () => {
-
-                    try {
-
-                        await sock.sendPresenceUpdate(
-                            "composing",
-                            jid
-                        );
-
-                    } catch {}
-
-                },
-                3000
-            );
-
-
-        setTimeout(
-            async () => {
-
-                clearInterval(
-                    typingInterval
-                );
-
-                try {
-
-                    await sock.sendPresenceUpdate(
-                        "paused",
-                        jid
-                    );
-
-                } catch {}
-
-            },
-            10000
-        );
-
-    } catch (error) {
-
-        console.error(
-            "AutoTyping error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| AutoRecording
-|--------------------------------------------------------------------------
-*/
-
-async function handleAutoRecording(
-    sock,
-    message,
-    jid
-) {
-
-    if (
-        !sock ||
-        !message ||
-        !jid
-    ) {
-        return;
-    }
-
-
-    if (
-        jid === "status@broadcast" ||
-        jid.endsWith(
-            "status@broadcast"
-        )
-    ) {
-        return;
-    }
-
-
-    const botIdentity =
-        getBotIdentity(sock);
-
-
-    if (!botIdentity) {
-        return;
-    }
-
-
-    const settings =
-        automationStore.get(
-            botIdentity
-        );
-
-
-    let enabled =
-        settings?.autorecording === true;
-
-
-    const chatSettings =
-        settings?.chats?.[jid];
-
-
-    if (
-        chatSettings &&
-        Object.prototype.hasOwnProperty.call(
-            chatSettings,
-            "autorecording"
-        )
-    ) {
-
-        enabled =
-            chatSettings.autorecording === true;
-
-    }
-
-
-    if (!enabled) {
-        return;
-    }
-
-
-    try {
-
-        console.log(
-            "[AutoRecording] Recording:",
-            jid
-        );
-
-
-        await sock.sendPresenceUpdate(
-            "recording",
-            jid
-        );
-
-
-        const recordingInterval =
-            setInterval(
-                async () => {
-
-                    try {
-
-                        await sock.sendPresenceUpdate(
-                            "recording",
-                            jid
-                        );
-
-                    } catch {}
-
-                },
-                3000
-            );
-
-
-        setTimeout(
-            async () => {
-
-                clearInterval(
-                    recordingInterval
-                );
-
-                try {
-
-                    await sock.sendPresenceUpdate(
-                        "paused",
-                        jid
-                    );
-
-                } catch {}
-
-            },
-            10000
-        );
-
-    } catch (error) {
-
-        console.error(
-            "AutoRecording error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Relationship Tracking
-|--------------------------------------------------------------------------
-*/
-
-function trackRelationship(
-    sock,
-    message
-) {
-
-    try {
-
-        relationshipTracker.trackMessage(
-            sock,
-            message
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Relationship tracking error:",
-            error?.message ||
-            error
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Message Handler
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   MESSAGE HANDLER
+========================================================= */
 
 export async function handleMessage(
     sock,
     message
 ) {
-
-    /*
-     * Install the deletion listener as soon
-     * as this socket receives its first message.
-     */
-
-    ensureAntiDeleteListener(
-        sock
-    );
-
-
-    /*
-     * Capture messages BEFORE command/text
-     * filtering.
-     */
-
-    captureMessageForAntiDelete(
-        sock,
-        message
-    );
-
-
-    if (!message?.message) {
-        return;
-    }
-
-
-    const jid =
-        message.key?.remoteJid;
-
-
-    if (!jid) {
-        return;
-    }
-
-
-    const text =
-        getMessageText(
-            message
-        );
-
-
-    /*
-     * Relationship tracking should still
-     * receive normal text messages.
-     */
-
-    if (
-        text.trim()
-    ) {
-
-        trackRelationship(
-            sock,
-            message
-        );
-
-    }
-
-
-    /*
-     * Auto Recording
-     */
-
-    void handleAutoRecording(
-        sock,
-        message,
-        jid
-    );
-
-
-    /*
-     * Auto Typing
-     */
-
-    void handleAutoTyping(
-        sock,
-        message,
-        jid
-    );
-
-
-    /*
-     * Empty message.
-     */
-
-    if (!text.trim()) {
-        return;
-    }
-
-
-    /*
-     * Anti-Link protection.
-     *
-     * This MUST happen before the command
-     * engine so links are removed before
-     * commands/plugins process the message.
-     */
-
-    const sender =
-        message.key?.participant ||
-        message.key?.remoteJid;
-
-    const removed =
-        await enforceAntiLink(
-            sock,
-            message,
-            jid,
-            sender,
-            text
-        );
-
-    if (removed) {
-        return;
-    }
-
-
-    /*
-     * Ignore own non-command messages.
-     */
-
-    if (
-        message.key?.fromMe &&
-        !text
-            .trim()
-            .startsWith(
-                config.prefix
-            )
-    ) {
-
-        return;
-
-    }
-
-
     try {
+        if (!sock || !message) {
+            return;
+        }
 
-        await ensurePluginsLoaded();
+        /*
+         * Install AntiDelete listener once per socket.
+         */
+        installAntiDeleteListener(sock);
 
+        /*
+         * Capture incoming messages for AntiDelete.
+         */
+        try {
+            const deploymentId =
+                getDeploymentId(sock);
+
+            const enabled =
+                isEnabled(deploymentId);
+
+            if (enabled) {
+                storeMessage(
+                    deploymentId,
+                    message
+                );
+            }
+        } catch (error) {
+            console.error(
+                "AntiDelete store error:",
+                error?.message || error
+            );
+        }
+
+
+        /* =====================================================
+           CHAT / SENDER
+        ===================================================== */
+
+        const jid =
+            message?.key?.remoteJid;
+
+        if (!jid) {
+            return;
+        }
+
+        const sender =
+            message?.key?.participant ||
+            jid;
+
+        const text =
+            extractText(message);
+
+
+        /* =====================================================
+           RELATIONSHIP TRACKING
+        ===================================================== */
+
+        if (text) {
+            await trackRelationship(
+                getDeploymentId(sock),
+                message,
+                jid,
+                sender,
+                text
+            );
+        }
+
+
+        /* =====================================================
+           AUTO RECORDING
+        ===================================================== */
+
+        await startAutoRecording(
+            sock,
+            jid
+        );
+
+
+        /* =====================================================
+           AUTO TYPING
+        ===================================================== */
+
+        await startAutoTyping(
+            sock,
+            jid
+        );
+
+
+        /* =====================================================
+           EMPTY MESSAGE
+        ===================================================== */
+
+        if (!text?.trim()) {
+            return;
+        }
+
+
+        /* =====================================================
+           ANTI-LINK
+           
+           IMPORTANT:
+           This runs BEFORE the command engine so a message
+           containing a link can be deleted immediately.
+        ===================================================== */
+
+        const removed =
+            await enforceAntiLink(
+                sock,
+                message,
+                jid,
+                sender,
+                text
+            );
+
+        if (removed) {
+            return;
+        }
+
+
+        /* =====================================================
+           IGNORE BOT'S OWN NON-COMMAND MESSAGES
+        ===================================================== */
+
+        if (
+            message?.key?.fromMe &&
+            !text.startsWith(
+                config.prefix || "."
+            )
+        ) {
+            return;
+        }
+
+
+        /* =====================================================
+           LOAD PLUGINS
+        ===================================================== */
+
+        const plugins =
+            await loadPlugins();
+
+
+        /* =====================================================
+           COMMAND ENGINE
+        ===================================================== */
 
         await handleCommand(
             sock,
-            message
+            message,
+            plugins
         );
 
     } catch (error) {
-
         console.error(
-            "Advanced message engine error:",
-            error
+            "Message handler:",
+            error?.message || error
         );
-
     }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Number Formatter
-|--------------------------------------------------------------------------
-*/
-
-function formatNumber(
-    jid
-) {
-
-    if (!jid) {
-        return "Unknown";
-    }
-
-
-    return String(jid)
-        .split(":")[0]
-        .split("@")[0]
-        .trim() ||
-        "Unknown";
-
 }
