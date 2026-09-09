@@ -10,6 +10,10 @@ import {
     markDeleted
 } from "../../../bot/system/antideleteStore.js";
 
+import groupSettings from "../../../bot/system/groupSettings.js";
+import { containsLink } from "../../../bot/lib/antilink.js";
+import { getAllSessions } from "../whatsapp/manager.js";
+
 
 let pluginsLoaded = false;
 
@@ -48,6 +52,45 @@ async function ensurePluginsLoaded() {
 
 /*
 |--------------------------------------------------------------------------
+| Deployment ID
+|--------------------------------------------------------------------------
+|
+| Resolves the deployment from the socket first, then falls back to the
+| WhatsApp session manager. This keeps per-deployment features isolated.
+|--------------------------------------------------------------------------
+*/
+
+function getDeploymentId(sock) {
+
+    if (sock?.deploymentId) {
+        return String(sock.deploymentId);
+    }
+
+    try {
+
+        const session = getAllSessions().find(
+            item =>
+                item?.sock === sock ||
+                item?.socket === sock
+        );
+
+        return String(
+            session?.deploymentId ||
+            session?.id ||
+            "main"
+        );
+
+    } catch {
+
+        return "main";
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Automation Identity
 |--------------------------------------------------------------------------
 */
@@ -78,6 +121,128 @@ function getMessageText(message) {
         message?.message?.videoMessage?.caption ||
         ""
     );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Anti-Link Enforcement
+|--------------------------------------------------------------------------
+|
+| This runs before the command engine.
+|
+| Rules:
+| - Only applies to groups.
+| - Must be enabled with .antilink on.
+| - Bot's own messages are ignored.
+| - Group admins are protected.
+| - Detected links are deleted.
+| - A warning is sent to the offending sender.
+|--------------------------------------------------------------------------
+*/
+
+async function enforceAntiLink(
+    sock,
+    message,
+    chat,
+    sender,
+    text
+) {
+
+    if (!chat?.endsWith("@g.us")) {
+        return false;
+    }
+
+    if (!text?.trim()) {
+        return false;
+    }
+
+    if (message?.key?.fromMe) {
+        return false;
+    }
+
+    const settings =
+        groupSettings.get(chat);
+
+    if (!settings?.antilink) {
+        return false;
+    }
+
+    if (!containsLink(text)) {
+        return false;
+    }
+
+    try {
+
+        const metadata =
+            await sock.groupMetadata(chat);
+
+        const participant =
+            metadata?.participants?.find(
+                p =>
+                    p?.id === sender ||
+                    p?.lid === sender ||
+                    p?.phoneNumber === sender ||
+                    p?.id === message?.key?.participant
+            );
+
+        const isAdmin =
+            participant?.admin === "admin" ||
+            participant?.admin === "superadmin";
+
+        /*
+         * Never remove links sent by group admins.
+         */
+
+        if (isAdmin) {
+            return false;
+        }
+
+        /*
+         * Delete the offending message.
+         */
+
+        await sock.sendMessage(
+            chat,
+            {
+                delete: message.key
+            }
+        );
+
+        /*
+         * Warn the sender.
+         */
+
+        await sock.sendMessage(
+            chat,
+            {
+                text:
+`🚫 *ANTI-LINK*
+
+Links are not allowed in this group.
+
+@${String(sender).split("@")[0]}, please remove the link.`,
+                mentions: [sender]
+            }
+        );
+
+        console.log(
+            `[Anti-Link] Removed link from ${sender} in ${chat}`
+        );
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "Anti-link error:",
+            error?.message || error
+        );
+
+        return false;
+
+    }
 
 }
 
@@ -416,8 +581,7 @@ async function handleDeletedMessage(
 
 
         const deploymentId =
-            sock?.deploymentId ||
-            "main";
+            getDeploymentId(sock);
 
 
         /*
@@ -569,8 +733,7 @@ function captureMessageForAntiDelete(
     try {
 
         const deploymentId =
-            sock?.deploymentId ||
-            "main";
+            getDeploymentId(sock);
 
 
         if (
@@ -1075,6 +1238,32 @@ export async function handleMessage(
      */
 
     if (!text.trim()) {
+        return;
+    }
+
+
+    /*
+     * Anti-Link protection.
+     *
+     * This MUST happen before the command
+     * engine so links are removed before
+     * commands/plugins process the message.
+     */
+
+    const sender =
+        message.key?.participant ||
+        message.key?.remoteJid;
+
+    const removed =
+        await enforceAntiLink(
+            sock,
+            message,
+            jid,
+            sender,
+            text
+        );
+
+    if (removed) {
         return;
     }
 
