@@ -1,4 +1,5 @@
 import groupSettings from "../../system/groupSettings.js";
+import { jidMatch } from "../../lib/jid.js";
 
 export default {
 
@@ -15,8 +16,7 @@ export default {
     usage: ".antilink on/off",
 
     permissions: {
-        group: true,
-        admin: true
+        group: true
     },
 
     async execute(ctx) {
@@ -38,6 +38,65 @@ Disable protection:
 .antilink off`
 
             );
+
+        }
+
+
+        /*
+         * AntiLink admin check
+         *
+         * We intentionally do this here instead of using
+         * the generic admin permission layer.
+         *
+         * WhatsApp may expose the same user through:
+         * - id
+         * - lid
+         * - phoneNumber
+         * - message participant
+         */
+
+        if (!ctx.isAdmin) {
+
+            const metadata =
+                await ctx.client.groupMetadata(
+                    ctx.chat
+                );
+
+            const sender =
+                ctx.sender;
+
+            const participant =
+                (metadata?.participants || []).find(
+                    member =>
+                        jidMatch(
+                            member?.id,
+                            sender
+                        ) ||
+                        jidMatch(
+                            member?.lid,
+                            sender
+                        ) ||
+                        jidMatch(
+                            member?.phoneNumber,
+                            sender
+                        ) ||
+                        jidMatch(
+                            member?.id,
+                            ctx.message?.key?.participant
+                        )
+                );
+
+            const isAdmin =
+                participant?.admin === "admin" ||
+                participant?.admin === "superadmin";
+
+            if (!isAdmin) {
+
+                return ctx.reply(
+                    "❌ You must be a group admin to change Anti-Link settings."
+                );
+
+            }
 
         }
 
