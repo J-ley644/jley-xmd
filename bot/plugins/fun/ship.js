@@ -816,8 +816,3 @@ function getDisplayName(
 
 }
 
-This is the version to use. It preserves the existing Ship scoring/output while fixing the analyzer call and removing the nonexistent "relationshipStore.update()" call.
-
-I also confirmed the context builder already supplies "deploymentId", so the analyzer now receives the correct deployment/group/user parameters.
-
-After pushing it, test ".ship @person1 @person2".
