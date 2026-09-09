@@ -1,11 +1,7 @@
 /*
  * JLEY-XMD Anti-Delete Recovery
  *
- * Compatibility wrapper.
- *
- * The main antidelete plugin owns recovery logic.
- * This file intentionally contains no media buffering,
- * history storage, or duplicate recovery implementation.
+ * Recovery helper for deleted messages.
  */
 
 export async function recoverDeleted(
@@ -22,8 +18,10 @@ export async function recoverDeleted(
 
     }
 
+
     const original =
         item.message;
+
 
     if (!original) {
 
@@ -33,23 +31,26 @@ export async function recoverDeleted(
 
     }
 
-    const content =
-        original.message || {};
 
     const text =
-        content.conversation ||
-        content.extendedTextMessage?.text ||
-        null;
+        original.conversation ||
+        original.extendedTextMessage?.text ||
+        original.imageMessage?.caption ||
+        original.videoMessage?.caption ||
+        "";
+
 
     const sender =
         formatNumber(
             item.sender
         );
 
+
     const deletedBy =
         formatNumber(
             item.deletedBy
         );
+
 
     const time =
         item.deletedAt
@@ -58,50 +59,96 @@ export async function recoverDeleted(
             ).toLocaleString()
             : "Unknown";
 
+
+    /*
+     * Text
+     */
+
     if (text) {
 
         return ctx.reply(
-
 `🗑️ DELETED MESSAGE #${index}
 
 👤 Sent by: +${sender}
+
 🗑️ Deleted by: +${deletedBy}
+
 🕐 ${time}
 
 💬 Message:
 ${text}`
-
         );
 
     }
 
-    return ctx.reply(
 
+    /*
+     * Media
+     */
+
+    let mediaType =
+        "media";
+
+
+    if (original.imageMessage) {
+        mediaType = "image";
+    }
+
+    else if (
+        original.videoMessage
+    ) {
+        mediaType = "video";
+    }
+
+    else if (
+        original.audioMessage
+    ) {
+        mediaType = "audio";
+    }
+
+    else if (
+        original.stickerMessage
+    ) {
+        mediaType = "sticker";
+    }
+
+    else if (
+        original.documentMessage
+    ) {
+        mediaType = "document";
+    }
+
+
+    return ctx.reply(
 `🗑️ DELETED MESSAGE #${index}
 
 👤 Sent by: +${sender}
+
 🗑️ Deleted by: +${deletedBy}
+
 🕐 ${time}
 
-⚠️ This recovery helper does not load media into memory.
-Use the main Anti-Delete recovery handler for media messages.`
+📦 Type: ${mediaType}
 
+⚠️ The deleted media was detected and stored, but this manual recovery helper only displays its metadata.`
     );
 
 }
 
 
-function formatNumber(jid) {
+function formatNumber(
+    jid
+) {
 
     if (!jid) {
-
         return "Unknown";
-
     }
+
 
     return String(jid)
         .split(":")[0]
         .split("@")[0]
-        .trim() || "Unknown";
+        .trim() ||
+        "Unknown";
 
 }
