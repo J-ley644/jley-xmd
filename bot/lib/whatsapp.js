@@ -934,6 +934,10 @@ const sender =
 const text =
     message.message?.conversation ||
     message.message?.extendedTextMessage?.text ||
+    message.message?.imageMessage?.caption ||
+    message.message?.videoMessage?.caption ||
+    message.message?.documentMessage?.caption ||
+    message.message?.documentWithCaptionMessage?.message?.documentMessage?.caption ||
     "";
 
 
