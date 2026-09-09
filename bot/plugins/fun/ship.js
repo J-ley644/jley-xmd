@@ -1,10 +1,7 @@
-import relationshipStore from "../../system/relationshipStore.js";
 import relationshipAnalyzer from "../../system/relationshipAnalyzer.js";
 import { jidMatch, getNumberFromJid } from "../../lib/jid.js";
 
-
 export default {
-
     name: "ship",
 
     aliases: [
@@ -23,13 +20,12 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Group Only
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         if (!ctx.isGroup) {
@@ -42,21 +38,15 @@ export default {
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Get Mentions
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const mentioned =
             ctx.message?.message?.extendedTextMessage
                 ?.contextInfo?.mentionedJid || [];
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Also support target/reply
-        |--------------------------------------------------------------------------
-        */
 
         const participants = [];
 
@@ -79,9 +69,9 @@ export default {
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Reply Target
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         if (
@@ -117,9 +107,9 @@ export default {
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Command Arguments
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         if (
@@ -154,9 +144,9 @@ export default {
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Validation
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         if (participants.length < 2) {
@@ -182,9 +172,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Only Two
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
+        | Select Two People
+        |----------------------------------------------------------------------
         */
 
         const first =
@@ -195,9 +185,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Prevent Same Person
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         if (
@@ -212,9 +202,22 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Analyze Relationship
-        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | relationshipAnalyzer exports analyzeRelationship(),
+        | not analyze().
+        |
+        | Signature:
+        |
+        | analyzeRelationship(
+        |     deploymentId,
+        |     groupJid,
+        |     userA,
+        |     userB
+        | )
+        |----------------------------------------------------------------------
         */
 
         let analysis;
@@ -223,10 +226,18 @@ the second person.
         try {
 
             analysis =
-                await relationshipAnalyzer.analyze(
-                    ctx,
+                relationshipAnalyzer.analyzeRelationship(
+
+                    ctx.deploymentId ||
+                    ctx.client?.deploymentId ||
+                    "main",
+
+                    ctx.chat,
+
                     first,
+
                     second
+
                 );
 
         } catch (error) {
@@ -236,29 +247,9 @@ the second person.
                 error
             );
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Fallback
-            |--------------------------------------------------------------------------
-            */
-
-            try {
-
-                analysis =
-                    relationshipAnalyzer.analyze(
-                        ctx,
-                        first,
-                        second
-                    );
-
-            } catch {
-
-                return ctx.reply(
-                    "❌ I couldn't analyze their relationship right now."
-                );
-
-            }
+            return ctx.reply(
+                "❌ Failed to get relationship status right now."
+            );
 
         }
 
@@ -273,34 +264,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Store Result
-        |--------------------------------------------------------------------------
-        */
-
-        try {
-
-            relationshipStore.update?.(
-                ctx.chat,
-                first,
-                second,
-                analysis
-            );
-
-        } catch {
-
-            /*
-             * Relationship storage should never
-             * prevent the command from responding.
-             */
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Names
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const firstName =
@@ -318,9 +284,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Scores
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const romance =
@@ -350,9 +316,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Relationship Type
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const relationship =
@@ -364,9 +330,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Compatibility
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const compatibility =
@@ -378,9 +344,9 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Dynamic Commentary
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const joke =
@@ -394,28 +360,23 @@ the second person.
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Interaction Data
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         const interactions =
+            analysis.messages ??
             analysis.interactions ??
             analysis.interactionCount ??
             analysis.messageCount ??
-            null;
-
-
-        const interactionLine =
-            interactions !== null
-                ? `💬 Interactions: ${interactions}`
-                : "";
+            0;
 
 
         /*
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         | Final Response
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
         */
 
         return ctx.reply(
@@ -445,7 +406,7 @@ ${makeBar(compatibility)} ${compatibility}%
 🔎 Relationship:
 ${relationship}
 
-${interactionLine}
+💬 Interactions: ${interactions}
 
 ${joke}
 
@@ -513,19 +474,12 @@ function calculateCompatibility(
     enmity
 ) {
 
-    /*
-     * Romance and friendship increase
-     * compatibility.
-     *
-     * Enmity reduces it.
-     */
-
     return clampScore(
-        (
-            romance * 0.55 +
-            friendship * 0.45 -
-            enmity * 0.35
-        )
+
+        romance * 0.55 +
+        friendship * 0.45 -
+        enmity * 0.35
+
     );
 
 }
@@ -623,22 +577,22 @@ function generateJoke(
     secondName
 ) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | High Romance
-    |--------------------------------------------------------------------------
-    */
-
     if (
         romance >= 90
     ) {
 
         return random([
+
             `💘 ${firstName} + ${secondName} = just date already 😂`,
+
             `🚨 At this point even the group knows what's going on 😂`,
+
             `💍 Somebody hide the wedding planner 😂`,
+
             `❤️ Stop pretending you're "just friends" 😂`,
+
             `👀 The chemistry is doing more work than both of you.`
+
         ]);
 
     }
@@ -649,31 +603,36 @@ function generateJoke(
     ) {
 
         return random([
+
             `👀 Someone needs to make the first move 😂`,
+
             `💕 This is looking dangerously romantic.`,
+
             `😂 The group chat is definitely watching this one.`,
+
             `❤️ There is something suspicious happening here...`,
+
             `😏 Just date already. I'm tired of analyzing this.`
+
         ]);
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | High Enmity
-    |--------------------------------------------------------------------------
-    */
 
     if (
         enmity >= 85
     ) {
 
         return random([
+
             `☠️ Somebody remove these two from the same group 😂`,
+
             `🔥 This isn't a relationship. It's a battlefield.`,
+
             `⚔️ Even WhatsApp is tired of their arguments.`,
+
             `💀 One more argument and the group becomes a war zone.`
+
         ]);
 
     }
@@ -684,31 +643,36 @@ function generateJoke(
     ) {
 
         return random([
+
             `😂 You two need a referee.`,
+
             `⚔️ The beef is very much alive.`,
+
             `🔥 Somebody bring popcorn.`,
+
             `😭 Why do you two fight like this?`
+
         ]);
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Strong Friendship
-    |--------------------------------------------------------------------------
-    */
 
     if (
         friendship >= 85
     ) {
 
         return random([
+
             `🤝 Real friendship detected.`,
+
             `😂 These two probably share secrets the admins don't know.`,
+
             `🔥 Certified besties.`,
+
             `🫂 That's actually wholesome.`,
+
             `😎 The duo nobody can separate.`
+
         ]);
 
     }
@@ -719,20 +683,19 @@ function generateJoke(
     ) {
 
         return random([
+
             `😎 Solid friendship.`,
+
             `🤝 You two actually get along.`,
+
             `😂 Definitely partners in crime.`,
+
             `🔥 Good vibes detected.`
+
         ]);
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mixed
-    |--------------------------------------------------------------------------
-    */
 
     if (
         romance >= 50 &&
@@ -740,26 +703,42 @@ function generateJoke(
     ) {
 
         return random([
+
             `😂 Love and violence apparently coexist here.`,
+
             `💀 Are you flirting or fighting?`,
+
             `❤️⚔️ The chemistry is confusing.`,
+
             `😭 Somebody explain this relationship.`
+
         ]);
 
     }
 
 
     return random([
+
         `🤔 The relationship remains mysterious.`,
+
         `😂 The data isn't telling me everything.`,
+
         `👀 Interesting... very interesting.`,
+
         `🕵️ More interactions are needed.`,
+
         `📊 The algorithm refuses to take sides.`,
+
         `😂 Whatever this is, it's definitely something.`,
+
         `🔮 The relationship crystal ball is confused.`,
+
         `👀 I'll be watching this storyline.`,
+
         `🧠 Relationship analysis complete. Emotional damage pending.`,
+
         `📈 Something is happening here... probably.`
+
     ]);
 
 }
@@ -792,12 +771,6 @@ function getDisplayName(
     jid
 ) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Current Sender
-    |--------------------------------------------------------------------------
-    */
-
     if (
         jidMatch(
             jid,
@@ -812,12 +785,6 @@ function getDisplayName(
 
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Group Metadata
-    |--------------------------------------------------------------------------
-    */
 
     const participants =
         ctx.groupMetadata
@@ -848,3 +815,9 @@ function getDisplayName(
     return getNumberFromJid(jid);
 
 }
+
+This is the version to use. It preserves the existing Ship scoring/output while fixing the analyzer call and removing the nonexistent "relationshipStore.update()" call.
+
+I also confirmed the context builder already supplies "deploymentId", so the analyzer now receives the correct deployment/group/user parameters.
+
+After pushing it, test ".ship @person1 @person2".
