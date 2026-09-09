@@ -1,4 +1,4 @@
-import handleAutoMention from "./autoMention.js";
+import handleAutoMention from "./automention.js";
 import handleAutoLike from "./autolike.js";
 import handleAutoView from "./autoView.js";
 
