@@ -453,7 +453,9 @@ export async function createSocket(
         });
 
 
-        session.sock = sock;
+        // Store socket reference
+session.sock = sock;
+sock.deploymentId = key;
 
         sock.sendGroupStatus = async (
     groupJid,
