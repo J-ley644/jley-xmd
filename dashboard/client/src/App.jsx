@@ -672,251 +672,322 @@ function App() {
 
 
             {page === "pairing" && (
-    <section className="page-section">
-
-        <div className="page-header">
+    <section className="page-section pairing-page">
+        <div className="page-header pairing-header">
             <div>
+                <div className="eyebrow-text">
+                    JLEY-XMD CONNECTION CENTER
+                </div>
+
                 <h1>📱 WhatsApp Pairing</h1>
+
                 <p>
-                    Connect a WhatsApp account to one of your JLEY-XMD bots.
+                    Connect a WhatsApp account to one of your
+                    JLEY-XMD bots securely.
                 </p>
             </div>
-        </div>
 
+            <div className="pairing-header-status">
+                <span className="status-dot"></span>
+                Pairing system online
+            </div>
+        </div>
 
         {error && (
-            <div className="error-box">
-                {error}
+            <div className="alert-box error-box">
+                <span>⚠️</span>
+                <div>
+                    <strong>Pairing failed</strong>
+                    <p>{error}</p>
+                </div>
             </div>
         )}
-
 
         {message && (
-            <div className="success-box">
-                {message}
+            <div className="alert-box success-box">
+                <span>✓</span>
+                <div>
+                    <strong>Connection successful</strong>
+                    <p>{message}</p>
+                </div>
             </div>
         )}
 
-
-        <div className="dashboard-card">
-
-            <div className="card-header">
-                <div>
-                    <h2>Select a deployment</h2>
-                    <p>
-                        Choose the bot you want to connect to WhatsApp.
-                    </p>
-                </div>
-            </div>
-
-
-            {deployments.length === 0 ? (
-
-                <div className="empty-state">
-                    <h3>No deployments available</h3>
-
-                    <p>
-                        Create a deployment first, then return here
-                        to connect WhatsApp.
-                    </p>
-                </div>
-
-            ) : (
-
-                <div className="deployment-cards">
-
-                    {deployments.map((deployment) => {
-
-                        const connected =
-                            deployment.connectionStatus === "CONNECTED" ||
-                            deployment.status === "RUNNING";
-
-                        const selected =
-                            pairingId === deployment.id;
-
-                        return (
-                            <div
-                                className="dashboard-card deployment-card"
-                                key={deployment.id}
-                            >
-
-                                <div className="deployment-card-header">
-
-                                    <div>
-                                        <h3>
-                                            {deployment.botName || "JLEY Bot"}
-                                        </h3>
-
-                                        <span className="deployment-id">
-                                            Deployment ID: {deployment.id}
-                                        </span>
-                                    </div>
-
-
-                                    <span
-                                        className={
-                                            connected
-                                                ? "status-badge status-online"
-                                                : "status-badge status-offline"
-                                        }
-                                    >
-                                        <span className="status-dot" />
-
-                                        {connected
-                                            ? "Connected"
-                                            : "Not connected"}
-                                    </span>
-
-                                </div>
-
-
-                                <div className="deployment-details">
-
-                                    <div className="deployment-detail">
-                                        <span>WhatsApp</span>
-
-                                        <strong>
-                                            {deployment.phoneNumber ||
-                                                "Not paired"}
-                                        </strong>
-                                    </div>
-
-
-                                    <div className="deployment-detail">
-                                        <span>Connection</span>
-
-                                        <strong>
-                                            {deployment.connectionStatus ||
-                                                "OFFLINE"}
-                                        </strong>
-                                    </div>
-
-                                </div>
-
-
-                                {!connected && (
-                                    <div className="deployment-card-actions">
-
-                                        <button
-                                            className="primary-button"
-                                            onClick={() =>
-                                                pairBot(deployment.id)
-                                            }
-                                        >
-                                            📷 Pair with QR
-                                        </button>
-
-
-                                        <button
-                                            className="secondary-button"
-                                            onClick={() =>
-                                                pairPhone(deployment.id)
-                                            }
-                                        >
-                                            🔢 Pair with Code
-                                        </button>
-
-                                    </div>
-                                )}
-
-                            </div>
-                        );
-                    })}
-
-                </div>
-
-            )}
-
-        </div>
-
-
-        {pairingId && (
-            <div className="dashboard-card pairing-panel">
-
-                <div className="card-header">
-
+        <div className="pairing-layout">
+            <div className="dashboard-card pairing-deployments-card">
+                <div className="pairing-section-heading">
                     <div>
-                        <h2>WhatsApp Pairing</h2>
+                        <div className="card-kicker">
+                            YOUR BOTS
+                        </div>
+
+                        <h2>Select a deployment</h2>
 
                         <p>
-                            Complete the connection using WhatsApp on your phone.
+                            Choose the bot you want to connect
+                            to WhatsApp.
                         </p>
                     </div>
 
-                    <span className="status-badge status-online">
-                        <span className="status-dot" />
-                        Waiting
-                    </span>
-
+                    <div className="deployment-count">
+                        {deployments.length}
+                        <span>bots</span>
+                    </div>
                 </div>
 
-
-                <div className="pairing-content">
-
-                    {qr ? (
-
-                        <div className="qr-section">
-
-                            <div className="qr-frame">
-                                <img
-                                    src={qr}
-                                    alt="WhatsApp pairing QR code"
-                                />
-                            </div>
-
-                            <h3>
-                                Scan this QR code
-                            </h3>
-
-                            <p>
-                                Open WhatsApp → Linked Devices →
-                                Link a Device, then scan this QR code.
-                            </p>
-
+                {deployments.length === 0 ? (
+                    <div className="pairing-empty-state">
+                        <div className="pairing-empty-icon">
+                            🤖
                         </div>
 
-                    ) : pairingCode ? (
+                        <h3>No deployments available</h3>
 
-                        <div className="code-section">
+                        <p>
+                            Create a deployment first before
+                            connecting a WhatsApp account.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="pairing-deployment-list">
+                        {deployments.map((deployment) => {
+                            const connected =
+                                deployment.connectionStatus ===
+                                    "CONNECTED" ||
+                                deployment.status === "RUNNING";
 
-                            <div className="pairing-code">
-                                {pairingCode}
-                            </div>
+                            const selected =
+                                pairingId === deployment.id;
 
-                            <h3>
-                                WhatsApp pairing code
-                            </h3>
+                            return (
+                                <div
+                                    key={deployment.id}
+                                    className={`pairing-deployment-card ${
+                                        selected
+                                            ? "selected"
+                                            : ""
+                                    } ${
+                                        connected
+                                            ? "connected"
+                                            : ""
+                                    }`}
+                                >
+                                    <div className="pairing-bot-icon">
+                                        🤖
+                                    </div>
 
-                            <p>
-                                Enter this code in WhatsApp when prompted
-                                to link the device.
-                            </p>
+                                    <div className="pairing-bot-info">
+                                        <div className="pairing-bot-title">
+                                            <h3>
+                                                {deployment.botName ||
+                                                    "JLEY-XMD Bot"}
+                                            </h3>
 
-                        </div>
+                                            <span
+                                                className={`pairing-status-badge ${
+                                                    connected
+                                                        ? "connected"
+                                                        : "offline"
+                                                }`}
+                                            >
+                                                <span></span>
+                                                {connected
+                                                    ? "Connected"
+                                                    : "Not connected"}
+                                            </span>
+                                        </div>
 
-                    ) : (
+                                        <div className="pairing-meta">
+                                            <span>
+                                                ID:{" "}
+                                                {deployment.id}
+                                            </span>
 
-                        <div className="pairing-loading">
+                                            {deployment.phoneNumber && (
+                                                <span>
+                                                    📞{" "}
+                                                    {
+                                                        deployment.phoneNumber
+                                                    }
+                                                </span>
+                                            )}
 
-                            <div className="loading-spinner" />
+                                            <span>
+                                                Status:{" "}
+                                                {deployment.connectionStatus ||
+                                                    deployment.status ||
+                                                    "UNKNOWN"}
+                                            </span>
+                                        </div>
+                                    </div>
 
-                            <h3>
-                                Preparing WhatsApp connection...
-                            </h3>
+                                    {!connected && (
+                                        <div className="pairing-actions">
+                                            <button
+                                                className="pairing-action primary"
+                                                onClick={() =>
+                                                    pairBot(
+                                                        deployment.id
+                                                    )
+                                                }
+                                                disabled={
+                                                    pairingId ===
+                                                    deployment.id
+                                                }
+                                            >
+                                                <span>▣</span>
+                                                Pair with QR
+                                            </button>
 
-                            <p>
-                                Waiting for pairing information.
-                            </p>
+                                            <button
+                                                className="pairing-action secondary"
+                                                onClick={() =>
+                                                    pairPhone(
+                                                        deployment.id
+                                                    )
+                                                }
+                                                disabled={
+                                                    pairingId ===
+                                                    deployment.id
+                                                }
+                                            >
+                                                <span>⌕</span>
+                                                Pair with Code
+                                            </button>
+                                        </div>
+                                    )}
 
-                        </div>
-
-                    )}
-
-                </div>
-
+                                    {connected && (
+                                        <div className="connected-indicator">
+                                            <span>✓</span>
+                                            WhatsApp connected
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
-        )}
 
+            {pairingId && (
+                <div className="dashboard-card pairing-console">
+                    <div className="pairing-console-header">
+                        <div>
+                            <div className="card-kicker">
+                                LIVE CONNECTION
+                            </div>
+
+                            <h2>Connect WhatsApp</h2>
+
+                            <p>
+                                Follow the instructions below
+                                to complete the connection.
+                            </p>
+                        </div>
+
+                        <div className="pairing-live-badge">
+                            <span className="status-dot"></span>
+                            Waiting
+                        </div>
+                    </div>
+
+                    <div className="pairing-console-body">
+                        {qr ? (
+                            <>
+                                <div className="qr-container">
+                                    <div className="qr-glow"></div>
+
+                                    <div className="qr-frame">
+                                        <img
+                                            src={qr}
+                                            alt="WhatsApp pairing QR code"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pairing-instructions">
+                                    <h3>
+                                        Scan with WhatsApp
+                                    </h3>
+
+                                    <div className="instruction-step">
+                                        <span>1</span>
+                                        <p>
+                                            Open WhatsApp on
+                                            your phone.
+                                        </p>
+                                    </div>
+
+                                    <div className="instruction-step">
+                                        <span>2</span>
+                                        <p>
+                                            Go to{" "}
+                                            <strong>
+                                                Linked devices
+                                            </strong>
+                                            .
+                                        </p>
+                                    </div>
+
+                                    <div className="instruction-step">
+                                        <span>3</span>
+                                        <p>
+                                            Tap{" "}
+                                            <strong>
+                                                Link a device
+                                            </strong>{" "}
+                                            and scan this QR
+                                            code.
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : pairingCode ? (
+                            <div className="pairing-code-container">
+                                <div className="pairing-code-icon">
+                                    🔐
+                                </div>
+
+                                <div className="pairing-code-label">
+                                    YOUR PAIRING CODE
+                                </div>
+
+                                <div className="pairing-code-value">
+                                    {pairingCode}
+                                </div>
+
+                                <p>
+                                    Open WhatsApp → Linked
+                                    devices → Link a device →
+                                    Link with phone number,
+                                    then enter this code.
+                                </p>
+
+                                <div className="pairing-security-note">
+                                    <span>🔒</span>
+                                    Keep this code private.
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="pairing-loading">
+                                <div className="pairing-spinner"></div>
+
+                                <h3>
+                                    Preparing WhatsApp
+                                    connection...
+                                </h3>
+
+                                <p>
+                                    Establishing a secure
+                                    pairing session.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
     </section>
 )}
 
