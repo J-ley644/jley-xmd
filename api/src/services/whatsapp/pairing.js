@@ -21,6 +21,9 @@ const sleep = ms =>
     new Promise(resolve => setTimeout(resolve, ms));
 
 
+/*
+ * Create or restore a WhatsApp session.
+ */
 export async function createSession(
     deploymentId,
     phoneNumber = null
@@ -32,12 +35,14 @@ export async function createSession(
     /*
      * Pairing-code mode.
      *
-     * We intentionally create a fresh WhatsApp
-     * authentication session for the number being paired.
+     * When a phone number is supplied, we intentionally
+     * create a fresh authentication session.
      */
     if (phoneNumber) {
 
-        const existing = getSocket(key);
+        const existing =
+            getSocket(key);
+
 
         if (existing) {
 
@@ -61,11 +66,8 @@ export async function createSession(
 
 
         /*
-         * Remove old authentication files.
-         *
-         * This prevents Baileys from restoring an
-         * already-linked WhatsApp account instead of
-         * starting the requested pairing flow.
+         * Remove previous authentication files so
+         * Baileys does not restore an old account.
          */
         deleteSessionFolder(key);
 
@@ -73,8 +75,12 @@ export async function createSession(
 
         /*
          * Normal deployment startup.
+         *
+         * If a socket already exists, reuse it.
          */
-        const existing = getSocket(key);
+        const existing =
+            getSocket(key);
+
 
         if (existing) {
 
@@ -86,8 +92,8 @@ export async function createSession(
 
 
     /*
-     * Prevent two simultaneous session creation
-     * operations for the same deployment.
+     * Prevent multiple simultaneous session
+     * creation requests for the same deployment.
      */
     if (hasLock(key)) {
 
@@ -96,24 +102,33 @@ export async function createSession(
     }
 
 
-    const promise = (async () => {
+    const promise =
+        (async () => {
 
-        const {
-            state,
-            saveCreds,
-            stopSync
-        } = await getAuthState(key);
+            const {
+                state,
+                saveCreds,
+                stopSync
+            } = await getAuthState(key);
 
 
-        return createSocket(
-            key,
-            state,
-            saveCreds,
-            phoneNumber,
-            stopSync
-        );
+            /*
+             * IMPORTANT:
+             *
+             * Pass phoneNumber here.
+             *
+             * Do NOT use normalizedPhone because that
+             * variable only exists inside requestPairingCode().
+             */
+            return createSocket(
+                key,
+                state,
+                saveCreds,
+                phoneNumber,
+                stopSync
+            );
 
-    })();
+        })();
 
 
     setLock(
@@ -135,6 +150,11 @@ export async function createSession(
 }
 
 
+/*
+ * Start a normal deployment session.
+ *
+ * Used for QR pairing / normal bot startup.
+ */
 export async function startDeploymentSession(
     deploymentId
 ) {
@@ -153,13 +173,16 @@ export async function startDeploymentSession(
             session.status,
 
         qr:
-            session.qr
+            session.qr || null
 
     };
 
 }
 
 
+/*
+ * Get the current deployment status.
+ */
 export async function getDeploymentStatus(
     deploymentId
 ) {
@@ -204,11 +227,11 @@ export async function getDeploymentStatus(
 /*
  * Request a WhatsApp pairing code.
  *
- * The socket.js createSocket() function is responsible
- * for creating the socket and requesting the actual code.
+ * socket.js is responsible for actually calling
+ * sock.requestPairingCode().
  *
- * This function waits long enough for the asynchronous
- * WhatsApp connection events to populate session.code.
+ * This function waits for socket.js to populate
+ * session.code.
  */
 export async function requestPairingCode(
     deploymentId,
@@ -225,12 +248,11 @@ export async function requestPairingCode(
 
 
     /*
-     * Normalize the number here as well as inside
-     * socket.js so the API always works with digits.
+     * Convert the supplied number into digits only.
      *
      * Example:
      *
-     * +254712345678
+     * +254 712 345 678
      *
      * becomes:
      *
@@ -265,15 +287,20 @@ export async function requestPairingCode(
     console.log(
         "PAIRING REQUEST:",
         {
-            deploymentId: String(deploymentId),
-            phoneNumber: normalizedPhone
+            deploymentId:
+                String(deploymentId),
+
+            phoneNumber:
+                normalizedPhone
         }
     );
 
 
     /*
-     * createSession(phoneNumber) creates a fresh
-     * socket and passes the number into socket.js.
+     * Create a fresh pairing session.
+     *
+     * socket.js receives the normalized number and
+     * handles the actual Baileys pairing request.
      */
     const session =
         await createSession(
@@ -282,7 +309,16 @@ export async function requestPairingCode(
         );
 
 
-    if (!session?.sock) {
+    if (!session) {
+
+        throw new Error(
+            "WhatsApp pairing session could not be created."
+        );
+
+    }
+
+
+    if (!session.sock) {
 
         throw new Error(
             "WhatsApp socket unavailable."
@@ -292,15 +328,13 @@ export async function requestPairingCode(
 
 
     /*
-     * socket.js performs:
+     * Wait for socket.js to populate session.code.
      *
-     *     sock.requestPairingCode(...)
+     * 30 × 500ms = 15 seconds.
      *
-     * asynchronously.
-     *
-     * Wait for session.code to appear.
-     *
-     * 30 attempts × 500ms = 15 seconds.
+     * We deliberately DO NOT treat a temporary missing
+     * socket as an immediate failure. The socket may still
+     * be initializing.
      */
     let attempts = 0;
 
@@ -312,10 +346,17 @@ export async function requestPairingCode(
         attempts < maxAttempts
     ) {
 
+        await sleep(500);
+
+        attempts++;
+
+
         /*
-         * If the socket disappears while waiting,
-         * fail immediately instead of waiting the
-         * entire timeout.
+         * Check the latest session object.
+         *
+         * This is important because socket.js may update
+         * the session object while the pairing request is
+         * being processed.
          */
         const currentSession =
             getSocket(
@@ -323,42 +364,82 @@ export async function requestPairingCode(
             );
 
 
-        if (
-            !currentSession
-        ) {
+        /*
+         * If a newer session exists, use it.
+         */
+        if (currentSession) {
 
-            throw new Error(
-                "WhatsApp pairing session ended unexpectedly."
-            );
+            if (currentSession.code) {
+
+                console.log(
+                    "PAIRING CODE READY:",
+                    currentSession.code
+                );
+
+
+                return {
+
+                    code:
+                        currentSession.code
+
+                };
+
+            }
 
         }
 
 
         /*
-         * If the socket is already connected,
-         * pairing mode has failed because WhatsApp
-         * completed another authentication path.
+         * Also check the original session because
+         * socket.js normally updates this same object.
          */
-        if (
-            currentSession.ready &&
-            !currentSession.code
-        ) {
+        if (session.code) {
 
-            break;
+            console.log(
+                "PAIRING CODE READY:",
+                session.code
+            );
+
+
+            return {
+
+                code:
+                    session.code
+
+            };
 
         }
-
-
-        await sleep(500);
-
-        attempts++;
 
     }
 
 
     /*
-     * Return the generated pairing code.
+     * Final check after the waiting period.
      */
+    const finalSession =
+        getSocket(
+            deploymentId
+        );
+
+
+    if (finalSession?.code) {
+
+        console.log(
+            "PAIRING CODE READY:",
+            finalSession.code
+        );
+
+
+        return {
+
+            code:
+                finalSession.code
+
+        };
+
+    }
+
+
     if (session.code) {
 
         console.log(
@@ -384,6 +465,9 @@ export async function requestPairingCode(
 }
 
 
+/*
+ * Stop a deployment session.
+ */
 export async function stopDeploymentSession(
     deploymentId
 ) {
@@ -397,3 +481,4 @@ export async function stopDeploymentSession(
     return true;
 
 }
+
