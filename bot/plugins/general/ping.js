@@ -18,20 +18,22 @@ export default {
 
     async execute(ctx) {
 
-        const start =
-            Date.now();
-
         const latency =
-            Date.now() - start;
+            Number.isFinite(
+                ctx.commandStartTime
+            )
+                ? Date.now() -
+                  ctx.commandStartTime
+                : 0;
 
-        return ctx.info(
+        const botName =
+            ctx.botName ||
+            "JLEY-XMD";
 
-`🏓 PONG
+        return ctx.reply(
 
-⚡ Response   • ${latency} ms
-🟢 Status     • Online
-🤖 Engine     • JLEY-XMD
-📦 Version    • ${ctx.version}`
+`🤖 ${botName}
+🏓 PONG • ${latency} ms`
 
         );
 
