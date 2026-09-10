@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 export default function Deployments({
@@ -15,11 +14,9 @@ export default function Deployments({
     pairingCode,
     onRefresh
 }) {
-
     const [expandedId, setExpandedId] = useState(null);
 
     function getExpiryInfo(expiresAt) {
-
         if (!expiresAt) {
             return {
                 label: "Not activated",
@@ -57,32 +54,70 @@ export default function Deployments({
     }
 
     return (
-        <section className="page-section">
+        <section className="page-section deployments-page">
 
             {/* HEADER */}
 
-            <div className="page-header">
-
+            <div className="page-header deployments-page-header">
                 <div>
-                    <h1>Deployments</h1>
+                    <div className="page-kicker">
+                        JLEY-XMD CONTROL CENTER
+                    </div>
+
+                    <h1>Your Deployments</h1>
 
                     <p>
-                        Deploy and manage your JLEY-XMD bots.
+                        Deploy, connect and manage your WhatsApp bots
+                        from one place.
                     </p>
                 </div>
 
+                <div className="deployment-count-badge">
+                    <span>●</span>
+                    {deployments.length}{" "}
+                    {deployments.length === 1
+                        ? "Deployment"
+                        : "Deployments"}
+                </div>
             </div>
 
 
             {/* CREATE DEPLOYMENT */}
 
-            <div className="create-deployment">
+            <div className="create-deployment deployment-create-card">
 
-                <h2>🚀 Deploy New Bot</h2>
+                <div className="create-deployment-content">
 
-                <p>
-                    Each deployment costs 50 JL and runs for 32 days.
-                </p>
+                    <div className="create-deployment-icon">
+                        🤖
+                    </div>
+
+                    <div>
+                        <div className="page-kicker">
+                            NEW DEPLOYMENT
+                        </div>
+
+                        <h2>Deploy a new JLEY-XMD bot</h2>
+
+                        <p>
+                            Create your bot, then connect it to WhatsApp
+                            using QR code or phone pairing.
+                        </p>
+                    </div>
+
+                </div>
+
+                <div className="create-deployment-meta">
+                    <span>
+                        <strong>50 JL</strong>
+                        <small>per deployment</small>
+                    </span>
+
+                    <span>
+                        <strong>32 days</strong>
+                        <small>deployment lifetime</small>
+                    </span>
+                </div>
 
                 <div className="create-deployment-form">
 
@@ -103,7 +138,7 @@ export default function Deployments({
                     >
                         {deploying
                             ? "Deploying..."
-                            : "Create Deployment — 50 JL"}
+                            : "🚀 Create Deployment"}
                     </button>
 
                 </div>
@@ -111,11 +146,11 @@ export default function Deployments({
             </div>
 
 
-            {/* DEPLOYMENTS */}
+            {/* EMPTY STATE */}
 
             {deployments.length === 0 ? (
 
-                <div className="dashboard-card">
+                <div className="dashboard-card deployment-empty-card">
 
                     <div className="empty-state">
 
@@ -123,12 +158,17 @@ export default function Deployments({
                             🤖
                         </div>
 
+                        <div className="page-kicker">
+                            GET STARTED
+                        </div>
+
                         <h2>
                             No deployments yet
                         </h2>
 
                         <p>
-                            Create your first JLEY-XMD deployment above.
+                            Create your first JLEY-XMD deployment
+                            using the form above.
                         </p>
 
                     </div>
@@ -147,6 +187,9 @@ export default function Deployments({
                         const connected =
                             bot.connectionStatus === "CONNECTED";
 
+                        const stopped =
+                            bot.status === "STOPPED";
+
                         const expanded =
                             expandedId === bot.id;
 
@@ -155,32 +198,64 @@ export default function Deployments({
 
                         const canPair =
                             !expiry.expired &&
-                            bot.status !== "STOPPED";
+                            !stopped;
+
+                        const statusClass =
+                            connected
+                                ? "connected"
+                                : stopped
+                                    ? "offline"
+                                    : "pending";
+
+                        const statusLabel =
+                            connected
+                                ? "ONLINE"
+                                : stopped
+                                    ? "STOPPED"
+                                    : "NOT CONNECTED";
 
                         return (
 
-                            <div
+                            <article
                                 key={bot.id}
-                                className="deployment-row"
+                                className={`deployment-row deployment-card-modern ${
+                                    expanded
+                                        ? "is-expanded"
+                                        : ""
+                                }`}
                             >
 
-                                {/* COMPACT ROW */}
+                                {/* CARD HEADER */}
 
                                 <div className="deployment-summary">
 
                                     <div className="deployment-bot">
 
-                                        <div className="bot-icon">
+                                        <div className="bot-icon-modern">
                                             🤖
                                         </div>
 
-                                        <div>
+                                        <div className="deployment-bot-name">
 
-                                            <strong>
-                                                {bot.botName || "Unnamed Bot"}
-                                            </strong>
+                                            <div className="deployment-title-line">
+
+                                                <strong>
+                                                    {bot.botName ||
+                                                        "Unnamed Bot"}
+                                                </strong>
+
+                                                <span
+                                                    className={`deployment-status-pill ${statusClass}`}
+                                                >
+                                                    <i />
+                                                    {statusLabel}
+                                                </span>
+
+                                            </div>
 
                                             <small>
+                                                JLEY-XMD deployment
+                                                <span>•</span>
                                                 ID: {bot.id?.slice(0, 8)}
                                             </small>
 
@@ -189,56 +264,138 @@ export default function Deployments({
                                     </div>
 
 
-                                    <div className="deployment-status">
+                                    <div className="deployment-summary-right">
 
-                                        <span
-                                            className={
-                                                connected
-                                                    ? "status connected"
-                                                    : bot.status === "STOPPED"
-                                                        ? "status offline"
-                                                        : "status pending"
-                                            }
-                                        >
-                                            {bot.connectionStatus || "OFFLINE"}
-                                        </span>
+                                        <div className="deployment-expiry-modern">
 
-                                    </div>
+                                            <small>
+                                                DEPLOYMENT LIFETIME
+                                            </small>
 
-
-                                    <div className="deployment-expiry">
-
-                                        <small>
-                                            Lifetime
-                                        </small>
-
-                                        <strong
-                                            style={{
-                                                color:
+                                            <strong
+                                                className={
                                                     expiry.expired
-                                                        ? "#ef4444"
+                                                        ? "expiry-danger"
                                                         : expiry.days !== null &&
                                                           expiry.days <= 3
-                                                            ? "#f59e0b"
-                                                            : undefined
-                                            }}
+                                                            ? "expiry-warning"
+                                                            : ""
+                                                }
+                                            >
+                                                {expiry.label}
+                                            </strong>
+
+                                        </div>
+
+                                        <button
+                                            className="details-button-modern"
+                                            onClick={() =>
+                                                toggleDetails(bot.id)
+                                            }
                                         >
-                                            {expiry.label}
-                                        </strong>
+                                            {expanded
+                                                ? "Hide"
+                                                : "Manage"}
+                                            <span>
+                                                {expanded ? "↑" : "→"}
+                                            </span>
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+
+                                {/* QUICK STATUS */}
+
+                                <div className="deployment-health">
+
+                                    <div className="health-item">
+
+                                        <span className="health-icon">
+                                            {connected ? "✓" : "○"}
+                                        </span>
+
+                                        <div>
+                                            <small>
+                                                WhatsApp
+                                            </small>
+
+                                            <strong>
+                                                {connected
+                                                    ? "Connected"
+                                                    : "Not connected"}
+                                            </strong>
+                                        </div>
 
                                     </div>
 
 
-                                    <button
-                                        className="details-button"
-                                        onClick={() =>
-                                            toggleDetails(bot.id)
-                                        }
-                                    >
-                                        {expanded
-                                            ? "Hide Details"
-                                            : "View Details"}
-                                    </button>
+                                    <div className="health-item">
+
+                                        <span className="health-icon">
+                                            {bot.sessionReady
+                                                ? "✓"
+                                                : "○"}
+                                        </span>
+
+                                        <div>
+                                            <small>
+                                                Session
+                                            </small>
+
+                                            <strong>
+                                                {bot.sessionReady
+                                                    ? "Ready"
+                                                    : "Not paired"}
+                                            </strong>
+                                        </div>
+
+                                    </div>
+
+
+                                    <div className="health-item">
+
+                                        <span className="health-icon">
+                                            {stopped ? "⏸" : "▶"}
+                                        </span>
+
+                                        <div>
+                                            <small>
+                                                Engine
+                                            </small>
+
+                                            <strong>
+                                                {stopped
+                                                    ? "Stopped"
+                                                    : "Running"}
+                                            </strong>
+                                        </div>
+
+                                    </div>
+
+
+                                    <div className="health-item">
+
+                                        <span className="health-icon">
+                                            ⏱
+                                        </span>
+
+                                        <div>
+                                            <small>
+                                                Expires
+                                            </small>
+
+                                            <strong>
+                                                {bot.expiresAt
+                                                    ? new Date(
+                                                        bot.expiresAt
+                                                    ).toLocaleDateString()
+                                                    : "Not available"}
+                                            </strong>
+                                        </div>
+
+                                    </div>
 
                                 </div>
 
@@ -247,9 +404,34 @@ export default function Deployments({
 
                                 {expanded && (
 
-                                    <div className="deployment-details">
+                                    <div className="deployment-details-modern">
 
-                                        <div className="details-grid">
+                                        <div className="deployment-details-header">
+
+                                            <div>
+                                                <small>
+                                                    DEPLOYMENT MANAGEMENT
+                                                </small>
+
+                                                <h3>
+                                                    {bot.botName ||
+                                                        "Unnamed Bot"}
+                                                </h3>
+                                            </div>
+
+                                            <span
+                                                className={`deployment-status-pill ${statusClass}`}
+                                            >
+                                                <i />
+                                                {statusLabel}
+                                            </span>
+
+                                        </div>
+
+
+                                        {/* DETAILS GRID */}
+
+                                        <div className="details-grid-modern">
 
                                             <div>
                                                 <small>
@@ -257,18 +439,20 @@ export default function Deployments({
                                                 </small>
 
                                                 <strong>
-                                                    {bot.status || "UNKNOWN"}
+                                                    {bot.status ||
+                                                        "UNKNOWN"}
                                                 </strong>
                                             </div>
 
 
                                             <div>
                                                 <small>
-                                                    Connection
+                                                    WhatsApp Connection
                                                 </small>
 
                                                 <strong>
-                                                    {bot.connectionStatus || "OFFLINE"}
+                                                    {bot.connectionStatus ||
+                                                        "OFFLINE"}
                                                 </strong>
                                             </div>
 
@@ -288,15 +472,11 @@ export default function Deployments({
 
                                             <div>
                                                 <small>
-                                                    Expires
+                                                    Deployment ID
                                                 </small>
 
                                                 <strong>
-                                                    {bot.expiresAt
-                                                        ? new Date(
-                                                            bot.expiresAt
-                                                        ).toLocaleString()
-                                                        : "Not available"}
+                                                    {bot.id || "—"}
                                                 </strong>
                                             </div>
 
@@ -330,23 +510,45 @@ export default function Deployments({
                                                 </strong>
                                             </div>
 
+
+                                            <div>
+                                                <small>
+                                                    Expires
+                                                </small>
+
+                                                <strong>
+                                                    {bot.expiresAt
+                                                        ? new Date(
+                                                            bot.expiresAt
+                                                        ).toLocaleString()
+                                                        : "Not available"}
+                                                </strong>
+                                            </div>
+
                                         </div>
 
 
-                                        {/* QR */}
+                                        {/* PAIRING */}
 
                                         {pairing && qr && (
 
-                                            <div className="pairing-panel">
+                                            <div className="pairing-panel pairing-panel-modern">
 
-                                                <h3>
-                                                    Scan QR Code
-                                                </h3>
+                                                <div>
+                                                    <span className="pairing-panel-badge">
+                                                        QR PAIRING
+                                                    </span>
 
-                                                <p>
-                                                    Open WhatsApp → Linked Devices
-                                                    → Link a device.
-                                                </p>
+                                                    <h3>
+                                                        Connect WhatsApp
+                                                    </h3>
+
+                                                    <p>
+                                                        Open WhatsApp →
+                                                        Linked Devices →
+                                                        Link a device.
+                                                    </p>
+                                                </div>
 
                                                 <img
                                                     src={qr}
@@ -363,15 +565,20 @@ export default function Deployments({
 
                                         {pairing && pairingCode && (
 
-                                            <div className="pairing-code-panel">
+                                            <div className="pairing-code-panel pairing-code-panel-modern">
+
+                                                <span className="pairing-panel-badge">
+                                                    PHONE PAIRING
+                                                </span>
 
                                                 <h3>
                                                     WhatsApp Pairing Code
                                                 </h3>
 
                                                 <p>
-                                                    Open WhatsApp and use the
-                                                    linked-device pairing option.
+                                                    Open WhatsApp and use
+                                                    the linked-device
+                                                    pairing option.
                                                 </p>
 
                                                 <div className="pairing-code">
@@ -385,7 +592,7 @@ export default function Deployments({
 
                                         {/* ACTIONS */}
 
-                                        <div className="deployment-actions">
+                                        <div className="deployment-actions deployment-actions-modern">
 
                                             <button
                                                 onClick={() =>
@@ -400,8 +607,8 @@ export default function Deployments({
                                                 {pairing
                                                     ? "Waiting..."
                                                     : connected
-                                                        ? "Connected"
-                                                        : "📷 QR Pair"}
+                                                        ? "✓ Connected"
+                                                        : "▣ QR Pair"}
                                             </button>
 
 
@@ -415,7 +622,7 @@ export default function Deployments({
                                                     connected
                                                 }
                                             >
-                                                📱 Phone Pair
+                                                ☎ Phone Pair
                                             </button>
 
 
@@ -423,11 +630,11 @@ export default function Deployments({
                                                 onClick={() =>
                                                     onStop(bot.id)
                                                 }
-                                                disabled={
-                                                    bot.status === "STOPPED"
-                                                }
+                                                disabled={stopped}
                                             >
-                                                ⛔ Stop
+                                                {stopped
+                                                    ? "⏸ Stopped"
+                                                    : "⏹ Stop Bot"}
                                             </button>
 
                                         </div>
@@ -436,14 +643,14 @@ export default function Deployments({
 
                                 )}
 
-                            </div>
+                            </article>
                         );
                     })}
 
                 </div>
+
             )}
 
         </section>
     );
 }
-
