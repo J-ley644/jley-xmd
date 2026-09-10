@@ -56,9 +56,42 @@ function extractText(message) {
 
 async function startAutoTyping(sock, chat) {
     try {
-        const settings = automationStore.get(chat);
 
-        if (!settings?.autotyping) {
+        const botIdentity =
+            sock?.user?.lid ||
+            sock?.user?.id ||
+            null;
+
+        if (!botIdentity) {
+            console.warn(
+                "[AutoTyping] Bot identity unavailable."
+            );
+            return;
+        }
+
+        const globalEnabled =
+            automationStore.getValue(
+                botIdentity,
+                "autotyping"
+            );
+
+        const chatSettings =
+            automationStore.getChat(
+                botIdentity,
+                chat
+            );
+
+        /*
+         * Chat-specific setting takes priority.
+         * If no chat-specific override exists, use global.
+         */
+        const enabled =
+            chatSettings?.autotyping !== undefined &&
+            chatSettings?.autotyping !== false
+                ? true
+                : globalEnabled;
+
+        if (!enabled) {
             return;
         }
 
@@ -69,18 +102,29 @@ async function startAutoTyping(sock, chat) {
 
         setTimeout(async () => {
             try {
+
                 await sock.sendPresenceUpdate(
                     "paused",
                     chat
                 );
-            } catch {}
+
+            } catch (error) {
+
+                console.error(
+                    "[AutoTyping] Pause error:",
+                    error?.message || error
+                );
+
+            }
         }, 2500);
 
     } catch (error) {
+
         console.error(
-            "AutoTyping error:",
+            "[AutoTyping] error:",
             error?.message || error
         );
+
     }
 }
 
@@ -91,9 +135,42 @@ async function startAutoTyping(sock, chat) {
 
 async function startAutoRecording(sock, chat) {
     try {
-        const settings = automationStore.get(chat);
 
-        if (!settings?.autorecording) {
+        const botIdentity =
+            sock?.user?.lid ||
+            sock?.user?.id ||
+            null;
+
+        if (!botIdentity) {
+            console.warn(
+                "[AutoRecording] Bot identity unavailable."
+            );
+            return;
+        }
+
+        const globalEnabled =
+            automationStore.getValue(
+                botIdentity,
+                "autorecording"
+            );
+
+        const chatSettings =
+            automationStore.getChat(
+                botIdentity,
+                chat
+            );
+
+        /*
+         * Chat-specific setting takes priority.
+         * If no chat-specific override exists, use global.
+         */
+        const enabled =
+            chatSettings?.autorecording !== undefined &&
+            chatSettings?.autorecording !== false
+                ? true
+                : globalEnabled;
+
+        if (!enabled) {
             return;
         }
 
@@ -104,18 +181,29 @@ async function startAutoRecording(sock, chat) {
 
         setTimeout(async () => {
             try {
+
                 await sock.sendPresenceUpdate(
                     "paused",
                     chat
                 );
-            } catch {}
+
+            } catch (error) {
+
+                console.error(
+                    "[AutoRecording] Pause error:",
+                    error?.message || error
+                );
+
+            }
         }, 2500);
 
     } catch (error) {
+
         console.error(
-            "AutoRecording error:",
+            "[AutoRecording] error:",
             error?.message || error
         );
+
     }
 }
 
