@@ -12,18 +12,21 @@ import {
 } from "../lib/jid.js";
 
 
-let channelMetadataPromise = null;
+const channelMetadataPromises = new WeakMap();
 
 
 async function getChannelMetadata(client) {
 
-    if (!config.channel?.inviteCode) {
+    if (
+        !config.channel?.inviteCode ||
+        !client?.newsletterMetadata
+    ) {
         return null;
     }
 
-    if (!channelMetadataPromise) {
+    if (!channelMetadataPromises.has(client)) {
 
-        channelMetadataPromise =
+        const promise =
             client.newsletterMetadata(
                 "invite",
                 config.channel.inviteCode
@@ -35,15 +38,87 @@ async function getChannelMetadata(client) {
                     error
                 );
 
-                channelMetadataPromise = null;
+                channelMetadataPromises.delete(client);
 
                 return null;
 
             });
 
+        channelMetadataPromises.set(
+            client,
+            promise
+        );
+
     }
 
-    return channelMetadataPromise;
+    return channelMetadataPromises.get(client);
+
+}
+
+
+async function addChannelPreview(client, content = {}) {
+
+    if (!content || typeof content !== "object") {
+        return content;
+    }
+
+    const hasText =
+        typeof content.text === "string" ||
+        typeof content.caption === "string";
+
+    if (!hasText) {
+        return content;
+    }
+
+    try {
+
+        const channel =
+            await getChannelMetadata(client);
+
+        if (channel?.id) {
+
+            return {
+
+                ...content,
+
+                contextInfo: {
+
+                    ...(content.contextInfo || {}),
+
+                    forwardingScore: 1,
+
+                    isForwarded: true,
+
+                    forwardedNewsletterMessageInfo: {
+
+                        newsletterJid:
+                            channel.id,
+
+                        serverMessageId: 1,
+
+                        newsletterName:
+                            channel.name ||
+                            config.channel?.name ||
+                            "JLEY-XMD"
+
+                    }
+
+                }
+
+            };
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "[CHANNEL] Failed to attach channel preview:",
+            error
+        );
+
+    }
+
+    return content;
 
 }
 
@@ -70,10 +145,8 @@ async function getGroupInfo(client, chat) {
         await client.groupMetadata(chat);
 
 
-
     const members =
         metadata.participants || [];
-
 
 
     const admins =
@@ -87,7 +160,6 @@ async function getGroupInfo(client, chat) {
                 member.id,
                 member.lid
             ].filter(Boolean));
-
 
 
     return {
@@ -423,81 +495,18 @@ export default async function createContext(client, message) {
             };
 
 
-            /*
-             * Native WhatsApp Channel presentation.
-             *
-             * Only attach the newsletter metadata to
-             * ordinary text replies.
-             *
-             * Media and other specialized messages keep
-             * their original behavior.
-             */
-
-            if (
-
-                typeof text === "string" &&
-
-                !replyOptions.image &&
-
-                !replyOptions.video &&
-
-                !replyOptions.audio &&
-
-                !replyOptions.document
-
-            ) {
-
-                try {
-
-                    const channel =
-                        await getChannelMetadata(client);
-
-
-                    if (channel?.id) {
-
-                        replyOptions.contextInfo = {
-
-                            ...(replyOptions.contextInfo || {}),
-
-                            forwardingScore: 1,
-
-                            isForwarded: true,
-
-                            forwardedNewsletterMessageInfo: {
-
-                                newsletterJid:
-                                    channel.id,
-
-                                serverMessageId: 1,
-
-                                newsletterName:
-                                    channel.name ||
-                                    config.channel?.name ||
-                                    "JLEY-XMD"
-
-                            }
-
-                        };
-
-                    }
-
-                } catch (error) {
-
-                    console.error(
-                        "[CHANNEL] Failed to attach channel preview:",
-                        error
-                    );
-
-                }
-
-            }
+            const finalOptions =
+                await addChannelPreview(
+                    client,
+                    replyOptions
+                );
 
 
             return client.sendMessage(
 
                 chat,
 
-                replyOptions
+                finalOptions
 
             );
 
@@ -507,12 +516,18 @@ export default async function createContext(client, message) {
 
         async send(content) {
 
+            const finalContent =
+                await addChannelPreview(
+                    client,
+                    content
+                );
+
 
             return client.sendMessage(
 
                 chat,
 
-                content
+                finalContent
 
             );
 
