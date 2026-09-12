@@ -8,7 +8,7 @@ export default {
 
     category: "group",
 
-    description: "Enable or disable welcome messages.",
+    description: "Enable or disable automatic welcome messages.",
 
     usage: ".welcome <on|off>",
 
@@ -38,20 +38,26 @@ Usage:
 
         }
 
+        const enabled =
+            option === "on";
+
         groupSettings.set(
             ctx.chat,
             "welcome",
-            option === "on"
+            enabled
         );
 
         await ctx.reply(
 `🤖 ${ctx.botName}
 
-✅ Welcome messages ${
-    option === "on"
-        ? "enabled"
-        : "disabled"
-}.`
+${enabled
+    ? "✅ Welcome messages are now enabled."
+    : "❌ Welcome messages are now disabled."
+}
+
+${enabled
+    ? "New members will automatically receive a welcome message with the group's current description/rules."
+    : "New members will no longer receive automatic welcome messages."}`
         );
 
     }
