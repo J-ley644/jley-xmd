@@ -12,6 +12,9 @@ import logger from "./logger.js";
 import config from "../config/config.js";
 
 import { handleCommand } from "../core/commandHandler.js";
+import {
+    createWelcomeMessage
+} from "../system/welcomeMessage.js";
 
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antilink.js";
@@ -731,63 +734,41 @@ async(update)=>{
 
 
         if(
-            action==="add"
-            &&
-            settings.welcome
-        ){
+    action === "add" &&
+    settings.welcome
+){
 
+    for(const user of participants){
 
-
-            for(const user of participants){
-
-
-
-                const jid =
-                    typeof user==="string"
-                    ? user
-                    : user.id;
-
-
-
-                const number =
-                    jid.split("@")[0];
-
-
-
-
-                await socket.sendMessage(
-
-                    id,
-
-                    {
-
-
-text:
-`🤖 ${config.botName}
-
-👋 Welcome @${number}
-
-You joined:
-📌 ${groupName}
-
-Enjoy your stay ❤️`,
-
-
-
-mentions:[
-    jid
-]
-
-
-                    }
-
+        const jid =
+            typeof user === "string"
+                ? user
+                : (
+                    user?.id ||
+                    user?.phoneNumber ||
+                    user?.lid
                 );
 
-
-            }
-
-
+        if(!jid){
+            continue;
         }
+
+        const welcome =
+            createWelcomeMessage({
+                botName: config.botName,
+                groupName,
+                metadata,
+                participant: user
+            });
+
+        await socket.sendMessage(
+            id,
+            welcome
+        );
+
+    }
+
+}
 
 
 
