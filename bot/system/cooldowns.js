@@ -20,7 +20,7 @@ class CooldownManager {
     ) {
 
         const key =
-            `${user}:${command}`;
+            `${deploymentId || "default"}:${user}:${command}`
 
         const now =
             Date.now();
