@@ -733,12 +733,12 @@ async(update)=>{
 
 
 
-        if(
+        if (
     action === "add" &&
     settings.welcome
-){
+) {
 
-    for(const user of participants){
+    for (const user of participants) {
 
         const jid =
             typeof user === "string"
@@ -749,7 +749,7 @@ async(update)=>{
                     user?.lid
                 );
 
-        if(!jid){
+        if (!jid) {
             continue;
         }
 
