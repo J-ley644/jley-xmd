@@ -125,7 +125,6 @@ async function addChannelPreview(client, content = {}) {
 
 async function getGroupInfo(client, chat) {
 
-
     if (!chat.endsWith("@g.us")) {
 
         return {
@@ -140,14 +139,11 @@ async function getGroupInfo(client, chat) {
 
     }
 
-
     const metadata =
         await client.groupMetadata(chat);
 
-
     const members =
         metadata.participants || [];
-
 
     const admins =
         members
@@ -161,7 +157,6 @@ async function getGroupInfo(client, chat) {
                 member.lid
             ].filter(Boolean));
 
-
     return {
 
         metadata,
@@ -172,14 +167,10 @@ async function getGroupInfo(client, chat) {
 
     };
 
-
 }
 
 
-
-
 function getText(message) {
-
 
     return (
 
@@ -195,19 +186,13 @@ function getText(message) {
 
     );
 
-
 }
-
-
 
 
 export default async function createContext(client, message) {
 
-
     const text =
         getText(message);
-
-
 
     const args =
         text
@@ -215,21 +200,28 @@ export default async function createContext(client, message) {
             .trim()
             .split(/\s+/);
 
-
-
     const command =
         args.shift()?.toLowerCase() || "";
 
-
-
+    /*
+     * WhatsApp can identify the sender using either
+     * the normal participant JID or an alternate/LID JID.
+     *
+     * Keep both identities so admin checks work correctly
+     * on newer WhatsApp/Baileys identity formats.
+     */
     const sender =
         message.key.participant ||
+        message.key.participantAlt ||
         message.key.remoteJid;
+
+    const senderAlt =
+        message.key.participantAlt ||
+        message.key.participant ||
+        "";
 
     const chat =
         message.key.remoteJid;
-
-
 
 
     // Identity
@@ -242,9 +234,9 @@ export default async function createContext(client, message) {
                 .replace("@s.whatsapp.net", "")
                 .replace("@lid", "");
 
-
     console.log({
         sender,
+        senderAlt,
         realNumber
     });
 
@@ -254,20 +246,15 @@ export default async function createContext(client, message) {
         "Unknown";
 
 
-
     // Chat
 
     const isGroup =
         chat.endsWith("@g.us");
 
-
-
     const chatType =
         isGroup
             ? "group"
             : "private";
-
-
 
 
     // Group foundation
@@ -279,7 +266,12 @@ export default async function createContext(client, message) {
         );
 
 
-
+    /*
+     * Check both sender identities.
+     *
+     * This fixes admin detection when WhatsApp provides
+     * the participant as a LID/alternate identity.
+     */
     const isAdmin =
         groupInfo.admins.some(
             admin =>
@@ -287,17 +279,19 @@ export default async function createContext(client, message) {
                     admin,
                     sender
                 )
+                ||
+                jidMatch(
+                    admin,
+                    senderAlt
+                )
         );
-
 
 
     const botPhoneJid =
         client.user?.id || "";
 
-
     const botLid =
         client.user?.lid || "";
-
 
 
     const isBotAdmin =
@@ -315,8 +309,6 @@ export default async function createContext(client, message) {
         );
 
 
-
-
     // Quoted message
 
     const quoted =
@@ -326,11 +318,8 @@ export default async function createContext(client, message) {
             ?.quotedMessage ||
         null;
 
-
-
     const isReply =
         Boolean(quoted);
-
 
 
     const target =
@@ -350,7 +339,6 @@ export default async function createContext(client, message) {
         null;
 
 
-
     // Media
 
     const media =
@@ -367,10 +355,7 @@ export default async function createContext(client, message) {
         null;
 
 
-
-
     const ctx = {
-
 
         // Core
 
@@ -398,7 +383,6 @@ export default async function createContext(client, message) {
         target,
 
 
-
         // Chat
 
         isGroup,
@@ -406,83 +390,63 @@ export default async function createContext(client, message) {
         chatType,
 
 
-
         // Group
 
         groupMetadata:
             groupInfo.metadata,
 
-
         members:
             groupInfo.members,
-
 
         admins:
             groupInfo.admins,
 
-
         isAdmin,
 
-
         isBotAdmin,
-
 
 
         // Runtime
 
         runtime,
 
-
         config,
-
 
         version:
             runtime.version(),
 
-
         botName:
             runtime.botName(),
 
-
         prefix:
             config.prefix,
-
 
 
         // Media
 
         quoted,
 
-
         media,
 
-
         isReply,
-
 
         isImage:
             Boolean(quoted?.imageMessage),
 
-
         isVideo:
             Boolean(quoted?.videoMessage),
-
 
         isAudio:
             Boolean(quoted?.audioMessage),
 
-
         isSticker:
             Boolean(quoted?.stickerMessage),
-
 
         isDocument:
             Boolean(quoted?.documentMessage),
 
 
-
         // Helpers
-
 
         async reply(text, options = {}) {
 
@@ -494,13 +458,11 @@ export default async function createContext(client, message) {
 
             };
 
-
             const finalOptions =
                 await addChannelPreview(
                     client,
                     replyOptions
                 );
-
 
             return client.sendMessage(
 
@@ -513,7 +475,6 @@ export default async function createContext(client, message) {
         },
 
 
-
         async send(content) {
 
             const finalContent =
@@ -521,7 +482,6 @@ export default async function createContext(client, message) {
                     client,
                     content
                 );
-
 
             return client.sendMessage(
 
@@ -531,13 +491,10 @@ export default async function createContext(client, message) {
 
             );
 
-
         },
 
 
-
         async react(emoji) {
-
 
             return client.sendMessage(
 
@@ -557,34 +514,23 @@ export default async function createContext(client, message) {
 
             );
 
-
         },
-
 
 
         async download() {
 
-
             if (!isReply || !media) {
 
-
                 throw new Error(
-
                     "Reply to a media message."
-
                 );
 
-
             }
-
-
 
             return downloadMediaMessage(
 
                 {
-
                     message: quoted
-
                 },
 
                 "buffer",
@@ -595,10 +541,7 @@ export default async function createContext(client, message) {
 
             );
 
-
         }
-
-
 
     };
 
