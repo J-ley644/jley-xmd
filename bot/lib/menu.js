@@ -1,7 +1,5 @@
 import config from "../config/config.js";
 import menuStore from "../system/menuStore.js";
-const CHANNEL_URL =
-    "https://whatsapp.com/channel/0029Vb8fXJpEquiKJsG56i29";
 
 const icons = {
     general: "⚡",
@@ -13,7 +11,7 @@ const icons = {
     fun: "🎮",
     automation: "🤖",
     media: "🎬",
-    antidelete: "🗑️",
+    antidelete: "♻️",
     other: "📌"
 };
 
@@ -189,9 +187,6 @@ ${names.map(
 
   › ${prefix}menu <category>
   › ${prefix}help <command>
-
-    📢 𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐂𝐇𝐀𝐍𝐍𝐄𝐋
-  ${CHANNEL_URL}
 
   𝐉𝐋𝐄𝐘-𝐗𝐌𝐃 𝐄𝐍𝐆𝐈𝐍𝐄𝐒
   Deploy: https://jley-xmd.netlify.app
