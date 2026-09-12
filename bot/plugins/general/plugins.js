@@ -1,4 +1,5 @@
 import pluginStore from "../../system/pluginStore.js";
+import menuStore from "../../system/menuStore.js";
 
 export default {
 
@@ -32,7 +33,9 @@ export default {
             }
 
             const pluginName =
-                String(plugin.name).trim().toLowerCase();
+                String(plugin.name)
+                    .trim()
+                    .toLowerCase();
 
             if (seen.has(pluginName)) {
                 continue;
@@ -47,7 +50,9 @@ export default {
                 categories[category] = [];
             }
 
-            categories[category].push(plugin.name);
+            categories[category].push(
+                plugin.name
+            );
         }
 
         let text =
@@ -85,7 +90,44 @@ export default {
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`;
 
-        return ctx.reply(text);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Use the same banner as .menu
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            await menuStore.hasBanner()
+        ) {
+
+            const banner =
+                await menuStore.getBanner();
+
+            return ctx.send({
+
+                image: banner,
+
+                caption: text,
+
+                linkPreview: true
+
+            });
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | No banner fallback
+        |--------------------------------------------------------------------------
+        */
+
+        return ctx.send({
+
+            text
+
+        });
 
     }
 
