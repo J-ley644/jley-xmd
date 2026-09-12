@@ -2,6 +2,7 @@
  * JLEY-XMD Cooldown Manager
  *
  * Bounded in-memory cooldown tracking.
+ * Cooldowns are isolated per deployment.
  */
 
 class CooldownManager {
@@ -14,13 +15,14 @@ class CooldownManager {
 
 
     check(
+        deploymentId,
         user,
         command,
         seconds = 3
     ) {
 
         const key =
-            `${deploymentId || "default"}:${user}:${command}`
+            `${deploymentId || "default"}:${user}:${command}`;
 
         const now =
             Date.now();
