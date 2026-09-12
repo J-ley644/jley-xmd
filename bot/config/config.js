@@ -24,6 +24,15 @@ const config = {
     },
 
 
+    channel: {
+
+        inviteCode: "0029Vb8fXJpEquiKJsG56i29",
+
+        name: "JLEY-XMD"
+
+    },
+
+
     status: "online"
 
 };
