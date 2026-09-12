@@ -8,7 +8,7 @@ export default {
 
     category: "group",
 
-    description: "Enable or disable automatic welcome messages.",
+    description: "Enable or disable welcome messages.",
 
     usage: ".welcome <on|off>",
 
@@ -30,6 +30,8 @@ export default {
             return ctx.reply(
 `🤖 ${ctx.botName}
 
+👋 WELCOME SYSTEM
+
 Usage:
 
 .welcome on
@@ -38,26 +40,42 @@ Usage:
 
         }
 
-        const enabled =
-            option === "on";
-
         groupSettings.set(
             ctx.chat,
             "welcome",
-            enabled
+            option === "on"
         );
 
-        await ctx.reply(
+        if (option === "on") {
+
+            return ctx.reply(
 `🤖 ${ctx.botName}
 
-${enabled
-    ? "✅ Welcome messages are now enabled."
-    : "❌ Welcome messages are now disabled."
-}
+╭━━━〔 👋 WELCOME 〕━━━╮
+┃
+┃ ✅ Welcome messages are now ON.
+┃
+┃ New members will automatically
+┃ receive a welcome message.
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯
 
-${enabled
-    ? "New members will automatically receive a welcome message with the group's current description/rules."
-    : "New members will no longer receive automatic welcome messages."}`
+✨ No extra setup is required.`
+            );
+
+        }
+
+        return ctx.reply(
+`🤖 ${ctx.botName}
+
+╭━━━〔 👋 WELCOME 〕━━━╮
+┃
+┃ ❌ Welcome messages are now OFF.
+┃
+┃ New members will no longer
+┃ receive automatic welcomes.
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯`
         );
 
     }
