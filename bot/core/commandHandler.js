@@ -361,6 +361,7 @@ async function handleCommand(
 
         const result =
             cooldowns.check(
+                client?.deploymentId,
                 ctx.sender,
                 command.name,
                 cooldown
