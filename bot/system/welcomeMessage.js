@@ -104,15 +104,22 @@ export function createWelcomeMessage({
 
 
     let message =
-`👋 WELCOME TO ${botName || "JLEY-XMD"}
-
-🎉 Hey ${mention}, welcome to ${groupName || "the group"}!
-
-We're glad to have you here. ❤️
-
-👤 Member: ${name}
-👥 Members: ${memberCount}
-🤖 Bot: ${botName || "JLEY-XMD"}`;
+`╭━━━〔 👋 WELCOME 〕━━━╮
+┃
+┃ 👋 Hey ${mention}!
+┃
+┃ 🎉 Welcome to
+┃ 📌 ${groupName || "the group"}
+┃
+┃ ❤️ We're glad to have you here.
+┃
+┣━━━〔 👤 MEMBER INFO 〕━━━
+┃
+┃ 👤 Member: ${name}
+┃ 👥 Members: ${memberCount}
+┃ 🤖 Bot: ${botName || "JLEY-XMD"}
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯`;
 
 
     if (rules) {
@@ -120,9 +127,13 @@ We're glad to have you here. ❤️
         message +=
 `
 
-📜 GROUP RULES
-
-${rules}`;
+╭━━━〔 📜 GROUP RULES 〕━━━╮
+┃
+${rules
+    .split("\n")
+    .map(line => `┃ ${line}`)
+    .join("\n")}
+╰━━━━━━━━━━━━━━━━━━━━╯`;
 
     }
 
@@ -130,16 +141,24 @@ ${rules}`;
     message +=
 `
 
-🚀 Feel free to introduce yourself and enjoy your stay!
-
-❤️ Have a great time in the group!`;
+╭━━━〔 🚀 ENJOY YOUR STAY 〕━━━╮
+┃
+┃ Feel free to introduce yourself
+┃ and enjoy the group.
+┃
+┃ ❤️ Have a great time!
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯`;
 
 
     return {
+
         text: message,
+
         mentions: jid
             ? [jid]
             : []
+
     };
 
 }
