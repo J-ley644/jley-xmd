@@ -1,56 +1,80 @@
 /**
- * =====================================================
  * JLEY-XMD Context Builder
- * Context API v5
- *
- * Core
- * User
- * Group
- * Runtime
- * Media Engine
- * Response UI
- * Helper API
- * =====================================================
+ * Context API v3
+ * Core + Media + Group Foundation
  */
 
 import config from "../config/config.js";
 import runtime from "./runtime.js";
-
-import {
-    downloadMediaMessage
-} from "@whiskeysockets/baileys";
-
+import { downloadMediaMessage } from "@whiskeysockets/baileys";
 import {
     jidMatch
 } from "../lib/jid.js";
 
 
+let channelMetadataPromise = null;
 
-/*
-|--------------------------------------------------------------------------
-| Group Information
-|--------------------------------------------------------------------------
-*/
+
+async function getChannelMetadata(client) {
+
+    if (!config.channel?.inviteCode) {
+        return null;
+    }
+
+    if (!channelMetadataPromise) {
+
+        channelMetadataPromise =
+            client.newsletterMetadata(
+                "invite",
+                config.channel.inviteCode
+            )
+            .catch(error => {
+
+                console.error(
+                    "[CHANNEL] Failed to load channel metadata:",
+                    error
+                );
+
+                channelMetadataPromise = null;
+
+                return null;
+
+            });
+
+    }
+
+    return channelMetadataPromise;
+
+}
+
 
 async function getGroupInfo(client, chat) {
+
 
     if (!chat.endsWith("@g.us")) {
 
         return {
 
             metadata: null,
+
             members: [],
+
             admins: []
 
         };
 
     }
 
+
     const metadata =
         await client.groupMetadata(chat);
 
+
+
     const members =
         metadata.participants || [];
+
+
 
     const admins =
         members
@@ -59,32 +83,31 @@ async function getGroupInfo(client, chat) {
                     member.admin === "admin" ||
                     member.admin === "superadmin"
             )
-            .flatMap(
-                member => [
-                    member.id,
-                    member.lid
-                ].filter(Boolean)
-            );
+            .flatMap(member => [
+                member.id,
+                member.lid
+            ].filter(Boolean));
+
+
 
     return {
 
         metadata,
+
         members,
+
         admins
 
     };
+
 
 }
 
 
 
-/*
-|--------------------------------------------------------------------------
-| Extract Text
-|--------------------------------------------------------------------------
-*/
 
 function getText(message) {
+
 
     return (
 
@@ -100,172 +123,19 @@ function getText(message) {
 
     );
 
-}
-
-
-
-/*
-|--------------------------------------------------------------------------
-| Normalize Media
-|--------------------------------------------------------------------------
-*/
-
-function normalizeMedia(quoted) {
-
-    if (!quoted) {
-
-        return {
-
-            mediaMessage: null,
-            media: null,
-            isViewOnce: false
-
-        };
-
-    }
-
-    let mediaMessage = quoted;
-
-    let isViewOnce = false;
-
-
-
-    if (quoted.viewOnceMessage?.message) {
-
-        mediaMessage =
-            quoted.viewOnceMessage.message;
-
-        isViewOnce = true;
-
-    }
-
-    else if (quoted.viewOnceMessageV2?.message) {
-
-        mediaMessage =
-            quoted.viewOnceMessageV2.message;
-
-        isViewOnce = true;
-
-    }
-
-    else if (
-        quoted.viewOnceMessageV2Extension?.message
-    ) {
-
-        mediaMessage =
-            quoted.viewOnceMessageV2Extension.message;
-
-        isViewOnce = true;
-
-    }
-
-
-
-    const media =
-
-        mediaMessage?.imageMessage ||
-
-        mediaMessage?.videoMessage ||
-
-        mediaMessage?.audioMessage ||
-
-        mediaMessage?.stickerMessage ||
-
-        mediaMessage?.documentMessage ||
-
-        null;
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | View Once Detection
-    |--------------------------------------------------------------------------
-    */
-
-    if (media?.viewOnce === true) {
-
-        isViewOnce = true;
-
-    }
-
-
-
-    return {
-
-        mediaMessage,
-        media,
-        isViewOnce
-
-    };
 
 }
 
 
 
-/*
-|--------------------------------------------------------------------------
-| JLEY-XMD Response UI
-|--------------------------------------------------------------------------
-*/
 
-function formatResponse(
-    title,
-    icon,
-    content
-) {
+export default async function createContext(client, message) {
 
-    const lines =
-        String(content || "")
-            .split("\n");
-
-    const formatted =
-        lines
-            .map(line => {
-
-                if (!line.trim()) {
-
-                    return "┃";
-
-                }
-
-                return `┃  ${line}`;
-
-            })
-            .join("\n");
-
-    return (
-`╭━━━━━━━━〔 ${icon} ${title} 〕━━━━━━━━╮
-┃
-${formatted}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
-    );
-
-}
-
-
-
-/*
-|--------------------------------------------------------------------------
-| Context Builder
-|--------------------------------------------------------------------------
-*/
-
-export default async function createContext(
-    client,
-    message,
-    deploymentId
-) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Message
-    |--------------------------------------------------------------------------
-    */
 
     const text =
         getText(message);
+
+
 
     const args =
         text
@@ -273,60 +143,52 @@ export default async function createContext(
             .trim()
             .split(/\s+/);
 
+
+
     const command =
         args.shift()?.toLowerCase() || "";
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Sender & Chat
-    |--------------------------------------------------------------------------
-    */
-
     const sender =
-    message.key?.fromMe
-        ? (
-            client?.user?.lid ||
-            client?.user?.id ||
-            message.key?.participant ||
-            message.key?.remoteJid
-        )
-        : (
-            message.key?.participant ||
-            message.key?.remoteJid
-        );
+        message.key.participant ||
+        message.key.remoteJid;
 
     const chat =
         message.key.remoteJid;
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Identity
-    |--------------------------------------------------------------------------
-    */
+
+    // Identity
 
     const realNumber =
-        sender
-            .split(":")[0]
-            .replace("@s.whatsapp.net", "")
-            .replace("@lid", "");
+        sender.includes("@lid")
+            ? config.owner.number
+            : sender
+                .split(":")[0]
+                .replace("@s.whatsapp.net", "")
+                .replace("@lid", "");
+
+
+    console.log({
+        sender,
+        realNumber
+    });
+
 
     const pushName =
-        message.pushName || "Unknown";
+        message.pushName ||
+        "Unknown";
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Chat
-    |--------------------------------------------------------------------------
-    */
+    // Chat
 
     const isGroup =
         chat.endsWith("@g.us");
+
+
 
     const chatType =
         isGroup
@@ -335,17 +197,16 @@ export default async function createContext(
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Group
-    |--------------------------------------------------------------------------
-    */
+
+    // Group foundation
 
     const groupInfo =
         await getGroupInfo(
             client,
             chat
         );
+
+
 
     const isAdmin =
         groupInfo.admins.some(
@@ -356,16 +217,16 @@ export default async function createContext(
                 )
         );
 
+
+
     const botPhoneJid =
         client.user?.id || "";
+
 
     const botLid =
         client.user?.lid || "";
 
-        const botIdentity =
-    botLid ||
-    botPhoneJid ||
-    null;
+
 
     const isBotAdmin =
         groupInfo.admins.some(
@@ -373,7 +234,8 @@ export default async function createContext(
                 jidMatch(
                     admin,
                     botPhoneJid
-                ) ||
+                )
+                ||
                 jidMatch(
                     admin,
                     botLid
@@ -382,84 +244,69 @@ export default async function createContext(
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Quoted
-    |--------------------------------------------------------------------------
-    */
 
-    const content =
-        Object.values(
-            message.message || {}
-        )[0];
+    // Quoted message
 
     const quoted =
-        content?.contextInfo?.quotedMessage ||
+        message.message
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.quotedMessage ||
         null;
+
+
 
     const isReply =
         Boolean(quoted);
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Target
-    |--------------------------------------------------------------------------
-    */
-
     const target =
-        content?.contextInfo?.participant ||
 
-        content?.contextInfo?.mentionedJid?.[0] ||
+        // Reply target
+        message.message
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.participant ||
 
-        sender;
+        // Mention target
+        message.message
+            ?.extendedTextMessage
+            ?.contextInfo
+            ?.mentionedJid?.[0] ||
 
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Media Engine
-    |--------------------------------------------------------------------------
-    */
-
-    const {
-        mediaMessage,
-        media,
-        isViewOnce
-    } =
-        normalizeMedia(
-            quoted
-        );
+        null;
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Context
-    |--------------------------------------------------------------------------
-    */
+    // Media
+
+    const media =
+        quoted?.imageMessage ||
+
+        quoted?.videoMessage ||
+
+        quoted?.audioMessage ||
+
+        quoted?.stickerMessage ||
+
+        quoted?.documentMessage ||
+
+        null;
+
+
+
 
     const ctx = {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Core
-        |--------------------------------------------------------------------------
-        */
+
+        // Core
 
         client,
-
-        deploymentId:
-    deploymentId ||
-    client?.deploymentId ||
-    "main",
 
         message,
 
         sender,
-
-        botIdentity,
 
         chat,
 
@@ -470,15 +317,9 @@ export default async function createContext(
         command,
 
 
+        // User
 
-        /*
-        |--------------------------------------------------------------------------
-        | User
-        |--------------------------------------------------------------------------
-        */
-
-        number:
-            realNumber,
+        number: realNumber,
 
         pushName,
 
@@ -486,11 +327,7 @@ export default async function createContext(
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Chat
-        |--------------------------------------------------------------------------
-        */
+        // Chat
 
         isGroup,
 
@@ -498,191 +335,169 @@ export default async function createContext(
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Group
-        |--------------------------------------------------------------------------
-        */
+        // Group
 
         groupMetadata:
             groupInfo.metadata,
 
+
         members:
             groupInfo.members,
+
 
         admins:
             groupInfo.admins,
 
+
         isAdmin,
+
 
         isBotAdmin,
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Runtime
-        |--------------------------------------------------------------------------
-        */
+        // Runtime
 
         runtime,
 
+
         config,
+
 
         version:
             runtime.version(),
 
+
         botName:
             runtime.botName(),
+
 
         prefix:
             config.prefix,
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Media
-        |--------------------------------------------------------------------------
-        */
+        // Media
 
         quoted,
 
+
         media,
 
-        mediaMessage,
 
         isReply,
 
-        isViewOnce,
 
         isImage:
-            Boolean(
-                mediaMessage?.imageMessage
-            ),
+            Boolean(quoted?.imageMessage),
+
 
         isVideo:
-            Boolean(
-                mediaMessage?.videoMessage
-            ),
+            Boolean(quoted?.videoMessage),
+
 
         isAudio:
-            Boolean(
-                mediaMessage?.audioMessage
-            ),
+            Boolean(quoted?.audioMessage),
+
 
         isSticker:
-            Boolean(
-                mediaMessage?.stickerMessage
-            ),
+            Boolean(quoted?.stickerMessage),
+
 
         isDocument:
-            Boolean(
-                mediaMessage?.documentMessage
-            ),
+            Boolean(quoted?.documentMessage),
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Basic Reply
-        |--------------------------------------------------------------------------
-        */
-
-        async reply(
-    text,
-    options = {}
-) {
-
-    return client.sendMessage(
-
-        chat,
-
-        {
-            text,
-            ...options,
-
-            quoted: message
-
-        }
-
-    );
-
-},
+        // Helpers
 
 
+        async reply(text, options = {}) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | JLEY-XMD Response Helpers
-        |--------------------------------------------------------------------------
-        */
+            const replyOptions = {
 
-        async success(
-            text
-        ) {
+                text,
 
-            return this.reply(
+                ...options
 
-                formatResponse(
-                    "SUCCESS",
-                    "✅",
-                    text
-                )
-
-            );
-
-        },
+            };
 
 
+            /*
+             * Native WhatsApp Channel presentation.
+             *
+             * Only attach the newsletter metadata to
+             * ordinary text replies.
+             *
+             * Media and other specialized messages keep
+             * their original behavior.
+             */
 
-        async error(
-            text
-        ) {
+            if (
 
-            return this.reply(
+                typeof text === "string" &&
 
-                formatResponse(
-                    "ERROR",
-                    "❌",
-                    text
-                )
+                !replyOptions.image &&
 
-            );
+                !replyOptions.video &&
 
-        },
+                !replyOptions.audio &&
 
+                !replyOptions.document
 
+            ) {
 
-        async warning(
-            text
-        ) {
+                try {
 
-            return this.reply(
-
-                formatResponse(
-                    "WARNING",
-                    "⚠️",
-                    text
-                )
-
-            );
-
-        },
+                    const channel =
+                        await getChannelMetadata(client);
 
 
+                    if (channel?.id) {
 
-        async info(
-            text
-        ) {
+                        replyOptions.contextInfo = {
 
-            return this.reply(
+                            ...(replyOptions.contextInfo || {}),
 
-                formatResponse(
-                    "INFORMATION",
-                    "ℹ️",
-                    text
-                )
+                            forwardingScore: 1,
+
+                            isForwarded: true,
+
+                            forwardedNewsletterMessageInfo: {
+
+                                newsletterJid:
+                                    channel.id,
+
+                                serverMessageId: 1,
+
+                                newsletterName:
+                                    channel.name ||
+                                    config.channel?.name ||
+                                    "JLEY-XMD"
+
+                            }
+
+                        };
+
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "[CHANNEL] Failed to attach channel preview:",
+                        error
+                    );
+
+                }
+
+            }
+
+
+            return client.sendMessage(
+
+                chat,
+
+                replyOptions
 
             );
 
@@ -690,62 +505,24 @@ export default async function createContext(
 
 
 
-        async denied(
-            text = "You don't have permission to use this command."
-        ) {
+        async send(content) {
 
-            return this.reply(
 
-                formatResponse(
-                    "ACCESS DENIED",
-                    "🛡️",
-                    text
-                )
+            return client.sendMessage(
+
+                chat,
+
+                content
 
             );
+
 
         },
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Send
-        |--------------------------------------------------------------------------
-        */
+        async react(emoji) {
 
-        async send(
-    content,
-    options = {}
-) {
-
-    return client.sendMessage(
-
-        chat,
-
-        {
-            ...content,
-            ...options,
-
-            quoted: message
-
-        }
-
-    );
-
-},
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | React
-        |--------------------------------------------------------------------------
-        */
-
-        async react(
-            emoji
-        ) {
 
             return client.sendMessage(
 
@@ -765,79 +542,50 @@ export default async function createContext(
 
             );
 
+
         },
 
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Download Media
-        |--------------------------------------------------------------------------
-        */
 
         async download() {
 
-    if (
-        !isReply ||
-        !media
-    ) {
 
-        throw new Error(
-            "Reply to a media message."
-        );
+            if (!isReply || !media) {
 
-    }
 
-    return downloadMediaMessage(
+                throw new Error(
 
-        {
-            message: quoted
-        },
+                    "Reply to a media message."
 
-        "stream",
+                );
 
-        {},
 
-        {
-            logger: console
+            }
+
+
+
+            return downloadMediaMessage(
+
+                {
+
+                    message: quoted
+
+                },
+
+                "buffer",
+
+                {},
+
+                {}
+
+            );
+
+
         }
-
-    );
-
-},
-
-async downloadBuffer() {
-
-    if (
-        !isReply ||
-        !media
-    ) {
-
-        throw new Error(
-            "Reply to a media message."
-        );
-
-    }
-
-    return downloadMediaMessage(
-        {
-            message: quoted
-        },
-        "buffer",
-        {},
-        {
-            logger: console
-        }
-    );
-
-},
 
 
 
     };
-
-    
-
 
 
     return ctx;
