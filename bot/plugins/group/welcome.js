@@ -30,8 +30,6 @@ export default {
             return ctx.reply(
 `🤖 ${ctx.botName}
 
-👋 WELCOME SYSTEM
-
 Usage:
 
 .welcome on
@@ -46,36 +44,14 @@ Usage:
             option === "on"
         );
 
-        if (option === "on") {
-
-            return ctx.reply(
+        await ctx.reply(
 `🤖 ${ctx.botName}
 
-╭━━━〔 👋 WELCOME 〕━━━╮
-┃
-┃ ✅ Welcome messages are now ON.
-┃
-┃ New members will automatically
-┃ receive a welcome message.
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯
-
-✨ No extra setup is required.`
-            );
-
-        }
-
-        return ctx.reply(
-`🤖 ${ctx.botName}
-
-╭━━━〔 👋 WELCOME 〕━━━╮
-┃
-┃ ❌ Welcome messages are now OFF.
-┃
-┃ New members will no longer
-┃ receive automatic welcomes.
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯`
+✅ Welcome messages ${
+    option === "on"
+        ? "enabled"
+        : "disabled"
+}.`
         );
 
     }
