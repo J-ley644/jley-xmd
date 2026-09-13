@@ -20,7 +20,7 @@ export default {
 
     async execute(ctx) {
 
-        return ctx.info(
+        return ctx.reply(
 
 `👨‍💻 Developer Information
 
