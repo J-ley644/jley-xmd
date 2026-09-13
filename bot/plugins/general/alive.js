@@ -21,7 +21,7 @@ export default {
                 ? ctx.runtime.formatUptime()
                 : "Unknown";
 
-        return ctx.info(
+        return ctx.reply(
 
 `🟢 ${ctx.botName} ALIVE
 
