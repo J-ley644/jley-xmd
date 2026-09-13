@@ -207,17 +207,18 @@ export default async function createContext(client, message) {
      * WhatsApp can identify the sender using either
      * the normal participant JID or an alternate/LID JID.
      *
-     * Keep both identities so admin checks work correctly
-     * on newer WhatsApp/Baileys identity formats.
+     * Prefer the alternate identity when available because
+     * it can contain the usable phone JID, while still keeping
+     * the normal participant identity as a fallback.
      */
     const sender =
-        message.key.participant ||
         message.key.participantAlt ||
+        message.key.participant ||
         message.key.remoteJid;
 
     const senderAlt =
-        message.key.participantAlt ||
         message.key.participant ||
+        message.key.participantAlt ||
         "";
 
     const chat =
