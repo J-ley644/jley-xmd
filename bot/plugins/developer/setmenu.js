@@ -15,8 +15,8 @@ export default {
     usage: ".setmenu (reply to an image)",
 
     permissions: {
-    jleyOwner: true
-}
+        jleyOwner: true
+    },
 
     async execute(ctx) {
 
@@ -45,7 +45,7 @@ Reply to a photo then send
         try {
 
             const buffer =
-    await ctx.downloadBuffer();
+                await ctx.download();
 
             await menuStore.setBanner(
                 buffer
