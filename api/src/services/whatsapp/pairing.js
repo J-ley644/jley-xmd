@@ -364,6 +364,15 @@ export async function requestPairingCode(
 
     }
 
+await prisma.deployment.update({
+    where: {
+        id: String(deploymentId)
+    },
+    data: {
+        phoneNumber: normalizedPhone
+    }
+});
+
 
     console.log(
         "PAIRING REQUEST:",
