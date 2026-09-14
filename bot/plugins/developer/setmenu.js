@@ -15,8 +15,8 @@ export default {
     usage: ".setmenu (reply to an image)",
 
     permissions: {
-        owner: true
-    },
+    jleyOwner: true
+}
 
     async execute(ctx) {
 
