@@ -1,3 +1,5 @@
+import prisma from "../../config/prisma.js";
+
 import {
     createSocket,
     destroySocket,
@@ -19,6 +21,63 @@ import {
 
 const sleep = ms =>
     new Promise(resolve => setTimeout(resolve, ms));
+
+
+/*
+ * Attach the deployment owner's WhatsApp identity
+ * to the running socket.
+ *
+ * IMPORTANT:
+ *
+ * Deployment.ownerId is a dashboard User UUID.
+ * It is NOT a WhatsApp JID.
+ *
+ * Deployment.phoneNumber is the bridge between
+ * dashboard ownership and WhatsApp identity.
+ */
+async function attachDeploymentOwner(
+    deploymentId,
+    session
+) {
+
+    if (!session?.sock) {
+        return session;
+    }
+
+    try {
+
+        const deployment =
+            await prisma.deployment.findUnique({
+                where: {
+                    id: String(deploymentId)
+                },
+                select: {
+                    phoneNumber: true
+                }
+            });
+
+        if (deployment?.phoneNumber) {
+
+            session.sock.deploymentOwnerPhoneNumber =
+                String(
+                    deployment.phoneNumber
+                )
+                    .replace(/\D/g, "");
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Deployment owner identity load failed:",
+            error.message
+        );
+
+    }
+
+    return session;
+
+}
 
 
 /*
@@ -84,6 +143,11 @@ export async function createSession(
 
         if (existing) {
 
+            await attachDeploymentOwner(
+                key,
+                existing
+            );
+
             return existing;
 
         }
@@ -97,7 +161,13 @@ export async function createSession(
      */
     if (hasLock(key)) {
 
-        return getLock(key);
+        const lockedSession =
+            await getLock(key);
+
+        return attachDeploymentOwner(
+            key,
+            lockedSession
+        );
 
     }
 
@@ -120,12 +190,23 @@ export async function createSession(
              * Do NOT use normalizedPhone because that
              * variable only exists inside requestPairingCode().
              */
-            return createSocket(
+            const session =
+                await createSocket(
+                    key,
+                    state,
+                    saveCreds,
+                    phoneNumber,
+                    stopSync
+                );
+
+
+            /*
+             * Attach deployment ownership immediately
+             * after the socket is created.
+             */
+            return attachDeploymentOwner(
                 key,
-                state,
-                saveCreds,
-                phoneNumber,
-                stopSync
+                session
             );
 
         })();
@@ -328,13 +409,19 @@ export async function requestPairingCode(
 
 
     /*
+     * Make absolutely sure the deployment owner
+     * identity is attached to this session.
+     */
+    await attachDeploymentOwner(
+        deploymentId,
+        session
+    );
+
+
+    /*
      * Wait for socket.js to populate session.code.
      *
      * 30 × 500ms = 15 seconds.
-     *
-     * We deliberately DO NOT treat a temporary missing
-     * socket as an immediate failure. The socket may still
-     * be initializing.
      */
     let attempts = 0;
 
@@ -353,10 +440,6 @@ export async function requestPairingCode(
 
         /*
          * Check the latest session object.
-         *
-         * This is important because socket.js may update
-         * the session object while the pairing request is
-         * being processed.
          */
         const currentSession =
             getSocket(
@@ -364,9 +447,6 @@ export async function requestPairingCode(
             );
 
 
-        /*
-         * If a newer session exists, use it.
-         */
         if (currentSession) {
 
             if (currentSession.code) {
@@ -481,4 +561,3 @@ export async function stopDeploymentSession(
     return true;
 
 }
-
