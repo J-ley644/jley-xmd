@@ -4,7 +4,13 @@ import checkPermissions from "../lib/permissions.js";
 import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
-import { isBotOwner } from "../lib/permissions.js";
+import {
+    isBotOwner
+} from "../lib/permissions.js";
+
+import {
+    getSenderIdentities
+} from "../system/identity.js";
 import automationStore from "../system/automationStore.js";
 
 
@@ -268,20 +274,31 @@ async function handleCommand(
         |
         */
 
-        const botIdentity =
-            client?.user?.lid ||
-            client?.user?.id ||
-            null;
+        const botIdentities = [
+    client?.user?.id,
+    client?.user?.lid
+].filter(Boolean);
 
-        const botMode =
-            botIdentity
-                ? (
-                    automationStore.getValue(
-                        botIdentity,
-                        "mode"
-                    ) || "public"
-                )
-                : "public";
+let botMode = "public";
+
+for (const botIdentity of botIdentities) {
+
+    const savedMode =
+        automationStore.getValue(
+            botIdentity,
+            "mode"
+        );
+
+    if (savedMode) {
+
+        botMode =
+            savedMode;
+
+        break;
+
+    }
+
+}
 
         if (
             botMode === "private" &&
