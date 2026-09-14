@@ -1,554 +1,722 @@
 /**
-
-* JLEY-XMD Context Builder
-* Context API v3
-* Core + Media + Group Foundation
-  */
+ * JLEY-XMD Message Context
+ *
+ * Builds the normalized command context used by plugins.
+ *
+ * IMPORTANT:
+ *
+ * WhatsApp may provide:
+ *
+ * - participant JID
+ * - participantAlt / LID
+ *
+ * Never assume an arbitrary LID can be converted
+ * into a phone number.
+ */
 
 import config from "../config/config.js";
-import runtime from "./runtime.js";
-import { downloadMediaMessage } from "@whiskeysockets/baileys";
+
 import {
-jidMatch
+    jidMatch,
+    getNumberFromJid
 } from "../lib/jid.js";
 
-import {
-    resolvePhoneNumber
-} from "./identity.js";
 
-const channelMetadataPromises = new WeakMap();
+function unique(values = []) {
 
-async function getChannelMetadata(client) {
-
-if (
-    !config.channel?.inviteCode ||
-    !client?.newsletterMetadata
-) {
-    return null;
-}
-
-if (!channelMetadataPromises.has(client)) {
-
-    const promise =
-        client.newsletterMetadata(
-            "invite",
-            config.channel.inviteCode
+    return [
+        ...new Set(
+            values
+                .filter(Boolean)
+                .map(String)
         )
-        .catch(error => {
-
-            console.error(
-                "[CHANNEL] Failed to load channel metadata:",
-                error
-            );
-
-            channelMetadataPromises.delete(client);
-
-            return null;
-
-        });
-
-    channelMetadataPromises.set(
-        client,
-        promise
-    );
+    ];
 
 }
 
-return channelMetadataPromises.get(client);
+
+function getSenderIdentities(
+    message
+) {
+
+    return unique([
+
+        message?.key?.participantAlt,
+
+        message?.key?.participant
+
+    ]);
 
 }
 
-async function addChannelPreview(client, content = {}) {
 
-if (!content || typeof content !== "object") {
-    return content;
+function getGroupParticipantIds(
+    participant
+) {
+
+    return unique([
+
+        participant?.id,
+
+        participant?.lid
+
+    ]);
+
 }
 
-const hasText =
-    typeof content.text === "string" ||
-    typeof content.caption === "string";
 
-if (!hasText) {
-    return content;
-}
+function findParticipant(
+    metadata,
+    identities
+) {
 
-try {
-
-    const channel =
-        await getChannelMetadata(client);
-
-    if (channel?.id) {
-
-        return {
-
-            ...content,
-
-            contextInfo: {
-
-                ...(content.contextInfo || {}),
-
-                forwardingScore: 1,
-
-                isForwarded: true,
-
-                forwardedNewsletterMessageInfo: {
-
-                    newsletterJid:
-                        channel.id,
-
-                    serverMessageId: 1,
-
-                    newsletterName:
-                        channel.name ||
-                        config.channel?.name ||
-                        "JLEY-XMD"
-
-                }
-
-            }
-
-        };
-
+    if (!metadata?.participants) {
+        return null;
     }
 
-} catch (error) {
+    return metadata.participants.find(
+        participant => {
 
-    console.error(
-        "[CHANNEL] Failed to attach channel preview:",
-        error
+            const participantIds =
+                getGroupParticipantIds(
+                    participant
+                );
+
+            return participantIds.some(
+                participantId =>
+                    identities.some(
+                        identity =>
+                            jidMatch(
+                                participantId,
+                                identity
+                            )
+                    )
+            );
+
+        }
+    ) || null;
+
+}
+
+
+function isParticipantAdmin(
+    participant
+) {
+
+    if (!participant) {
+        return false;
+    }
+
+    return (
+        participant.admin === "admin" ||
+        participant.admin === "superadmin"
     );
 
 }
 
-return content;
+
+function getBotIdentities(
+    client
+) {
+
+    return unique([
+
+        client?.user?.id,
+
+        client?.user?.lid
+
+    ]);
 
 }
 
-async function getGroupInfo(client, chat) {
 
-if (!chat.endsWith("@g.us")) {
-
-    return {
-
-        metadata: null,
-
-        members: [],
-
-        admins: []
-
-    };
-
-}
-
-const metadata =
-    await client.groupMetadata(chat);
-
-const members =
-    metadata.participants || [];
-
-const admins =
-    members
-        .filter(
-            member =>
-                member.admin === "admin" ||
-                member.admin === "superadmin"
-        )
-        .flatMap(member => [
-            member.id,
-            member.lid
-        ].filter(Boolean));
-
-return {
-
+function isBotAdminInGroup(
     metadata,
-
-    members,
-
-    admins
-
-};
-
-}
-
-function getText(message) {
-
-return (
-
-    message.message?.conversation ||
-
-    message.message?.extendedTextMessage?.text ||
-
-    message.message?.imageMessage?.caption ||
-
-    message.message?.videoMessage?.caption ||
-
-    ""
-
-);
-
-}
-
-export default async function createContext(client, message) {
-
-const text =
-    getText(message);
-
-const args =
-    text
-        .slice(config.prefix.length)
-        .trim()
-        .split(/\s+/);
-
-const command =
-    args.shift()?.toLowerCase() || "";
-
-/*
- * WhatsApp can identify the sender using either
- * the normal participant JID or an alternate/LID JID.
- *
- * Prefer the alternate identity when available because
- * it can contain the usable phone JID, while still keeping
- * the normal participant identity as a fallback.
- */
-
-const sender =
-    message.key.participantAlt ||
-    message.key.participant ||
-    message.key.remoteJid;
-
-const senderAlt =
-    message.key.participant ||
-    message.key.participantAlt ||
-    "";
-
-const chat =
-    message.key.remoteJid;
-
-
-// Identity
-
-const realNumber =
-    resolvePhoneNumber({
-        sender,
-        senderAlt,
-        client
-    });
-
-console.log({
-    sender,
-    senderAlt,
-    realNumber
-});
-
-
-const pushName =
-    message.pushName ||
-    "Unknown";
-
-
-// Chat
-
-const isGroup =
-    chat.endsWith("@g.us");
-
-const chatType =
-    isGroup
-        ? "group"
-        : "private";
-
-
-// Group foundation
-
-const groupInfo =
-    await getGroupInfo(
-        client,
-        chat
-    );
-
-
-/*
- * Check both sender identities.
- *
- * This fixes admin detection when WhatsApp provides
- * the participant as a LID/alternate identity.
- */
-
-const isAdmin =
-    groupInfo.admins.some(
-        admin =>
-            jidMatch(
-                admin,
-                sender
-            )
-            ||
-            jidMatch(
-                admin,
-                senderAlt
-            )
-    );
-
-
-const botPhoneJid =
-    client.user?.id || "";
-
-const botLid =
-    client.user?.lid || "";
-
-
-const isBotAdmin =
-    groupInfo.admins.some(
-        admin =>
-            jidMatch(
-                admin,
-                botPhoneJid
-            )
-            ||
-            jidMatch(
-                admin,
-                botLid
-            )
-    );
-
-
-// Quoted message
-
-const quoted =
-    message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.quotedMessage ||
-    null;
-
-const isReply =
-    Boolean(quoted);
-
-
-const target =
-
-    // Reply target
-    message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.participant ||
-
-    // Mention target
-    message.message
-        ?.extendedTextMessage
-        ?.contextInfo
-        ?.mentionedJid?.[0] ||
-
-    null;
-
-
-// Media
-
-const media =
-    quoted?.imageMessage ||
-
-    quoted?.videoMessage ||
-
-    quoted?.audioMessage ||
-
-    quoted?.stickerMessage ||
-
-    quoted?.documentMessage ||
-
-    null;
-
-
-const ctx = {
-
-    // Core
-
-    client,
-
-    message,
-
-    sender,
-
-    senderAlt,
-
-    chat,
-
-    text,
-
-    args,
-
-    command,
-
-
-    // User
-
-    number: realNumber,
-
-    pushName,
-
-    target,
-
-
-    // Chat
-
-    isGroup,
-
-    chatType,
-
-
-    // Group
-
-    groupMetadata:
-        groupInfo.metadata,
-
-    members:
-        groupInfo.members,
-
-    admins:
-        groupInfo.admins,
-
-    isAdmin,
-
-    isBotAdmin,
-
-
-    // Runtime
-
-    runtime,
-
-    config,
-
-    version:
-        runtime.version(),
-
-    botName:
-        runtime.botName(),
-
-    prefix:
-        config.prefix,
-
-
-    // Media
-
-    quoted,
-
-    media,
-
-    isReply,
-
-    isImage:
-        Boolean(quoted?.imageMessage),
-
-    isVideo:
-        Boolean(quoted?.videoMessage),
-
-    isAudio:
-        Boolean(quoted?.audioMessage),
-
-    isSticker:
-        Boolean(quoted?.stickerMessage),
-
-    isDocument:
-        Boolean(quoted?.documentMessage),
-
-
-    // Helpers
-
-    async reply(text, options = {}) {
-
-        const replyOptions = {
-
-            text,
-
-            ...options
-
-        };
-
-        const finalOptions =
-            await addChannelPreview(
-                client,
-                replyOptions
-            );
-
-        return client.sendMessage(
-
-            chat,
-
-            finalOptions
-
-        );
-
-    },
-
-
-    async send(content) {
-
-        const finalContent =
-            await addChannelPreview(
-                client,
-                content
-            );
-
-        return client.sendMessage(
-
-            chat,
-
-            finalContent
-
-        );
-
-    },
-
-
-    async react(emoji) {
-
-        return client.sendMessage(
-
-            chat,
-
-            {
-
-                react: {
-
-                    text: emoji,
-
-                    key: message.key
-
-                }
+    botIdentities
+) {
+
+    if (!metadata?.participants) {
+        return false;
+    }
+
+    const botParticipant =
+        metadata.participants.find(
+            participant => {
+
+                const participantIds =
+                    getGroupParticipantIds(
+                        participant
+                    );
+
+                return participantIds.some(
+                    participantId =>
+                        botIdentities.some(
+                            botIdentity =>
+                                jidMatch(
+                                    participantId,
+                                    botIdentity
+                                )
+                        )
+                );
 
             }
-
         );
 
-    },
+    return isParticipantAdmin(
+        botParticipant
+    );
+
+}
 
 
-    async download() {
+/**
+ * Resolve a phone number ONLY when WhatsApp
+ * actually supplied a phone JID.
+ *
+ * We never manufacture a phone number from
+ * an arbitrary LID.
+ */
+function resolvePhoneNumber(
+    identities
+) {
 
-        if (!isReply || !media) {
+    for (const identity of identities) {
 
-            throw new Error(
-                "Reply to a media message."
+        if (
+            identity.endsWith(
+                "@s.whatsapp.net"
+            )
+        ) {
+
+            return getNumberFromJid(
+                identity
             );
 
         }
 
-        return downloadMediaMessage(
+    }
 
-            {
-                message: quoted
-            },
+    return "";
 
-            "buffer",
+}
 
-            {},
 
-            {}
+/**
+ * Build the command context.
+ */
+export async function createContext(
+    client,
+    message
+) {
 
+    const remoteJid =
+        message?.key?.remoteJid || "";
+
+    if (!remoteJid) {
+        return null;
+    }
+
+
+    const senderIdentities =
+        getSenderIdentities(
+            message
         );
+
+
+    const sender =
+        senderIdentities[0] ||
+        remoteJid;
+
+
+    const senderAlt =
+        senderIdentities[1] ||
+        "";
+
+
+    const chat =
+        remoteJid;
+
+
+    const isGroup =
+        chat.endsWith(
+            "@g.us"
+        );
+
+
+    let metadata = null;
+
+
+    if (isGroup) {
+
+        try {
+
+            metadata =
+                await client.groupMetadata(
+                    chat
+                );
+
+        } catch (error) {
+
+            console.error(
+                "Group metadata error:",
+                error.message
+            );
+
+        }
 
     }
 
-};
+
+    const senderParticipant =
+        findParticipant(
+            metadata,
+            senderIdentities
+        );
 
 
-return ctx;
+    const isAdmin =
+        isParticipantAdmin(
+            senderParticipant
+        );
+
+
+    const botIdentities =
+        getBotIdentities(
+            client
+        );
+
+
+    const isBotAdmin =
+        isGroup
+            ? isBotAdminInGroup(
+                metadata,
+                botIdentities
+            )
+            : false;
+
+
+    const pushName =
+        message?.pushName ||
+        senderParticipant?.notify ||
+        senderParticipant?.name ||
+        "User";
+
+
+    const realNumber =
+        resolvePhoneNumber(
+            senderIdentities
+        );
+
+
+    /*
+     * Media detection.
+     */
+    const messageContent =
+        message?.message || {};
+
+    const imageMessage =
+        messageContent?.imageMessage ||
+        null;
+
+    const videoMessage =
+        messageContent?.videoMessage ||
+        null;
+
+    const documentMessage =
+        messageContent?.documentMessage ||
+        null;
+
+    const audioMessage =
+        messageContent?.audioMessage ||
+        null;
+
+
+    const isImage =
+        Boolean(imageMessage);
+
+    const isVideo =
+        Boolean(videoMessage);
+
+    const isDocument =
+        Boolean(documentMessage);
+
+    const isAudio =
+        Boolean(audioMessage);
+
+
+    /*
+     * Reply detection.
+     */
+    const contextInfo =
+        imageMessage?.contextInfo ||
+        videoMessage?.contextInfo ||
+        documentMessage?.contextInfo ||
+        audioMessage?.contextInfo ||
+        messageContent?.extendedTextMessage?.contextInfo ||
+        messageContent?.textMessage?.contextInfo ||
+        null;
+
+
+    const quotedMessage =
+        contextInfo?.quotedMessage ||
+        null;
+
+
+    const isReply =
+        Boolean(quotedMessage);
+
+
+    /*
+     * Prefix.
+     */
+    const prefix =
+        config.prefix ||
+        ".";
+
+
+    /*
+     * Context object.
+     */
+    const ctx = {
+
+        client,
+
+        message,
+
+        deploymentId:
+            client?.deploymentId ||
+            "",
+
+
+        /*
+         * Chat identity.
+         */
+        chat,
+
+        remoteJid:
+            chat,
+
+
+        /*
+         * Sender identities.
+         *
+         * sender:
+         * primary identity supplied by WhatsApp.
+         *
+         * senderAlt:
+         * alternate identity, normally LID.
+         */
+        sender,
+
+        senderAlt,
+
+        senderIdentities,
+
+
+        /*
+         * Human-readable information.
+         */
+        pushName,
+
+        number:
+            realNumber,
+
+
+        /*
+         * Chat type.
+         */
+        isGroup,
+
+
+        /*
+         * Group permissions.
+         */
+        isAdmin,
+
+        isBotAdmin,
+
+        groupMetadata:
+            metadata,
+
+
+        /*
+         * Bot identities.
+         */
+        botIdentities,
+
+
+        /*
+         * Prefix.
+         */
+        prefix,
+
+        prefixChar:
+            prefix,
+
+
+        /*
+         * Media.
+         */
+        isImage,
+
+        isVideo,
+
+        isDocument,
+
+        isAudio,
+
+
+        /*
+         * Reply / quoted message.
+         */
+        isReply,
+
+        quotedMessage,
+
+
+        /*
+         * Convenience aliases.
+         */
+        quoted:
+            quotedMessage,
+
+
+        /*
+         * Reply helper.
+         *
+         * Channel metadata is intentionally preserved.
+         */
+        reply:
+            async (
+                text,
+                options = {}
+            ) => {
+
+                const channelInfo = {
+
+                    forwardedNewsletterMessageInfo: {
+
+                        newsletterJid:
+                            config.channel?.inviteCode
+                                ? `120363${config.channel.inviteCode}@newsletter`
+                                : undefined,
+
+                        serverMessageId:
+                            1,
+
+                        newsletterName:
+                            config.channel?.name ||
+                            "JLEY-XMD"
+
+                    }
+
+                };
+
+
+                return client.sendMessage(
+
+                    chat,
+
+                    {
+
+                        text,
+
+                        ...channelInfo,
+
+                        ...options
+
+                    }
+
+                );
+
+            },
+
+
+        /*
+         * Generic send helper.
+         *
+         * Channel metadata is intentionally preserved.
+         */
+        send:
+            async (
+                content,
+                options = {}
+            ) => {
+
+                const channelInfo = {
+
+                    forwardedNewsletterMessageInfo: {
+
+                        newsletterJid:
+                            config.channel?.inviteCode
+                                ? `120363${config.channel.inviteCode}@newsletter`
+                                : undefined,
+
+                        serverMessageId:
+                            1,
+
+                        newsletterName:
+                            config.channel?.name ||
+                            "JLEY-XMD"
+
+                    }
+
+                };
+
+
+                if (
+                    typeof content === "string"
+                ) {
+
+                    return client.sendMessage(
+
+                        chat,
+
+                        {
+
+                            text:
+                                content,
+
+                            ...channelInfo,
+
+                            ...options
+
+                        }
+
+                    );
+
+                }
+
+
+                return client.sendMessage(
+
+                    chat,
+
+                    {
+
+                        ...content,
+
+                        ...channelInfo,
+
+                        ...options
+
+                    }
+
+                );
+
+            },
+
+
+        /*
+         * Download replied/current media.
+         */
+        download:
+            async () => {
+
+                const target =
+                    quotedMessage
+                        ? {
+                            key: {
+                                remoteJid:
+                                    chat,
+
+                                fromMe:
+                                    false,
+
+                                id:
+                                    contextInfo?.stanzaId,
+
+                                participant:
+                                    contextInfo?.participant
+                            },
+
+                            message:
+                                quotedMessage
+
+                        }
+                        : message;
+
+
+                if (!target?.message) {
+
+                    throw new Error(
+                        "No downloadable media found."
+                    );
+
+                }
+
+
+                const {
+                    downloadContentFromMessage
+                } = await import(
+                    "@whiskeysockets/baileys"
+                );
+
+
+                let mediaMessage =
+                    target.message?.imageMessage ||
+                    target.message?.videoMessage ||
+                    target.message?.audioMessage ||
+                    target.message?.documentMessage;
+
+
+                let mediaType =
+                    target.message?.imageMessage
+                        ? "image"
+                        : target.message?.videoMessage
+                            ? "video"
+                            : target.message?.audioMessage
+                                ? "audio"
+                                : target.message?.documentMessage
+                                    ? "document"
+                                    : null;
+
+
+                if (
+                    !mediaMessage ||
+                    !mediaType
+                ) {
+
+                    throw new Error(
+                        "Message does not contain downloadable media."
+                    );
+
+                }
+
+
+                const stream =
+                    await downloadContentFromMessage(
+                        mediaMessage,
+                        mediaType
+                    );
+
+
+                const chunks = [];
+
+
+                for await (
+                    const chunk of stream
+                ) {
+
+                    chunks.push(
+                        chunk
+                    );
+
+                }
+
+
+                return Buffer.concat(
+                    chunks
+                );
+
+            }
+
+    };
+
+
+    return ctx;
 
 }
+
+
+export default createContext;
