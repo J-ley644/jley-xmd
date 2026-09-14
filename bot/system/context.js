@@ -228,14 +228,62 @@ const chat =
     message.key.remoteJid;
 
 
-// Identity
-
-const realNumber =
-    resolvePhoneNumber({
+async function resolveSenderPhoneNumber(client, sender, senderAlt) {
+    const direct = resolvePhoneNumber({
         sender,
         senderAlt,
         client
     });
+
+    if (direct) {
+        return direct;
+    }
+
+    const identities = [sender, senderAlt].filter(Boolean);
+
+    const lid = identities.find(identity =>
+        String(identity).endsWith("@lid")
+    );
+
+    if (!lid) {
+        return "";
+    }
+
+    try {
+        const getPNForLID =
+            client?.signalRepository?.lidMapping?.getPNForLID;
+
+        if (typeof getPNForLID !== "function") {
+            return "";
+        }
+
+        const pn = await getPNForLID.call(
+            client.signalRepository.lidMapping,
+            lid
+        );
+
+        return pn
+            ? String(pn).replace(/\D/g, "")
+            : "";
+    } catch (error) {
+        console.error(
+            "[IDENTITY] Failed to resolve LID to phone:",
+            error.message
+        );
+
+        return "";
+    }
+}
+
+
+// Identity
+
+const realNumber =
+    await resolveSenderPhoneNumber(
+        client,
+        sender,
+        senderAlt
+    );
 
 console.log({
     sender,
