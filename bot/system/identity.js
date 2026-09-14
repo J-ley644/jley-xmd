@@ -1,24 +1,15 @@
 /**
  * JLEY-XMD Identity System
  *
- * Centralizes:
+ * Owner identity:
+ * deployment.phoneNumber
  *
- * - sender identity
- * - alternate/LID identity
- * - bot identity
- * - deployment owner identity
- * - JLEY developer identity
+ * Developer identity:
+ * config.owner.number
  *
- * IMPORTANT:
- *
- * A dashboard user ID is NOT a WhatsApp JID.
- *
- * Therefore deployment ownership is resolved through
- * the WhatsApp phone number stored on the deployment.
- *
- * Never assume a phone JID and a LID are numerically
- * related. They must be compared only when WhatsApp
- * provides both identities.
+ * LIDs are supplementary identities only.
+ * They must never be used as a replacement
+ * for the deployment owner's phone number.
  */
 
 import config from "../config/config.js";
@@ -43,13 +34,8 @@ function unique(values = []) {
 
 
 /**
- * Get every identity WhatsApp supplied for
- * the current message sender.
- *
- * In groups this can include:
- *
- * - participant JID
- * - participant LID
+ * Get every identity WhatsApp supplied
+ * for the current sender.
  */
 export function getSenderIdentities(ctx) {
 
@@ -62,8 +48,8 @@ export function getSenderIdentities(ctx) {
 
 
 /**
- * Get every identity belonging to the
- * WhatsApp account running this deployment.
+ * Get every identity belonging to
+ * the WhatsApp account running this bot.
  */
 export function getBotIdentities(client) {
 
@@ -76,8 +62,10 @@ export function getBotIdentities(client) {
 
 
 /**
- * Get identities belonging to the
- * permanent JLEY developer.
+ * Get the permanent JLEY developer identities.
+ *
+ * The developer is identified by the
+ * configured JLEY owner number.
  */
 export function getJleyOwnerIdentities() {
 
@@ -91,12 +79,10 @@ export function getJleyOwnerIdentities() {
 
 
 /**
- * Get identities belonging to the
- * owner of the current deployment.
+ * Get the deployment owner's phone number.
  *
- * The deployment phone number is attached
- * to the running socket by the WhatsApp
- * deployment service.
+ * The deployment phone number is the
+ * authoritative owner identity.
  */
 export function getDeploymentOwnerIdentities(ctx) {
 
@@ -104,19 +90,14 @@ export function getDeploymentOwnerIdentities(ctx) {
         ctx?.client;
 
     return unique([
-        client?.deploymentOwnerPhoneNumber,
-        client?.deploymentOwnerJid,
-        client?.deploymentOwnerLid
+        client?.deploymentOwnerPhoneNumber
     ]);
 
 }
 
 
 /**
- * Compare two collections of identities.
- *
- * We intentionally use jidMatch() rather than
- * trying to convert a LID into a phone number.
+ * Compare two identity collections.
  */
 export function identitiesMatch(
     identitiesA = [],
@@ -133,64 +114,17 @@ export function identitiesMatch(
 
 
 /**
- * Determine whether the current sender
- * is the permanent JLEY developer.
- */
-export function isJleyOwnerIdentity(ctx) {
-
-    return identitiesMatch(
-        getSenderIdentities(ctx),
-        getJleyOwnerIdentities()
-    );
-
-}
-
-
-/**
- * Determine whether the current sender
- * is the owner of this deployment.
+ * Resolve the sender's real phone number.
  *
- * This works regardless of whether the
- * message arrives in:
+ * WhatsApp may provide:
  *
- * - private DM
- * - group
- * - another chat
+ * - normal phone JID
+ * - LID
+ * - alternate phone JID
  *
- * provided WhatsApp gives us the owner's
- * matching identity.
- */
-export function isDeploymentOwner(ctx) {
-
-    return identitiesMatch(
-        getSenderIdentities(ctx),
-        getDeploymentOwnerIdentities(ctx)
-    );
-
-}
-
-
-/**
- * Determine whether the current sender
- * is the WhatsApp account running the bot.
- *
- * This is kept separately from deployment
- * ownership because these are different concepts.
- */
-export function isBotAccount(ctx) {
-
-    return identitiesMatch(
-        getSenderIdentities(ctx),
-        getBotIdentities(ctx?.client)
-    );
-
-}
-
-
-/**
- * Resolve the best available phone number
- * without inventing a phone number from
- * an arbitrary LID.
+ * We only accept an actual
+ * @s.whatsapp.net identity as the
+ * authoritative phone number.
  */
 export function resolvePhoneNumber(ctx) {
 
@@ -219,7 +153,107 @@ export function resolvePhoneNumber(ctx) {
 
 
 /**
- * Build a complete diagnostic identity object.
+ * Determine whether the sender
+ * is the permanent JLEY developer.
+ *
+ * Developer identity is based on
+ * the configured JLEY phone number.
+ */
+export function isJleyOwnerIdentity(ctx) {
+
+    const senderNumber =
+        resolvePhoneNumber(ctx);
+
+    const developerNumber =
+        String(
+            config.owner?.number || ""
+        )
+            .replace(/\D/g, "");
+
+    if (
+        !senderNumber ||
+        !developerNumber
+    ) {
+
+        return false;
+
+    }
+
+    return (
+        senderNumber ===
+        developerNumber
+    );
+
+}
+
+
+/**
+ * Determine whether the sender
+ * owns this deployment.
+ *
+ * IMPORTANT:
+ *
+ * Deployment ownership is determined by:
+ *
+ *     sender phone number
+ *              ↓
+ *     deployment.phoneNumber
+ *
+ * It does NOT depend on:
+ *
+ * - LID matching
+ * - bot account identity
+ * - dashboard user UUID
+ */
+export function isDeploymentOwner(ctx) {
+
+    const senderNumber =
+        resolvePhoneNumber(ctx);
+
+    const deploymentNumber =
+        String(
+            ctx?.client
+                ?.deploymentOwnerPhoneNumber ||
+            ""
+        )
+            .replace(/\D/g, "");
+
+    if (
+        !senderNumber ||
+        !deploymentNumber
+    ) {
+
+        return false;
+
+    }
+
+    return (
+        senderNumber ===
+        deploymentNumber
+    );
+
+}
+
+
+/**
+ * Determine whether the sender
+ * is the WhatsApp account running
+ * the bot.
+ */
+export function isBotAccount(ctx) {
+
+    return identitiesMatch(
+        getSenderIdentities(ctx),
+        getBotIdentities(
+            ctx?.client
+        )
+    );
+
+}
+
+
+/**
+ * Complete identity diagnostic.
  */
 export function getIdentityInfo(ctx) {
 
