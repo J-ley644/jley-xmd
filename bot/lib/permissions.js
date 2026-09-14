@@ -1,30 +1,12 @@
-/**
- * JLEY-XMD Permission System
- *
- * Permission levels:
- *
- * JLEY Owner
- * - Permanent JLEY-XMD developer
- * - Global access
- *
- * Bot Owner
- * - Owner of the WhatsApp account running this deployment
- *
- * Deployment Owner
- * - Dashboard user who owns the deployment
- *
- * Group Admin
- * - WhatsApp group administrator
- */
-
 import {
     isJleyOwnerIdentity,
+    isDeploymentOwner,
     isBotAccount
 } from "../system/identity.js";
 
 
 /**
- * JLEY platform owner.
+ * Permanent JLEY developer.
  */
 export function isJleyOwner(ctx) {
 
@@ -34,23 +16,18 @@ export function isJleyOwner(ctx) {
 
 
 /**
- * Bot account owner.
- *
- * This is the WhatsApp account actually running
- * the current deployment.
+ * Owner of the current dashboard deployment.
  */
 export function isBotOwner(ctx) {
 
-    return isBotAccount(ctx);
+    return isDeploymentOwner(ctx);
 
 }
 
 
 /**
- * Combined owner check.
- *
- * Used where either the JLEY developer or
- * deployment/bot owner should have access.
+ * Either the deployment owner or
+ * the permanent JLEY developer.
  */
 export function isOwner(ctx) {
 
@@ -63,7 +40,21 @@ export function isOwner(ctx) {
 
 
 /**
- * Permission checker.
+ * WhatsApp account running the bot.
+ *
+ * Kept separately because being the bot's
+ * WhatsApp account is NOT the same thing as
+ * being the deployment owner.
+ */
+export function isBotAccountOwner(ctx) {
+
+    return isBotAccount(ctx);
+
+}
+
+
+/**
+ * Central permission checker.
  */
 export default function checkPermissions(
     ctx,
@@ -75,7 +66,7 @@ export default function checkPermissions(
 
 
     /*
-     * JLEY developer always has access.
+     * JLEY developer only.
      */
     if (
         permissions.jleyOwner &&
@@ -83,14 +74,19 @@ export default function checkPermissions(
     ) {
 
         return (
-            "❌ This command is only available to the JLEY developer."
+            "❌ This command is only available " +
+            "to the JLEY developer."
         );
 
     }
 
 
     /*
-     * Bot owner.
+     * Deployment owner only.
+     *
+     * This now uses the deployment owner's
+     * WhatsApp identity instead of assuming
+     * the bot's own WhatsApp account is the owner.
      */
     if (
         permissions.botOwner &&
@@ -98,14 +94,15 @@ export default function checkPermissions(
     ) {
 
         return (
-            "❌ This command is only available to the bot owner."
+            "❌ This command is only available " +
+            "to the bot owner."
         );
 
     }
 
 
     /*
-     * Either bot owner or JLEY developer.
+     * Deployment owner OR JLEY developer.
      */
     if (
         permissions.botOwnerOrJleyOwner &&
@@ -113,7 +110,8 @@ export default function checkPermissions(
     ) {
 
         return (
-            "❌ This command is only available to the bot owner or JLEY developer."
+            "❌ This command is only available " +
+            "to the bot owner or JLEY developer."
         );
 
     }
@@ -121,6 +119,8 @@ export default function checkPermissions(
 
     /*
      * Legacy owner permission.
+     *
+     * "owner" continues to mean deployment owner.
      */
     if (
         permissions.owner &&
@@ -128,14 +128,15 @@ export default function checkPermissions(
     ) {
 
         return (
-            "❌ This command is only available to the bot owner."
+            "❌ This command is only available " +
+            "to the bot owner."
         );
 
     }
 
 
     /*
-     * Group.
+     * Group-only command.
      */
     if (
         permissions.group &&
@@ -150,7 +151,7 @@ export default function checkPermissions(
 
 
     /*
-     * Private.
+     * Private-chat-only command.
      */
     if (
         permissions.private &&
@@ -165,7 +166,10 @@ export default function checkPermissions(
 
 
     /*
-     * Group admin.
+     * Group admin command.
+     *
+     * Deployment owner and JLEY developer
+     * bypass normal group-admin requirements.
      */
     if (
         permissions.admin &&
@@ -181,7 +185,10 @@ export default function checkPermissions(
 
 
     /*
-     * Bot admin.
+     * Bot-admin command.
+     *
+     * Deployment owner and JLEY developer
+     * bypass the bot-admin requirement.
      */
     if (
         permissions.botAdmin &&
