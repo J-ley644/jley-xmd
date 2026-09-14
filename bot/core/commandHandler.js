@@ -5,7 +5,6 @@ import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
 import {
-    import {
     isBotOwner,
     isOwner
 } from "../lib/permissions.js";
