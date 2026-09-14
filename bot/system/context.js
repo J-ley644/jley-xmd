@@ -12,6 +12,10 @@ import {
 jidMatch
 } from "../lib/jid.js";
 
+import {
+    resolvePhoneNumber
+} from "./identity.js";
+
 const channelMetadataPromises = new WeakMap();
 
 async function getChannelMetadata(client) {
@@ -224,12 +228,11 @@ const chat =
 // Identity
 
 const realNumber =
-    sender.includes("@lid")
-        ? config.owner.number
-        : sender
-            .split(":")[0]
-            .replace("@s.whatsapp.net", "")
-            .replace("@lid", "");
+    resolvePhoneNumber({
+        sender,
+        senderAlt,
+        client
+    });
 
 console.log({
     sender,
