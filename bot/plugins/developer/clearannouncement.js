@@ -15,33 +15,44 @@ export default {
     usage: ".clearannouncement",
 
     permissions: {
-
-        permissions: {
-    jleyOwner: true
-}
+        jleyOwner: true
+    },
 
     async execute(ctx) {
 
-        const data =
-            menuStore.getAnnouncement();
+        try {
 
-        if (!data.announcementEnabled) {
+            const data =
+                menuStore.getAnnouncement();
 
-            return ctx.reply(
-                "❌ No active announcement found."
-            );
+            if (!data?.announcementEnabled) {
 
-        }
+                return ctx.reply(
+                    "❌ No active announcement found."
+                );
 
-        menuStore.clearAnnouncement();
+            }
 
-        await ctx.reply(
+            menuStore.clearAnnouncement();
 
+            await ctx.reply(
 `✅ Global announcement cleared successfully.
 
 Users will no longer see an announcement in the menu.`
+            );
 
-        );
+        } catch (error) {
+
+            console.error(
+                "Announcement clear failed:",
+                error
+            );
+
+            return ctx.reply(
+                "❌ Failed to clear the announcement."
+            );
+
+        }
 
     }
 
