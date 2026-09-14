@@ -16,9 +16,9 @@ export default {
 
     permissions: {
 
-        owner: true
-
-    },
+        permissions: {
+    jleyOwner: true
+}
 
     async execute(ctx) {
 
