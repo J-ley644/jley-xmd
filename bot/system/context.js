@@ -214,11 +214,14 @@ const command =
 const sender =
     message.key.participantAlt ||
     message.key.participant ||
+    message.key.remoteJidAlt ||
     message.key.remoteJid;
 
 const senderAlt =
     message.key.participant ||
     message.key.participantAlt ||
+    message.key.remoteJidAlt ||
+    message.key.remoteJid ||
     "";
 
 const chat =
