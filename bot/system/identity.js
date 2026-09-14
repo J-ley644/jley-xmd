@@ -160,31 +160,22 @@ export function isJleyOwnerIdentity(ctx) {
  */
 export function isDeploymentOwner(ctx) {
 
-    const senderNumber =
-        String(
-            resolvePhoneNumber(ctx) || ""
-        )
-            .replace(/\D/g, "");
+    const senderIdentities =
+        getSenderIdentities(ctx);
 
-    const deploymentNumbers =
-        getDeploymentOwnerIdentities(ctx)
-            .map(value =>
-                String(value)
-                    .replace(/\D/g, "")
-            )
-            .filter(Boolean);
+    const deploymentOwnerIdentities =
+        getDeploymentOwnerIdentities(ctx);
 
     if (
-        !senderNumber ||
-        !deploymentNumbers.length
+        !senderIdentities.length ||
+        !deploymentOwnerIdentities.length
     ) {
-
         return false;
-
     }
 
-    return deploymentNumbers.includes(
-        senderNumber
+    return identitiesMatch(
+        senderIdentities,
+        deploymentOwnerIdentities
     );
 
 }
