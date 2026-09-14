@@ -6,14 +6,27 @@
  * - sender identity
  * - alternate/LID identity
  * - bot identity
- * - JLEY developer identity
  * - deployment owner identity
+ * - JLEY developer identity
  *
- * Never assume that a phone JID and a LID are numerically related.
+ * IMPORTANT:
+ *
+ * A dashboard user ID is NOT a WhatsApp JID.
+ *
+ * Therefore deployment ownership is resolved through
+ * the WhatsApp phone number stored on the deployment.
+ *
+ * Never assume a phone JID and a LID are numerically
+ * related. They must be compared only when WhatsApp
+ * provides both identities.
  */
 
 import config from "../config/config.js";
-import { jidMatch, getNumberFromJid } from "../lib/jid.js";
+
+import {
+    jidMatch,
+    getNumberFromJid
+} from "../lib/jid.js";
 
 
 function unique(values = []) {
@@ -30,7 +43,13 @@ function unique(values = []) {
 
 
 /**
- * Get all identities WhatsApp gave us for the sender.
+ * Get every identity WhatsApp supplied for
+ * the current message sender.
+ *
+ * In groups this can include:
+ *
+ * - participant JID
+ * - participant LID
  */
 export function getSenderIdentities(ctx) {
 
@@ -43,7 +62,8 @@ export function getSenderIdentities(ctx) {
 
 
 /**
- * Get all identities belonging to the running bot.
+ * Get every identity belonging to the
+ * WhatsApp account running this deployment.
  */
 export function getBotIdentities(client) {
 
@@ -56,7 +76,8 @@ export function getBotIdentities(client) {
 
 
 /**
- * Get JLEY developer identities.
+ * Get identities belonging to the
+ * permanent JLEY developer.
  */
 export function getJleyOwnerIdentities() {
 
@@ -70,7 +91,32 @@ export function getJleyOwnerIdentities() {
 
 
 /**
- * Compare two identity collections.
+ * Get identities belonging to the
+ * owner of the current deployment.
+ *
+ * The deployment phone number is attached
+ * to the running socket by the WhatsApp
+ * deployment service.
+ */
+export function getDeploymentOwnerIdentities(ctx) {
+
+    const client =
+        ctx?.client;
+
+    return unique([
+        client?.deploymentOwnerPhoneNumber,
+        client?.deploymentOwnerJid,
+        client?.deploymentOwnerLid
+    ]);
+
+}
+
+
+/**
+ * Compare two collections of identities.
+ *
+ * We intentionally use jidMatch() rather than
+ * trying to convert a LID into a phone number.
  */
 export function identitiesMatch(
     identitiesA = [],
@@ -87,7 +133,7 @@ export function identitiesMatch(
 
 
 /**
- * Determine whether the message sender
+ * Determine whether the current sender
  * is the permanent JLEY developer.
  */
 export function isJleyOwnerIdentity(ctx) {
@@ -101,8 +147,35 @@ export function isJleyOwnerIdentity(ctx) {
 
 
 /**
- * Determine whether the message sender
- * is the WhatsApp account running this bot.
+ * Determine whether the current sender
+ * is the owner of this deployment.
+ *
+ * This works regardless of whether the
+ * message arrives in:
+ *
+ * - private DM
+ * - group
+ * - another chat
+ *
+ * provided WhatsApp gives us the owner's
+ * matching identity.
+ */
+export function isDeploymentOwner(ctx) {
+
+    return identitiesMatch(
+        getSenderIdentities(ctx),
+        getDeploymentOwnerIdentities(ctx)
+    );
+
+}
+
+
+/**
+ * Determine whether the current sender
+ * is the WhatsApp account running the bot.
+ *
+ * This is kept separately from deployment
+ * ownership because these are different concepts.
  */
 export function isBotAccount(ctx) {
 
@@ -116,7 +189,8 @@ export function isBotAccount(ctx) {
 
 /**
  * Resolve the best available phone number
- * without inventing one for LIDs.
+ * without inventing a phone number from
+ * an arbitrary LID.
  */
 export function resolvePhoneNumber(ctx) {
 
@@ -145,7 +219,7 @@ export function resolvePhoneNumber(ctx) {
 
 
 /**
- * Build a diagnostic identity object.
+ * Build a complete diagnostic identity object.
  */
 export function getIdentityInfo(ctx) {
 
@@ -165,6 +239,11 @@ export function getIdentityInfo(ctx) {
                 ctx?.client
             ),
 
+        deploymentOwnerIdentities:
+            getDeploymentOwnerIdentities(
+                ctx
+            ),
+
         jleyOwnerIdentities:
             getJleyOwnerIdentities(),
 
@@ -173,6 +252,9 @@ export function getIdentityInfo(ctx) {
 
         isJleyOwner:
             isJleyOwnerIdentity(ctx),
+
+        isDeploymentOwner:
+            isDeploymentOwner(ctx),
 
         isBotAccount:
             isBotAccount(ctx)
