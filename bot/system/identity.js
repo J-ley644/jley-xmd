@@ -50,6 +50,14 @@ export function getJleyOwnerIdentities() {
 }
 
 
+/*
+ * Deployment owner is the person who paired/deployed
+ * this specific WhatsApp bot.
+ *
+ * First use the deployment owner's stored phone number.
+ * Then fall back to the phone number of the WhatsApp
+ * account currently linked to this deployment.
+ */
 export function getDeploymentOwnerIdentities(ctx) {
 
     const client = ctx?.client;
@@ -58,13 +66,6 @@ export function getDeploymentOwnerIdentities(ctx) {
         client?.deploymentOwnerPhoneNumber
     ];
 
-    /*
-     * The linked WhatsApp account is the authoritative
-     * deployment identity when deployment.phoneNumber has
-     * not yet been attached to the socket.
-     *
-     * This also survives socket reconnection.
-     */
     if (client?.user?.id) {
 
         identities.push(
@@ -94,6 +95,14 @@ export function identitiesMatch(
 }
 
 
+/*
+ * Resolve the sender's real phone number.
+ *
+ * The normal WhatsApp phone JID is preferred.
+ * LID remains available as a secondary identity,
+ * but we never pretend that a LID itself is a phone
+ * number.
+ */
 export function resolvePhoneNumber(ctx) {
 
     const identities =
@@ -120,6 +129,9 @@ export function resolvePhoneNumber(ctx) {
 }
 
 
+/*
+ * Permanent JLEY developer.
+ */
 export function isJleyOwnerIdentity(ctx) {
 
     const senderNumber =
@@ -143,6 +155,9 @@ export function isJleyOwnerIdentity(ctx) {
 }
 
 
+/*
+ * Owner of this specific bot deployment.
+ */
 export function isDeploymentOwner(ctx) {
 
     const senderNumber =
