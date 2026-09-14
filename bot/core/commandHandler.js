@@ -5,7 +5,9 @@ import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
 import {
-    isBotOwner
+    import {
+    isBotOwner,
+    isOwner
 } from "../lib/permissions.js";
 
 import {
@@ -301,13 +303,13 @@ for (const botIdentity of botIdentities) {
 }
 
         if (
-            botMode === "private" &&
-            !isBotOwner(ctx)
-        ) {
+    botMode === "private" &&
+    !isOwner(ctx)
+) {
 
-            return;
+    return;
 
-        }
+}
 
 
         /*
