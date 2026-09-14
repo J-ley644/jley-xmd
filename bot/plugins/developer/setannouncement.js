@@ -17,10 +17,8 @@ export default {
         ".setannouncement <message>",
 
     permissions: {
-
-        permissions: {
-    jleyOwner: true
-}
+        jleyOwner: true
+    },
 
     async execute(ctx) {
 
@@ -29,36 +27,44 @@ export default {
 
         if (!text) {
 
-            return ctx.error(
-
-`Please provide an announcement.
+            return ctx.reply(
+`❌ Please provide an announcement.
 
 Example:
 ${ctx.prefix}setannouncement 🚀 AI Module launching next week!`
-
             );
 
         }
 
-        menuStore.setAnnouncement(
+        try {
 
-            text,
+            menuStore.setAnnouncement(
+                text,
+                ctx.pushName || "Owner"
+            );
 
-            ctx.pushName || "Owner"
-
-        );
-
-        return ctx.success(
-
-`Global announcement updated successfully.
+            return ctx.reply(
+`✅ Global announcement updated successfully.
 
 📢 Announcement
 
 ${text}
 
 Users will now see this announcement in .menu.`
+            );
 
-        );
+        } catch (error) {
+
+            console.error(
+                "Announcement update failed:",
+                error
+            );
+
+            return ctx.reply(
+                "❌ Failed to update the announcement."
+            );
+
+        }
 
     }
 
