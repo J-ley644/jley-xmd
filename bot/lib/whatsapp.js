@@ -954,6 +954,9 @@ if(chat.endsWith("@g.us")){
         settings?.antilink
     ){
 
+        const metadata =
+    await socket.groupMetadata(chat);
+
 
 
         const participant =
