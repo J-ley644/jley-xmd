@@ -1,28 +1,17 @@
 export default {
-
     name: "anime",
-
-    aliases: ["animepic", "anim",
-
-    ],
-
+    aliases: ["animepic", "anim"],
     category: "anime",
-
     description: "Get a random anime image.",
-
     usage: ".anime",
-
     cooldown: 10,
-
     permissions: {},
 
     async execute(ctx) {
-
         try {
-
             const response =
                 await fetch(
-                    "https://api.waifu.pics/sfw/waifu"
+                    "https://nekos.best/api/v2/waifu"
                 );
 
             if (!response.ok) {
@@ -34,25 +23,22 @@ export default {
             const data =
                 await response.json();
 
-            if (!data?.url) {
+            const imageUrl =
+                data?.results?.[0]?.url;
+
+            if (!imageUrl) {
                 throw new Error(
                     "No image URL returned"
                 );
-
             }
 
             await ctx.send({
-
                 image: {
-                    url: data.url
+                    url: imageUrl
                 },
-
                 caption: "🎌 Random Anime"
-
             });
-
         } catch (error) {
-
             console.error(
                 "[ANIME]",
                 error
@@ -61,9 +47,6 @@ export default {
             return ctx.error(
                 "Failed to fetch an anime image."
             );
-
         }
-
     }
-
 };
