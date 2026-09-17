@@ -1,3 +1,4 @@
+
 export default {
 
     name: "neko",
@@ -20,7 +21,7 @@ export default {
 
             const response =
                 await fetch(
-                    "https://api.waifu.pics/sfw/neko"
+                    "https://nekos.best/api/v2/neko"
                 );
 
             if (!response.ok) {
@@ -32,7 +33,10 @@ export default {
             const data =
                 await response.json();
 
-            if (!data?.url) {
+            const imageUrl =
+                data?.results?.[0]?.url;
+
+            if (!imageUrl) {
                 throw new Error(
                     "No image URL returned"
                 );
@@ -41,7 +45,7 @@ export default {
             await ctx.send({
 
                 image: {
-                    url: data.url
+                    url: imageUrl
                 },
 
                 caption: "🐱 Neko time!"
@@ -64,3 +68,4 @@ export default {
     }
 
 };
+
