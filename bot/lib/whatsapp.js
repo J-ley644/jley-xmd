@@ -18,6 +18,7 @@ import {
 
 import groupSettings from "../system/groupSettings.js";
 import { containsLink } from "./antilink.js";
+import { jidMatch } from "./jid.js";
 import handleStatus from "./status/index.js";
 import {
     storeMessage,
@@ -955,21 +956,20 @@ if(chat.endsWith("@g.us")){
 
 
 
-        const metadata =
-            await socket.groupMetadata(chat);
-
-
-
         const participant =
-            metadata.participants.find(
-                p =>
-                p.id===sender
-            );
+    metadata.participants.find(
+        p =>
+            jidMatch(p?.id, sender) ||
+            jidMatch(p?.lid, sender) ||
+            jidMatch(p?.phoneNumber, sender) ||
+            jidMatch(p?.id, message.key?.participant) ||
+            jidMatch(p?.lid, message.key?.participant) ||
+            jidMatch(p?.phoneNumber, message.key?.participant)
+    );
 
-
-
-        const isAdmin =
-            participant?.admin;
+const isAdmin =
+    participant?.admin === "admin" ||
+    participant?.admin === "superadmin";
 
 
 

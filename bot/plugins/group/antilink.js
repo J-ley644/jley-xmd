@@ -105,11 +105,22 @@ Disable protection:
             option === "on";
 
 
-        groupSettings.set(
-            ctx.chat,
-            "antilink",
-            enabled
-        );
+        const saved = groupSettings.set(
+    ctx.chat,
+    "antilink",
+    enabled
+);
+
+const currentSettings =
+    groupSettings.get(ctx.chat);
+
+if (currentSettings?.antilink !== enabled) {
+
+    return ctx.reply(
+        "❌ Failed to update Anti-Link settings. Please try again."
+    );
+
+}
 
 
         await ctx.reply(
