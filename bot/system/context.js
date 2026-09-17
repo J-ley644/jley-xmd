@@ -524,7 +524,7 @@ const ctx = {
 
     // Helpers
 
-    async reply(text, options = {}) {
+        async reply(text, options = {}) {
 
         const replyOptions = {
 
@@ -544,7 +544,11 @@ const ctx = {
 
             chat,
 
-            finalOptions
+            finalOptions,
+
+            {
+                quoted: message
+            }
 
         );
 
@@ -563,7 +567,11 @@ const ctx = {
 
             chat,
 
-            finalContent
+            finalContent,
+
+            {
+                quoted: message
+            }
 
         );
 
