@@ -1,6 +1,5 @@
 import {
     isJleyOwnerIdentity,
-    isDeploymentOwner,
     isBotAccount
 } from "../system/identity.js";
 
@@ -19,9 +18,7 @@ export function isJleyOwner(ctx) {
  * Owner of the current dashboard deployment.
  */
 export function isBotOwner(ctx) {
-
-    return isDeploymentOwner(ctx);
-
+    return isBotAccount(ctx);
 }
 
 
