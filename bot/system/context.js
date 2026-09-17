@@ -617,9 +617,19 @@ const ctx = {
 
         );
 
+    },
+
+        async downloadBuffer() {
+        return this.download();
+    },
+
+    async error(text) {
+        return this.reply(`❌ ${text}`);
     }
 
 };
+
+
 
 
 return ctx;
