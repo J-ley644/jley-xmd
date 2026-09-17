@@ -211,18 +211,43 @@ const command =
  * the normal participant identity as a fallback.
  */
 
+const isGroup =
+    message.key?.remoteJid?.endsWith("@g.us");
+
 const sender =
-    message.key.participantAlt ||
-    message.key.participant ||
-    message.key.remoteJidAlt ||
-    message.key.remoteJid;
+    message.key?.fromMe
+        ? (
+            client.user?.id ||
+            client.user?.lid ||
+            message.key?.remoteJid
+        )
+        : isGroup
+            ? (
+                message.key?.participant ||
+                message.key?.participantAlt ||
+                message.key?.remoteJid
+            )
+            : (
+                message.key?.remoteJid ||
+                message.key?.remoteJidAlt ||
+                message.key?.participant ||
+                message.key?.participantAlt
+            );
 
 const senderAlt =
-    message.key.participant ||
-    message.key.participantAlt ||
-    message.key.remoteJidAlt ||
-    message.key.remoteJid ||
-    "";
+    isGroup
+        ? (
+            message.key?.participantAlt ||
+            message.key?.participant ||
+            message.key?.remoteJid
+        )
+        : (
+            message.key?.remoteJidAlt ||
+            message.key?.remoteJid ||
+            message.key?.participant ||
+            message.key?.participantAlt ||
+            ""
+        );
 
 const chat =
     message.key.remoteJid;
@@ -298,9 +323,6 @@ const pushName =
 
 
 // Chat
-
-const isGroup =
-    chat.endsWith("@g.us");
 
 const chatType =
     isGroup
