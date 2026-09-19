@@ -1,17 +1,11 @@
 import config from "../config/config.js";
 import logger from "../lib/logger.js";
-import checkPermissions from "../lib/permissions.js";
+import checkPermissions, {
+    isBotOwner
+} from "../lib/permissions.js";
 import createContext from "../system/context.js";
 import cooldowns from "../system/cooldowns.js";
 import pluginStore from "../system/pluginStore.js";
-import {
-    isBotOwner,
-    isOwner
-} from "../lib/permissions.js";
-
-import {
-    getSenderIdentities
-} from "../system/identity.js";
 import automationStore from "../system/automationStore.js";
 
 
@@ -112,6 +106,7 @@ function getCommandReaction(command) {
         command?.name
             ?.toLowerCase();
 
+
     if (
         commandName &&
         commandReactions[commandName]
@@ -123,12 +118,96 @@ function getCommandReaction(command) {
 
     }
 
+
     return (
         categoryReactions[
             command?.category
         ] ||
         categoryReactions.other
     );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Bot Mode
+|--------------------------------------------------------------------------
+|
+| New settings are stored using deploymentId.
+|
+| Existing installations may still have settings
+| stored under the WhatsApp LID/PN identity, so
+| those are checked as a backward-compatible fallback.
+|
+*/
+
+function getBotMode(client) {
+
+    const deploymentId =
+        client?.deploymentId;
+
+
+    /*
+     * Stable deployment storage.
+     */
+
+    if (deploymentId) {
+
+        const deploymentMode =
+            automationStore.getValue(
+                deploymentId,
+                "mode"
+            );
+
+        if (deploymentMode) {
+
+            return deploymentMode;
+
+        }
+
+    }
+
+
+    /*
+     * Backward compatibility for existing
+     * WhatsApp-identity-based settings.
+     */
+
+    const botIdentities = [
+
+        client?.user?.lid,
+
+        client?.user?.id
+
+    ].filter(Boolean);
+
+
+    for (
+        const identity
+        of botIdentities
+    ) {
+
+        const savedMode =
+            automationStore.getValue(
+                identity,
+                "mode"
+            );
+
+        if (savedMode) {
+
+            return savedMode;
+
+        }
+
+    }
+
+
+    /*
+     * Default behavior remains public.
+     */
+
+    return "public";
 
 }
 
@@ -248,15 +327,17 @@ async function handleCommand(
         const commandStartTime =
             Date.now();
 
+
         const ctx =
             await createContext(
                 client,
-                message,
-                client?.deploymentId
+                message
             );
+
 
         ctx.commandStartTime =
             commandStartTime;
+
 
         ctx.command =
             commandName;
@@ -268,47 +349,29 @@ async function handleCommand(
         |--------------------------------------------------------------------------
         |
         | PRIVATE:
-        | Only the bot owner can execute commands.
+        | Only the bot account can execute commands.
         |
         | PUBLIC:
         | Everyone can execute commands normally.
         |
+        | IMPORTANT:
+        | This check happens BEFORE reactions and
+        | BEFORE plugin execution.
+        |
         */
 
-        const botIdentities = [
-    client?.user?.id,
-    client?.user?.lid
-].filter(Boolean);
+        const botMode =
+            getBotMode(client);
 
-let botMode = "public";
-
-for (const botIdentity of botIdentities) {
-
-    const savedMode =
-        automationStore.getValue(
-            botIdentity,
-            "mode"
-        );
-
-    if (savedMode) {
-
-        botMode =
-            savedMode;
-
-        break;
-
-    }
-
-}
 
         if (
-    botMode === "private" &&
-    !isOwner(ctx)
-) {
+            botMode === "private" &&
+            !isBotOwner(ctx)
+        ) {
 
-    return;
+            return;
 
-}
+        }
 
 
         /*
@@ -316,11 +379,8 @@ for (const botIdentity of botIdentities) {
         | React To Command
         |--------------------------------------------------------------------------
         |
-        | The reaction happens immediately after
-        | the command is recognized.
-        |
-        | A reaction failure must never prevent
-        | the command itself from executing.
+        | The reaction happens only after the
+        | private-mode gate has passed.
         |
         */
 
@@ -330,6 +390,7 @@ for (const botIdentity of botIdentities) {
                 getCommandReaction(
                     command
                 );
+
 
             await ctx.react(
                 emoji
