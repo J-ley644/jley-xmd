@@ -1,12 +1,38 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const DB_PATH = path.join(
-    process.cwd(),
-    "bot",
-    "database",
-    "groupSettings.json"
-);
+
+const __filename =
+    fileURLToPath(import.meta.url);
+
+const __dirname =
+    path.dirname(__filename);
+
+
+/*
+ * groupSettings.js lives in:
+ *
+ * bot/system/groupSettings.js
+ *
+ * The database lives in:
+ *
+ * bot/database/groupSettings.json
+ *
+ * Therefore we go one directory up from
+ * system/ and then into database/.
+ *
+ * This does NOT depend on process.cwd(),
+ * so it works correctly on Render and locally.
+ */
+
+const DB_PATH =
+    path.join(
+        __dirname,
+        "..",
+        "database",
+        "groupSettings.json"
+    );
 
 
 const DEFAULT_SETTINGS = {
@@ -18,7 +44,6 @@ const DEFAULT_SETTINGS = {
     antilink: false
 
 };
-
 
 
 function load() {
@@ -34,7 +59,10 @@ function load() {
 
 
     const content =
-        fs.readFileSync(DB_PATH, "utf8").trim();
+        fs.readFileSync(
+            DB_PATH,
+            "utf8"
+        ).trim();
 
 
     if (!content) {
@@ -48,7 +76,12 @@ function load() {
 
         return JSON.parse(content);
 
-    } catch {
+    } catch (error) {
+
+        console.error(
+            "[GROUP SETTINGS] Failed to parse database:",
+            error
+        );
 
         return {};
 
@@ -57,29 +90,35 @@ function load() {
 }
 
 
-
-
 function save(data) {
 
     fs.writeFileSync(
+
         DB_PATH,
-        JSON.stringify(data, null, 4)
+
+        JSON.stringify(
+            data,
+            null,
+            4
+        )
+
     );
 
 }
 
 
-
-
 function get(group) {
 
-    const db = load();
+    const db =
+        load();
 
 
     if (!db[group]) {
 
         db[group] = {
+
             ...DEFAULT_SETTINGS
+
         };
 
         save(db);
@@ -92,23 +131,29 @@ function get(group) {
 }
 
 
+function set(
+    group,
+    key,
+    value
+) {
 
-
-function set(group, key, value) {
-
-    const db = load();
+    const db =
+        load();
 
 
     if (!db[group]) {
 
         db[group] = {
+
             ...DEFAULT_SETTINGS
+
         };
 
     }
 
 
-    db[group][key] = value;
+    db[group][key] =
+        value;
 
 
     save(db);
@@ -119,9 +164,10 @@ function set(group, key, value) {
 }
 
 
-
-
-function getValue(group, key){
+function getValue(
+    group,
+    key
+) {
 
     const settings =
         get(group);
@@ -129,7 +175,6 @@ function getValue(group, key){
     return settings[key];
 
 }
-
 
 
 export default {
