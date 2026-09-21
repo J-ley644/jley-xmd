@@ -931,107 +931,258 @@ const text =
 */
 
 const botJid =
-    socket.user?.id?.split(":")[0] ||
-    socket.user?.lid;
+    socket.user?.id || "";
+
+const botLid =
+    socket.user?.lid || "";
 
 const normalizedSender =
     sender?.split(":")[0];
 
 const isBot =
-    message.key?.fromMe ||
-    normalizedSender === botJid?.split(":")[0];
+    Boolean(message.key?.fromMe) ||
+    jidMatch(
+        sender,
+        botJid
+    ) ||
+    jidMatch(
+        sender,
+        botLid
+    );
 
 
-if(chat.endsWith("@g.us")){
-
+if (
+    chat.endsWith("@g.us") &&
+    !isBot
+) {
 
     const settings =
         groupSettings.get(chat);
 
 
+    if (
+        settings?.antilink === true
+    ) {
 
-    if(
-        settings?.antilink
-    ){
+        try {
 
-        const metadata =
-    await socket.groupMetadata(chat);
-
-
-
-        const participant =
-    metadata.participants.find(
-        p =>
-            jidMatch(p?.id, sender) ||
-            jidMatch(p?.lid, sender) ||
-            jidMatch(p?.phoneNumber, sender) ||
-            jidMatch(p?.id, message.key?.participant) ||
-            jidMatch(p?.lid, message.key?.participant) ||
-            jidMatch(p?.phoneNumber, message.key?.participant)
-    );
-
-const isAdmin =
-    participant?.admin === "admin" ||
-    participant?.admin === "superadmin";
+            const metadata =
+                await socket.groupMetadata(
+                    chat
+                );
 
 
-
-        if(
-    containsLink(text)
-    &&
-    !isAdmin
-    &&
-    !isBot
-){
+            const participants =
+                metadata?.participants || [];
 
 
+            /*
+             * Find the person who sent the message.
+             *
+             * WhatsApp can represent the same account
+             * using:
+             * - id
+             * - lid
+             * - phoneNumber
+             * - participantAlt
+             */
 
-            await socket.sendMessage(
+            const senderCandidates = [
+                sender,
+                message.key?.participant,
+                message.key?.participantAlt
+            ].filter(Boolean);
 
-                chat,
 
-                {
-                    delete:
-                    message.key
+            const participant =
+                participants.find(
+                    member =>
+                        senderCandidates.some(
+                            candidate =>
+                                jidMatch(
+                                    member?.id,
+                                    candidate
+                                ) ||
+                                jidMatch(
+                                    member?.lid,
+                                    candidate
+                                ) ||
+                                jidMatch(
+                                    member?.phoneNumber,
+                                    candidate
+                                )
+                        )
+                );
+
+
+            const isAdmin =
+                participant?.admin === "admin" ||
+                participant?.admin === "superadmin";
+
+
+            /*
+             * The bot must itself be a group admin
+             * for WhatsApp to allow message deletion.
+             */
+
+            const botParticipant =
+                participants.find(
+                    member =>
+                        jidMatch(
+                            member?.id,
+                            botJid
+                        ) ||
+                        jidMatch(
+                            member?.lid,
+                            botLid
+                        ) ||
+                        jidMatch(
+                            member?.phoneNumber,
+                            botJid
+                        )
+                );
+
+
+            const isBotAdmin =
+                botParticipant?.admin === "admin" ||
+                botParticipant?.admin === "superadmin";
+
+
+            const hasLink =
+                containsLink(text);
+
+
+            if (
+                hasLink &&
+                !isAdmin
+            ) {
+
+                /*
+                 * If the bot isn't an admin,
+                 * WhatsApp won't allow deletion.
+                 */
+
+                if (!isBotAdmin) {
+
+                    logger.warn(
+                        `[ANTILINK] Cannot delete link in ${chat}: bot is not a group admin.`
+                    );
+
+                } else {
+
+                    /*
+                     * Delete offending message.
+                     */
+
+                    try {
+
+                        await socket.sendMessage(
+
+                            chat,
+
+                            {
+                                delete:
+                                    message.key
+                            }
+
+                        );
+
+
+                        logger.info(
+                            `[ANTILINK] Deleted link from ${sender} in ${chat}`
+                        );
+
+
+                    } catch (deleteError) {
+
+                        logger.error(
+                            `[ANTILINK] Failed to delete message: ${
+                                deleteError?.message ||
+                                deleteError
+                            }`
+                        );
+
+                    }
+
+
+                    /*
+                     * Warning message.
+                     */
+
+                    try {
+
+                        const mention =
+                            sender ||
+                            message.key?.participant ||
+                            message.key?.participantAlt;
+
+
+                        const number =
+                            String(
+                                mention || ""
+                            )
+                            .split("@")[0];
+
+
+                        await socket.sendMessage(
+
+                            chat,
+
+                            {
+
+                                text:
+`🚫 *ANTI-LINK*
+
+Links are not allowed in this group.
+
+@${number}, your message was removed.`,
+
+                                mentions:
+                                    mention
+                                        ? [mention]
+                                        : []
+
+                            }
+
+                        );
+
+                    } catch (warningError) {
+
+                        logger.error(
+                            `[ANTILINK] Failed to send warning: ${
+                                warningError?.message ||
+                                warningError
+                            }`
+                        );
+
+                    }
+
+
+                    /*
+                     * Stop the normal command pipeline
+                     * for this message.
+                     */
+
+                    return;
+
                 }
 
+            }
+
+        } catch (error) {
+
+            logger.error(
+                `[ANTILINK] Error processing message: ${
+                    error?.message ||
+                    error
+                }`
             );
-
-
-
-
-            await socket.sendMessage(
-
-                chat,
-
-                {
-
-text:
-`🚫 Links are not allowed here.
-
-@${sender.split("@")[0]} please remove the link.`,
-
-mentions:[
-    sender
-]
-
-                }
-
-            );
-
-
-
-            return;
 
         }
 
-
     }
 
-
 }
-
-
 
 
 
