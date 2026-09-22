@@ -23,11 +23,6 @@ const syncTimers = new Map();
 
 const SYNC_DELAY = 3000;
 
-/*
-
-* Make sure the root session directory exists.
-  */
-
 if (!fs.existsSync(SESSIONS_ROOT)) {
 
 
@@ -59,46 +54,10 @@ return path.join(
 
 /*
 
-* Check whether a filename is safe to restore.
-  */
-
-function isSafeSessionFile(fileName) {
-
-
-if (
-    typeof fileName !== "string" ||
-    !fileName.trim()
-) {
-
-    return false;
-
-}
-
-
-if (
-    fileName.includes("..") ||
-    path.isAbsolute(fileName)
-) {
-
-    return false;
-
-}
-
-
-return true;
-
-
-}
-
-/*
-
 * Restore authentication files from PostgreSQL.
 *
-* IMPORTANT:
-*
-* We clear the local deployment folder first.
-* This prevents stale files from a previous container
-* from being mixed with the persisted database session.
+* The database remains the source of truth when a deployment
+* starts on a new Render instance.
   */
 
 async function restoreSessionFiles(deploymentId) {
@@ -120,100 +79,31 @@ fs.mkdirSync(
 );
 
 
-let files;
+const files =
+    await prisma.whatsAppSession.findMany({
 
-try {
+        where: {
 
-    files =
-        await prisma.whatsAppSession.findMany({
+            deploymentId:
+                key
 
-            where: {
+        }
 
-                deploymentId:
-                    key
+    });
 
-            }
-
-        });
-
-} catch (error) {
-
-    console.error(
-        `[SESSION RESTORE] Failed reading persisted session for ${key}:`,
-        error.message
-    );
-
-    throw error;
-
-}
-
-
-/*
- * No persisted files means this is potentially
- * a brand-new deployment.
- *
- * Do NOT block normal QR pairing in this case.
- */
 
 if (!files.length) {
 
     console.log(
-        `[SESSION RESTORE] No persisted session found for ${key}. New pairing is allowed.`
+        `[SESSION RESTORE] No stored session files for deployment ${key}`
     );
 
-    return {
-
-        found: false,
-
-        restored: 0,
-
-        hasCreds: false
-
-    };
-
-}
-
-
-/*
- * Existing deployment has persisted session records.
- *
- * Remove the local copy before restoring the database
- * version so old/stale authentication files cannot
- * contaminate the restored state.
- */
-
-try {
-
-    fs.rmSync(
-        sessionPath,
-        {
-            recursive: true,
-            force: true
-        }
-    );
-
-    fs.mkdirSync(
-        sessionPath,
-        {
-            recursive: true
-        }
-    );
-
-} catch (error) {
-
-    console.error(
-        `[SESSION RESTORE] Failed preparing session directory for ${key}:`,
-        error.message
-    );
-
-    throw error;
+    return 0;
 
 }
 
 
 let restored = 0;
-
-let hasCreds = false;
 
 
 for (const file of files) {
@@ -222,12 +112,19 @@ for (const file of files) {
         file.fileName;
 
 
+    /*
+     * Never allow path traversal.
+     */
+
     if (
-        !isSafeSessionFile(fileName)
+        typeof fileName !== "string" ||
+        !fileName ||
+        fileName.includes("..") ||
+        path.isAbsolute(fileName)
     ) {
 
         console.warn(
-            `[SESSION RESTORE] Ignoring unsafe session filename for ${key}: ${fileName}`
+            `[SESSION RESTORE] Skipping unsafe file: ${fileName}`
         );
 
         continue;
@@ -253,15 +150,6 @@ for (const file of files) {
 
         restored++;
 
-
-        if (
-            fileName === "creds.json"
-        ) {
-
-            hasCreds = true;
-
-        }
-
     } catch (error) {
 
         console.error(
@@ -274,113 +162,12 @@ for (const file of files) {
 }
 
 
-/*
- * An existing persisted deployment MUST contain
- * creds.json.
- *
- * Without it, Baileys will create a fresh auth state
- * and eventually generate a QR code.
- *
- * We deliberately stop here instead of silently
- * converting an existing deployment into a new pairing.
- */
-
-if (!hasCreds) {
-
-    throw new Error(
-        `[SESSION RESTORE] Persisted session for deployment ${key} is incomplete: creds.json is missing. Refusing to start a fresh WhatsApp pairing.`
-    );
-
-}
-
-
-/*
- * Validate the restored creds.json.
- *
- * We only validate that it is valid JSON and has the
- * basic Baileys credential structure. We do not modify it.
- */
-
-const credsPath =
-    path.join(
-        sessionPath,
-        "creds.json"
-    );
-
-
-try {
-
-    const credsRaw =
-        fs.readFileSync(
-            credsPath,
-            "utf8"
-        );
-
-
-    const creds =
-        JSON.parse(
-            credsRaw
-        );
-
-
-    if (
-        !creds ||
-        typeof creds !== "object"
-    ) {
-
-        throw new Error(
-            "creds.json is not a valid object"
-        );
-
-    }
-
-
-    /*
-     * Baileys credentials contain registrationId
-     * and key material. We use these as a lightweight
-     * sanity check without assuming every Baileys
-     * version has exactly the same optional fields.
-     */
-
-    if (
-        typeof creds.registrationId !== "number" &&
-        typeof creds.registrationId !== "string"
-    ) {
-
-        throw new Error(
-            "registrationId is missing"
-        );
-
-    }
-
-
-    console.log(
-        `[SESSION RESTORE] Valid persisted credentials found for ${key}.`
-    );
-
-} catch (error) {
-
-    throw new Error(
-        `[SESSION RESTORE] Persisted creds.json for deployment ${key} is invalid: ${error.message}`
-    );
-
-}
-
-
 console.log(
-    `[SESSION RESTORE] Restored ${restored} session files for ${key}.`
+    `[SESSION RESTORE] Deployment ${key}: restored ${restored}/${files.length} session files`
 );
 
 
-return {
-
-    found: true,
-
-    restored,
-
-    hasCreds: true
-
-};
+return restored;
 
 
 }
@@ -388,9 +175,6 @@ return {
 /*
 
 * Persist authentication files.
-*
-* Uses a lock so two credential updates cannot
-* scan and write the same session folder at once.
   */
 
 async function persistSessionFiles(deploymentId) {
@@ -399,10 +183,6 @@ async function persistSessionFiles(deploymentId) {
 const key =
     String(deploymentId);
 
-
-/*
- * Wait for an existing synchronization.
- */
 
 if (syncLocks.has(key)) {
 
@@ -465,7 +245,10 @@ const syncPromise =
              */
 
             if (
-                !isSafeSessionFile(fileName)
+                typeof fileName !== "string" ||
+                !fileName ||
+                fileName.includes("..") ||
+                path.isAbsolute(fileName)
             ) {
 
                 continue;
@@ -483,9 +266,8 @@ const syncPromise =
             try {
 
                 /*
-                 * Baileys may delete or replace
-                 * authentication files while we
-                 * are scanning the folder.
+                 * Baileys can replace/delete files while
+                 * we are reading the directory.
                  */
 
                 if (
@@ -559,8 +341,8 @@ const syncPromise =
             } catch (error) {
 
                 /*
-                 * File disappeared while Baileys
-                 * was rotating authentication keys.
+                 * File may have disappeared because
+                 * Baileys rotated an authentication file.
                  */
 
                 if (
@@ -583,7 +365,7 @@ const syncPromise =
 
 
         console.log(
-            `Synced ${saved} session files for ${key}`
+            `[SESSION SYNC] Deployment ${key}: synced ${saved} session files`
         );
 
     })();
@@ -610,8 +392,7 @@ try {
 
 /*
 
-* Schedule database synchronization instead of
-* immediately hitting Supabase on every creds.update.
+* Schedule database synchronization.
   */
 
 function scheduleSessionSync(deploymentId) {
@@ -652,7 +433,7 @@ const timer =
             } catch (error) {
 
                 console.error(
-                    "Session persistence error:",
+                    `[SESSION SYNC] Persistence error for ${key}:`,
                     error.message
                 );
 
@@ -684,36 +465,24 @@ const key =
     String(deploymentId);
 
 
-const restoreResult =
+/*
+ * Restore persisted credentials BEFORE
+ * useMultiFileAuthState() reads the folder.
+ */
+
+const restored =
     await restoreSessionFiles(
         key
     );
 
 
 const sessionPath =
-    getSessionPath(
-        key
-    );
+    getSessionPath(key);
 
 
-/*
- * For an existing deployment, restoration must have
- * produced valid credentials.
- *
- * Brand-new deployments are still allowed to proceed
- * because restoreResult.found will be false.
- */
-
-if (
-    restoreResult.found &&
-    !restoreResult.hasCreds
-) {
-
-    throw new Error(
-        `[SESSION RESTORE] Deployment ${key} has persisted session data but no valid credentials.`
-    );
-
-}
+console.log(
+    `[SESSION AUTH] Deployment ${key}: restored ${restored} files`
+);
 
 
 const {
@@ -729,21 +498,16 @@ const {
     );
 
 
+/*
+ * Save locally immediately, then synchronize
+ * the complete authentication state to PostgreSQL.
+ */
+
 const saveCreds =
     async () => {
 
-        /*
-         * Save immediately to the local disk
-         * because Baileys needs the newest state.
-         */
-
         await originalSaveCreds();
 
-
-        /*
-         * Database synchronization is delayed
-         * and grouped together.
-         */
 
         scheduleSessionSync(
             key
@@ -751,6 +515,10 @@ const saveCreds =
 
     };
 
+
+/*
+ * Final synchronization during shutdown.
+ */
 
 const stopSync =
     async () => {
@@ -772,11 +540,6 @@ const stopSync =
         }
 
 
-        /*
-         * Perform one final synchronization
-         * before shutdown.
-         */
-
         try {
 
             await persistSessionFiles(
@@ -786,7 +549,7 @@ const stopSync =
         } catch (error) {
 
             console.error(
-                "Final session sync error:",
+                `[SESSION SYNC] Final synchronization failed for ${key}:`,
                 error.message
             );
 
@@ -810,9 +573,10 @@ return {
 
 /*
 
-* Delete local authentication files.
+* Delete only the local authentication folder.
 *
-* This does NOT delete the persisted database session.
+* IMPORTANT:
+* This does NOT delete the persisted PostgreSQL session.
   */
 
 export function deleteSessionFolder(deploymentId) {
@@ -840,9 +604,7 @@ if (timer) {
 
 
 const sessionPath =
-    getSessionPath(
-        key
-    );
+    getSessionPath(key);
 
 
 if (
