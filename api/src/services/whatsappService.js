@@ -35,6 +35,34 @@ if(!fs.existsSync(sessionsRoot)){
 }
 
 
+async function reconnectSession(key){
+
+    await new Promise(resolve =>
+        setTimeout(resolve,1500)
+    );
+
+    try{
+
+        await createSession(key);
+
+        console.log(
+            "WhatsApp session restarted:",
+            key
+        );
+
+    }catch(error){
+
+        console.error(
+            "WhatsApp session restart failed:",
+            key,
+            error.message
+        );
+
+    }
+
+}
+
+
 
 
 function sessionKey(id){
@@ -85,17 +113,32 @@ async function createSocket(
 
     const session = {
 
-        deploymentId:key,
+    deploymentId:key,
 
-        sock:null,
+    sock:null,
 
-        status:"connecting",
+    status:"connecting",
 
-        qr:null,
+    qr:null,
 
-        ready:false
+    code:null,
 
-    };
+    pairingRequested:false,
+
+    connectionReady:false,
+
+    connectionReadyPromise:null,
+
+    connectionReadyResolve:null,
+
+    ready:false
+
+};
+
+session.connectionReadyPromise =
+    new Promise(resolve => {
+        session.connectionReadyResolve = resolve;
+    });
 
 
 
@@ -238,25 +281,46 @@ async function createSocket(
 
 
 
-            if(qr){
+            if(
+    connection === "connecting" || qr
+){
+
+    if(!session.connectionReady){
+
+        session.connectionReady = true;
+
+        session.connectionReadyResolve?.();
+
+    }
+
+}
 
 
-                session.qr =
-                    await QRCode.toDataURL(
-                        qr
-                    );
+if(qr){
 
+    if(session.pairingRequested){
 
-                session.status =
-                    "qr_ready";
+        session.qr = null;
 
+        session.status = "pairing";
 
-                console.log(
-                    "QR READY"
-                );
+    }else{
 
+        session.qr =
+            await QRCode.toDataURL(
+                qr
+            );
 
-            }
+        session.status =
+            "qr_ready";
+
+        console.log(
+            "QR READY"
+        );
+
+    }
+
+}
 
 
 
@@ -276,6 +340,10 @@ async function createSocket(
 
                 session.ready =
                     true;
+
+                    session.code = null;
+
+session.pairingRequested = false;
 
 
                 session.qr =
@@ -461,27 +529,42 @@ Keep this safe.`
                 sessions.delete(key);
 
 
+if(
+    code === DisconnectReason.loggedOut
+){
 
+    console.log(
+        "Logged out session removed"
+    );
+
+    return;
+
+}
 
 
                 if(
-                    code === DisconnectReason.loggedOut
+                    code === DisconnectReason.timedOut ||
+                    code === DisconnectReason.connectionClosed ||
+                    code === DisconnectReason.connectionLost ||
+                    code === DisconnectReason.restartRequired
                 ){
 
                     console.log(
-                        "Logged out session removed"
+                        "Restarting WhatsApp session:",
+                        key,
+                        code
                     );
+
+                    reconnectSession(key);
 
                 }
 
-
             }
 
-
-
-
         }
+
     );
+
 
 
 
@@ -678,23 +761,60 @@ export async function requestPairingCode(
     }
 
 
-    await new Promise(resolve =>
-        setTimeout(resolve,3000)
-    );
+    const normalizedPhone =
+        phoneNumber.replace(/\D/g,"");
 
 
-    try {
+    if(!normalizedPhone){
+
+        throw new Error(
+            "A valid phone number is required"
+        );
+
+    }
+
+
+    if(session.ready){
+
+        throw new Error(
+            "WhatsApp session is already connected"
+        );
+
+    }
+
+
+    if(session.pairingRequested && session.code){
+
+        return {
+            code:session.code
+        };
+
+    }
+
+
+    try{
+
+        session.pairingRequested = true;
+
+        session.status = "pairing";
+
+        session.qr = null;
+
+
+        if(!session.connectionReady){
+
+            await session.connectionReadyPromise;
+
+        }
 
 
         const code =
             await session.sock.requestPairingCode(
-
-                phoneNumber.replace(
-                    /\D/g,
-                    ""
-                )
-
+                normalizedPhone
             );
+
+
+        session.code = code;
 
 
         await prisma.deployment.update({
@@ -706,14 +826,13 @@ export async function requestPairingCode(
 
             data:{
 
-                phoneNumber,
+                phoneNumber:normalizedPhone,
 
                 pairingCode:code
 
             }
 
         });
-
 
 
         return {
@@ -724,6 +843,14 @@ export async function requestPairingCode(
 
 
     }catch(error){
+
+        session.pairingRequested = false;
+
+        session.code = null;
+
+        session.status = "connecting";
+
+        session.qr = null;
 
 
         console.error(
