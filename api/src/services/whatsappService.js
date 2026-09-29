@@ -17,6 +17,10 @@ const sessions = new Map();
 
 const sessionLocks = new Map();
 
+const pairingSessions = new Map();
+
+const pairingLocks = new Map();
+
 
 const sessionsRoot =
     path.resolve("./sessions");
@@ -92,11 +96,18 @@ function generateSessionId(){
 async function createSocket(
     deploymentId,
     state,
-    saveCreds
+    saveCreds,
+    options = {}
 ){
 
     const key =
         sessionKey(deploymentId);
+
+        const isPairing =
+    options.pairing === true;
+
+const authPath =
+    options.authPath || null;
 
 
 
@@ -114,6 +125,10 @@ async function createSocket(
     const session = {
 
     deploymentId:key,
+
+    isPairing,
+
+    authPath,
 
     sock:null,
 
@@ -188,9 +203,41 @@ session.connectionReadyPromise =
 
 
     sock.ev.on(
-        "creds.update",
-        saveCreds
-    );
+    "creds.update",
+    async() => {
+
+        try{
+
+            await saveCreds();
+
+            if(
+                isPairing &&
+                session.pairingPromoted &&
+                authPath &&
+                session.persistentAuthPath
+            ){
+
+                fs.cpSync(
+                    authPath,
+                    session.persistentAuthPath,
+                    {
+                        recursive:true
+                    }
+                );
+
+            }
+
+        }catch(error){
+
+            console.error(
+                "Credentials save error:",
+                error.message
+            );
+
+        }
+
+    }
+);
 
 
 
@@ -331,6 +378,80 @@ if(qr){
 
 
             if(connection==="open"){
+
+                if(
+    session.isPairing &&
+    session.authPath
+){
+
+    try{
+
+        const persistentAuthPath =
+            path.join(
+                sessionsRoot,
+                key
+            );
+
+        if(
+            fs.existsSync(
+                persistentAuthPath
+            )
+        ){
+
+            const existingFiles =
+                fs.readdirSync(
+                    persistentAuthPath
+                );
+
+            if(
+                existingFiles.length > 0
+            ){
+
+                throw new Error(
+                    "Persistent WhatsApp session already exists"
+                );
+
+            }
+
+        }else{
+
+            fs.mkdirSync(
+                persistentAuthPath,
+                {
+                    recursive:true
+                }
+            );
+
+        }
+
+        fs.cpSync(
+            session.authPath,
+            persistentAuthPath,
+            {
+                recursive:true
+            }
+        );
+
+        session.pairingPromoted = true;
+
+        session.persistentAuthPath =
+            persistentAuthPath;
+
+        console.log(
+            "Pairing auth promoted:",
+            key
+        );
+
+    }catch(error){
+
+        console.error(
+            "Pairing auth promotion failed:",
+            error.message
+        );
+
+    }
+
+}
 
 
 
@@ -533,6 +654,8 @@ Keep this safe.`
 
                 sessions.delete(key);
 
+pairingSessions.delete(key);
+
 
 if(
     code === DisconnectReason.loggedOut
@@ -576,6 +699,116 @@ if(
 
 
     return session;
+
+}
+
+async function createPairingSession(
+    deploymentId
+){
+
+    const key =
+        sessionKey(deploymentId);
+
+    if(
+        sessions.has(key)
+    ){
+
+        return sessions.get(key);
+
+    }
+
+    if(
+        pairingSessions.has(key)
+    ){
+
+        return pairingSessions.get(key);
+
+    }
+
+    if(
+        pairingLocks.has(key)
+    ){
+
+        return pairingLocks.get(key);
+
+    }
+
+    const promise =
+        (async()=>{
+
+            const pairingRoot =
+                path.join(
+                    sessionsRoot,
+                    ".pairing"
+                );
+
+            const pairingPath =
+                path.join(
+                    pairingRoot,
+                    key + "-" + Date.now()
+                );
+
+            fs.mkdirSync(
+                pairingRoot,
+                {
+                    recursive:true
+                }
+            );
+
+            const {
+                state,
+                saveCreds
+            } =
+            await useMultiFileAuthState(
+                pairingPath
+            );
+
+            if(
+                state.creds.registered
+            ){
+
+                throw new Error(
+                    "Pairing auth state is already registered"
+                );
+
+            }
+
+            const session =
+                await createSocket(
+                    deploymentId,
+                    state,
+                    saveCreds,
+                    {
+                        pairing:true,
+                        authPath:pairingPath
+                    }
+                );
+
+            pairingSessions.set(
+                key,
+                session
+            );
+
+            return session;
+
+        })();
+
+    pairingLocks.set(
+        key,
+        promise
+    );
+
+    try{
+
+        return await promise;
+
+    }finally{
+
+        pairingLocks.delete(
+            key
+        );
+
+    }
 
 }
 
@@ -751,10 +984,47 @@ export async function requestPairingCode(
     phoneNumber
 ){
 
-    const session =
-        await createSession(
-            deploymentId
-        );
+    const key =
+    sessionKey(deploymentId);
+
+const existing =
+    sessions.get(key);
+
+if(
+    existing?.ready
+){
+
+    throw new Error(
+        "WhatsApp session is already connected"
+    );
+
+}
+
+if(
+    existing?.pairingRequested &&
+    existing?.code
+){
+
+    return {
+        code:existing.code
+    };
+
+}
+
+if(
+    existing
+){
+
+    throw new Error(
+        "WhatsApp session is already initializing"
+    );
+
+}
+
+const session =
+    await createPairingSession(
+        deploymentId
+    );
 
 
     if(!session.sock){
@@ -786,6 +1056,16 @@ export async function requestPairingCode(
         );
 
     }
+
+    if(
+    session.sock.authState?.creds?.registered
+){
+
+    throw new Error(
+        "WhatsApp session is already registered"
+    );
+
+}
 
 
     if(session.pairingRequested && session.code){
@@ -821,8 +1101,12 @@ export async function requestPairingCode(
 
         session.code = code;
 
+sessions.set(
+    key,
+    session
+);
 
-        await prisma.deployment.update({
+await prisma.deployment.update({
 
             where:{
                 id:String(deploymentId)
