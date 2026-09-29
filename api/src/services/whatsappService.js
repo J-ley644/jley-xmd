@@ -499,6 +499,11 @@ Keep this safe.`
 
             if(connection==="close"){
 
+                console.error(
+    "WHATSAPP CONNECTION CLOSED:",
+    JSON.stringify(lastDisconnect?.error, null, 2)
+);
+
 
                 session.ready = false;
 
