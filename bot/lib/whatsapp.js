@@ -95,6 +95,14 @@ const sessionPath =
         socket.deploymentId =
     deploymentId || "main";
 
+    socket.commandPrefix =
+    automationStore.getValue(
+        socket.deploymentId,
+        "prefix"
+    ) ||
+    config.prefix ||
+    ".";
+
 
 
 

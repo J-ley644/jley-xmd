@@ -16,7 +16,7 @@ export default {
         "prefix"
     ],
 
-    category: "general",
+    category: "owner",
 
     description:
         "Change the command prefix for this deployment.",
@@ -119,6 +119,8 @@ export default {
             "prefix",
             prefix
         );
+
+        ctx.client.commandPrefix = prefix;
 
 
         /*

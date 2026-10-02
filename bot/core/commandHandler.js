@@ -230,9 +230,17 @@ function getBotMode(client) {
 
 function getBotPrefix(client) {
 
+    if (
+        typeof client?.commandPrefix === "string" &&
+        client.commandPrefix.trim()
+    ) {
+
+        return client.commandPrefix.trim();
+
+    }
+
     const deploymentId =
         client?.deploymentId;
-
 
     if (deploymentId) {
 
@@ -242,20 +250,31 @@ function getBotPrefix(client) {
                 "prefix"
             );
 
-
         if (
             typeof savedPrefix === "string" &&
             savedPrefix.trim()
         ) {
 
-            return savedPrefix.trim();
+            const prefix =
+                savedPrefix.trim();
+
+            client.commandPrefix =
+                prefix;
+
+            return prefix;
 
         }
 
     }
 
+    const prefix =
+        config.prefix ||
+        ".";
 
-    return config.prefix || ".";
+    client.commandPrefix =
+        prefix;
+
+    return prefix;
 
 }
 
