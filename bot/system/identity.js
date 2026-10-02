@@ -154,6 +154,7 @@ export function resolvePhoneNumber(ctx) {
  * This is global and is not tied to a deployment.
  */
 export function isJleyOwnerIdentity(ctx) {
+
     const senderNumber =
         resolvePhoneNumber(ctx);
 
@@ -162,11 +163,42 @@ export function isJleyOwnerIdentity(ctx) {
             config.owner?.number
         );
 
-    return Boolean(
+    if (
         senderNumber &&
         developerNumber &&
         senderNumber === developerNumber
-    );
+    ) {
+        return true;
+    }
+
+
+    const developerLid =
+        normalizeNumber(
+            config.owner?.lid
+        );
+
+    if (!developerLid) {
+        return false;
+    }
+
+
+    const senderIdentities =
+        getSenderIdentities(ctx);
+
+    return senderIdentities.some(identity => {
+
+        const value =
+            String(identity || "");
+
+        if (!value.endsWith("@lid")) {
+            return false;
+        }
+
+        return (
+            normalizeNumber(value) ===
+            developerLid
+        );
+    });
 }
 
 
