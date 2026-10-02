@@ -214,6 +214,54 @@ function getBotMode(client) {
 
 /*
 |--------------------------------------------------------------------------
+| Get Bot Prefix
+|--------------------------------------------------------------------------
+|
+| Prefix settings are stored per deployment.
+|
+| Existing deployments that do not yet have a
+| saved prefix automatically receive "." through
+| automationStore's default settings.
+|
+| The global config prefix remains the final
+| fallback for safety.
+|
+*/
+
+function getBotPrefix(client) {
+
+    const deploymentId =
+        client?.deploymentId;
+
+
+    if (deploymentId) {
+
+        const savedPrefix =
+            automationStore.getValue(
+                deploymentId,
+                "prefix"
+            );
+
+
+        if (
+            typeof savedPrefix === "string" &&
+            savedPrefix.trim()
+        ) {
+
+            return savedPrefix.trim();
+
+        }
+
+    }
+
+
+    return config.prefix || ".";
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Command Handler
 |--------------------------------------------------------------------------
 */
@@ -244,13 +292,25 @@ async function handleCommand(
 
         /*
         |--------------------------------------------------------------------------
+        | Get Deployment Prefix
+        |--------------------------------------------------------------------------
+        */
+
+        const prefix =
+            getBotPrefix(
+                client
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Check Prefix
         |--------------------------------------------------------------------------
         */
 
         if (
             !text.startsWith(
-                config.prefix
+                prefix
             )
         ) {
 
@@ -268,7 +328,7 @@ async function handleCommand(
         const args =
             text
                 .slice(
-                    config.prefix.length
+                    prefix.length
                 )
                 .trim()
                 .split(/\s+/);

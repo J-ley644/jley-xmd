@@ -6,6 +6,7 @@
 
 import config from "../config/config.js";
 import runtime from "./runtime.js";
+import automationStore from "./automationStore.js";
 import { downloadMediaMessage } from "@whiskeysockets/baileys";
 
 import {
@@ -238,6 +239,52 @@ function unwrapViewOnceMessage(message) {
 }
 
 
+/*
+|--------------------------------------------------------------------------
+| Get Bot Prefix
+|--------------------------------------------------------------------------
+|
+| Prefixes are stored per deployment.
+|
+| Existing deployments automatically receive
+| "." through automationStore's default settings.
+|
+| config.prefix remains the final fallback.
+|
+*/
+
+function getBotPrefix(client) {
+
+    const deploymentId =
+        client?.deploymentId;
+
+
+    if (deploymentId) {
+
+        const savedPrefix =
+            automationStore.getValue(
+                deploymentId,
+                "prefix"
+            );
+
+
+        if (
+            typeof savedPrefix === "string" &&
+            savedPrefix.trim()
+        ) {
+
+            return savedPrefix.trim();
+
+        }
+
+    }
+
+
+    return config.prefix || ".";
+
+}
+
+
 export default async function createContext(
     client,
     message
@@ -246,11 +293,25 @@ export default async function createContext(
     const text =
         getText(message);
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deployment Prefix
+    |--------------------------------------------------------------------------
+    */
+
+    const prefix =
+        getBotPrefix(
+            client
+        );
+
+
     const args =
         text
-            .slice(config.prefix.length)
+            .slice(prefix.length)
             .trim()
             .split(/\s+/);
+
 
     const command =
         args.shift()?.toLowerCase() || "";
@@ -598,8 +659,7 @@ export default async function createContext(
         botName:
             runtime.botName(),
 
-        prefix:
-            config.prefix,
+        prefix,
 
 
         // Media

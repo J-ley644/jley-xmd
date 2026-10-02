@@ -39,6 +39,22 @@ const DB_PATH =
 
 const DEFAULT_SETTINGS = {
 
+    /*
+    |--------------------------------------------------------------------------
+    | Command Prefix
+    |--------------------------------------------------------------------------
+    |
+    | Default command prefix for every deployment.
+    |
+    | Individual deployments can change this using the setprefix
+    | command. Existing deployments automatically receive this
+    | value through the settings migration logic below.
+    |
+    */
+
+    prefix: ".",
+
+
     mode: "public",
 
     autoview: false,
