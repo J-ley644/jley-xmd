@@ -14,75 +14,234 @@ const REACT_EMOJIS = [
     "✨"
 ];
 
-async function handleAutoLike(socket, message) {
+/*
+ * Resolve the phone JID that WhatsApp expects
+ * for status reactions.
+ *
+ * LID status participants must NOT be placed
+ * inside statusJidList.
+ */
+function resolvePhoneJid(key) {
+
+    /*
+     * Best source on modern Baileys:
+     * participantPn = real phone JID.
+     */
+    if (
+        key?.participantPn &&
+        key.participantPn.includes(
+            "@s.whatsapp.net"
+        )
+    ) {
+
+        return key.participantPn;
+
+    }
+
+    /*
+     * Normal non-LID status.
+     */
+    if (
+        key?.participant &&
+        key.participant.includes(
+            "@s.whatsapp.net"
+        )
+    ) {
+
+        return key.participant;
+
+    }
+
+    /*
+     * Some message versions may expose
+     * senderPn instead.
+     */
+    if (
+        key?.senderPn &&
+        key.senderPn.includes(
+            "@s.whatsapp.net"
+        )
+    ) {
+
+        return key.senderPn;
+
+    }
+
+    return null;
+}
+
+
+/*
+ * Convert the bot's device JID:
+ *
+ * 254700000000:12@s.whatsapp.net
+ *
+ * into:
+ *
+ * 254700000000@s.whatsapp.net
+ */
+function getBotPhone(socket) {
+
+    const botJid =
+        socket?.user?.id ||
+        "";
+
+    if (!botJid) {
+        return null;
+    }
+
+    return botJid.replace(
+        /:\d+@/,
+        "@"
+    );
+
+}
+
+
+async function handleAutoLike(
+    socket,
+    message
+) {
 
     try {
 
-        // Only process WhatsApp Status updates
         if (!isStatus(message)) {
             return;
         }
 
-        const key = message?.key;
+        const key =
+            message?.key;
 
         if (!key?.id) {
-            console.log("[AUTOLIKE] Status has no message ID");
-            return;
-        }
 
-        // Keep the ORIGINAL participant JID.
-        // Do not convert @lid to @s.whatsapp.net.
-        const participantJid =
-            key?.participant ||
-            message?.participant ||
-            null;
-
-        if (!participantJid) {
             console.log(
-                "[AUTOLIKE] No status participant found"
+                "[AUTOLIKE] Status has no message ID."
             );
+
             return;
+
         }
 
-        // Identify this specific bot/deployment
         const botIdentity =
             socket?.user?.lid ||
             socket?.user?.id ||
             null;
 
         if (!botIdentity) {
+
             console.log(
-                "[AUTOLIKE] Unable to identify bot"
+                "[AUTOLIKE] Unable to identify bot."
             );
+
             return;
+
         }
 
         const settings =
-            automationStore.get(botIdentity);
+            automationStore.get(
+                botIdentity
+            );
 
         if (!settings?.autolike) {
             return;
         }
 
-        // Use configured emoji
+        /*
+         * Original status key MUST be preserved.
+         */
+        const participant =
+            key?.participant ||
+            message?.participant ||
+            null;
+
+        if (!participant) {
+
+            console.log(
+                "[AUTOLIKE] No status participant."
+            );
+
+            return;
+
+        }
+
+        /*
+         * Resolve the sender to their PHONE JID.
+         *
+         * This is the critical LID fix.
+         */
+        const phoneJid =
+            resolvePhoneJid(key);
+
+        const botPhone =
+            getBotPhone(socket);
+
+        /*
+         * WhatsApp expects phone JIDs here.
+         *
+         * Never intentionally put @lid into
+         * statusJidList.
+         */
+        const statusJidList = [
+            phoneJid,
+            botPhone
+        ].filter(
+            jid =>
+                jid &&
+                jid.includes(
+                    "@s.whatsapp.net"
+                )
+        );
+
+        if (
+            statusJidList.length === 0
+        ) {
+
+            console.log(
+                "[AUTOLIKE] ❌ No phone JID available for status reaction.",
+                {
+                    participant,
+                    participantPn:
+                        key?.participantPn
+                }
+            );
+
+            return;
+
+        }
+
         const emoji =
             settings.autolikeEmoji ||
             REACT_EMOJIS[
                 Math.floor(
-                    Math.random() * REACT_EMOJIS.length
+                    Math.random() *
+                    REACT_EMOJIS.length
                 )
             ];
 
         console.log(
-            "[AUTOLIKE] Processing status:",
-            participantJid,
-            "emoji:",
-            emoji
+            "[AUTOLIKE] Reacting:",
+            {
+                statusId:
+                    key.id,
+
+                participant,
+
+                phoneJid,
+
+                botPhone,
+
+                statusJidList,
+
+                emoji
+            }
         );
 
         /*
-         * Method A
-         * Preferred Baileys status reaction method.
+         * ALSON's working technique:
+         *
+         * - destination = status@broadcast
+         * - reaction key = ORIGINAL status key
+         * - statusJidList = PHONE JIDs
          */
         try {
 
@@ -90,37 +249,37 @@ async function handleAutoLike(socket, message) {
                 "status@broadcast",
                 {
                     react: {
-                        text: emoji,
-                        key: key
+                        text:
+                            emoji,
+
+                        key:
+                            key
                     }
                 },
                 {
-                    statusJidList: [
-                        participantJid
-                    ]
+                    statusJidList
                 }
             );
 
             console.log(
-                "[AUTOLIKE] Reaction sent successfully:",
-                emoji,
-                participantJid
+                "[AUTOLIKE] ✅ Status reaction sent."
             );
 
             return;
 
-        } catch (errorA) {
+        } catch (error) {
 
             console.log(
-                "[AUTOLIKE] Method A failed:",
-                String(errorA).slice(0, 200)
+                "[AUTOLIKE] Primary reaction failed:",
+                error?.message ||
+                error
             );
+
         }
 
         /*
-         * Method B
-         * Some Baileys versions accept statusJidList
-         * inside the message object.
+         * Fallback for Baileys builds that behave
+         * differently with statusJidList placement.
          */
         try {
 
@@ -128,75 +287,41 @@ async function handleAutoLike(socket, message) {
                 "status@broadcast",
                 {
                     react: {
-                        text: emoji,
-                        key: key
+                        text:
+                            emoji,
+
+                        key:
+                            key
                     },
-                    statusJidList: [
-                        participantJid
-                    ]
+
+                    statusJidList
                 }
             );
 
             console.log(
-                "[AUTOLIKE] Method B succeeded:",
-                emoji,
-                participantJid
+                "[AUTOLIKE] ✅ Status reaction sent via fallback."
             );
 
-            return;
+        } catch (error) {
 
-        } catch (errorB) {
-
-            console.log(
-                "[AUTOLIKE] Method B failed:",
-                String(errorB).slice(0, 200)
-            );
-        }
-
-        /*
-         * Method C
-         * Final fallback: react directly in the
-         * participant's private chat.
-         */
-        try {
-
-            const dmJid =
-                participantJid.replace(
-                    /:\d+@/,
-                    "@"
-                );
-
-            await socket.sendMessage(
-                dmJid,
-                {
-                    react: {
-                        text: emoji,
-                        key: key
-                    }
-                }
+            console.error(
+                "[AUTOLIKE] ❌ Reaction failed:",
+                error?.message ||
+                error
             );
 
-            console.log(
-                "[AUTOLIKE] Method C succeeded:",
-                emoji,
-                dmJid
-            );
-
-        } catch (errorC) {
-
-            console.log(
-                "[AUTOLIKE] All reaction methods failed:",
-                String(errorC).slice(0, 250)
-            );
         }
 
     } catch (error) {
 
-        console.log(
-            "[AUTOLIKE] Unexpected error:",
-            String(error).slice(0, 250)
+        console.error(
+            "[AUTOLIKE] Handler error:",
+            error?.message ||
+            error
         );
+
     }
+
 }
 
 export default handleAutoLike;
