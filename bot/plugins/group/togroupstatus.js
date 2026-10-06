@@ -10,10 +10,6 @@ import {
 |--------------------------------------------------------------------------
 | Prepare Group Status Media
 |--------------------------------------------------------------------------
-|
-| Group Status V2 media requires the uploaded media handle
-| to be supplied on the outer relay attributes.
-|
 */
 
 async function prepareGroupStatusMedia(
@@ -280,10 +276,6 @@ function applyGroupStatusMediaContext(
 |--------------------------------------------------------------------------
 | Build Group Status V2 Message
 |--------------------------------------------------------------------------
-|
-| This is the common Group Status V2 wrapper used
-| by both text and media statuses.
-|
 */
 
 function buildGroupStatusMessage(
@@ -351,19 +343,6 @@ function buildGroupStatusMessage(
 |--------------------------------------------------------------------------
 | Send Text Group Status
 |--------------------------------------------------------------------------
-|
-| ALSON-XMD technique:
-|
-| extendedTextMessage
-|       ↓
-| messageSecret
-|       ↓
-| groupStatusMessageV2
-|       ↓
-| generateWAMessageFromContent()
-|       ↓
-| relayMessage()
-|
 */
 
 async function sendGroupStatusText(
@@ -641,10 +620,10 @@ export default {
         "group",
 
     description:
-        "Post text, image or video as a Group Status",
+        "Post text, image, video or audio as a Group Status",
 
     usage:
-        ".togroupstatus <text> OR reply to image/video",
+        ".togroupstatus <text> OR reply to image/video/audio",
 
     permissions: {
 
@@ -684,7 +663,7 @@ export default {
             if (!text) {
 
                 return ctx.reply(
-                    "❌ Usage: .togroupstatus <text>\n\nOr reply to an image/video."
+                    "❌ Usage: .togroupstatus <text>\n\nOr reply to an image, video or audio."
                 );
 
             }
@@ -771,15 +750,24 @@ export default {
         |--------------------------------------------------------------------------
         | REPLIED MEDIA GROUP STATUS
         |--------------------------------------------------------------------------
+        |
+        | Supported:
+        |
+        | image
+        | video
+        | audio
+        | voice note
+        |
         */
 
         if (
             !ctx.isImage &&
-            !ctx.isVideo
+            !ctx.isVideo &&
+            !ctx.isAudio
         ) {
 
             return ctx.reply(
-                "❌ The replied message must contain an image or video."
+                "❌ The replied message must contain an image, video or audio."
             );
 
         }
@@ -814,7 +802,9 @@ export default {
             const type =
                 ctx.isImage
                     ? "image"
-                    : "video";
+                    : ctx.isVideo
+                        ? "video"
+                        : "audio";
 
 
             console.log(
@@ -837,18 +827,46 @@ export default {
              * Prepare normal Baileys media content.
              */
 
-            const mediaContent =
-                ctx.isImage
+            let mediaContent;
 
-                    ? {
-                        image:
-                            buffer
-                    }
 
-                    : {
-                        video:
-                            buffer
-                    };
+            if (ctx.isImage) {
+
+                mediaContent = {
+
+                    image:
+                        buffer
+
+                };
+
+            } else if (ctx.isVideo) {
+
+                mediaContent = {
+
+                    video:
+                        buffer
+
+                };
+
+            } else {
+
+                mediaContent = {
+
+                    audio:
+                        buffer,
+
+                    mimetype:
+                        ctx.media?.audioMessage?.mimetype ||
+                        "audio/ogg; codecs=opus",
+
+                    ptt:
+                        Boolean(
+                            ctx.media?.audioMessage?.ptt
+                        )
+
+                };
+
+            }
 
 
             /*
@@ -883,7 +901,13 @@ export default {
 
 
             return ctx.reply(
-                "✅ Group Status posted successfully."
+                `✅ ${
+                    type === "audio"
+                        ? "Audio"
+                        : type === "image"
+                            ? "Image"
+                            : "Video"
+                } Group Status posted successfully.`
             );
 
 
