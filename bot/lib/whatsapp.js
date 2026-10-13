@@ -26,12 +26,19 @@ import {
     isEnabled
 } from "../system/antideleteStore.js";
 import automationStore from "../system/automationStore.js";
+import nexaStore from "../system/nexaStore.js";
+import nexaAI from "../services/nexaAI.js";
 
 
 
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
+
+const nexaInFlight = new Set();
+const nexaLastReply = new Map();
+
+const NEXA_COOLDOWN_MS = 5000;
 
 
 
@@ -508,7 +515,7 @@ const sessionPath =
 
    socket.ev.on(
     "messages.upsert",
-    async ({ messages }) => {
+    async ({ messages, type }) => {
 
         for (const message of messages) {
 
@@ -521,6 +528,8 @@ const sessionPath =
             if (!message?.message) {
                 continue;
             }
+
+            message.__nexaNotify = type === "notify";
 
 
             /*
@@ -1205,6 +1214,86 @@ await handleCommand(
     socket,
     message
 );
+
+/*
+|--------------------------------------------------------------------------
+| NEXA AI Assistant
+|--------------------------------------------------------------------------
+*/
+
+const prefix = socket.commandPrefix || config.prefix || ".";
+const trimmedText = String(text || "").trim();
+const deploymentId = String(socket.deploymentId || "main");
+
+const isNonChat =
+    !chat ||
+    chat.endsWith("@status") ||
+    chat.endsWith("@newsletter") ||
+    chat.endsWith("@broadcast");
+
+if (
+    message.__nexaNotify &&
+    !isBot &&
+    !isNonChat &&
+    trimmedText &&
+    !trimmedText.startsWith(prefix)
+) {
+    const settings = nexaStore.getSettings(
+        deploymentId,
+        chat
+    );
+
+    
+if (settings.enabled) {
+    const cooldownKey = `${deploymentId}:${chat}`;
+    const now = Date.now();
+    const lastReply = nexaLastReply.get(cooldownKey) || 0;
+
+    if (
+        nexaInFlight.has(cooldownKey) ||
+        now - lastReply < NEXA_COOLDOWN_MS
+    ) {
+        return;
+    }
+
+    nexaInFlight.add(cooldownKey);
+    nexaLastReply.set(cooldownKey, now);
+
+    try {
+        const history = nexaStore.getHistory(
+            deploymentId,
+            chat
+        );
+
+        const reply = await nexaAI.generateReply(
+            trimmedText,
+            history
+        );
+
+        if (reply) {
+            await socket.sendMessage(
+                chat,
+                { text: reply },
+                { quoted: message }
+            );
+
+            nexaStore.addExchange(
+                deploymentId,
+                chat,
+                trimmedText,
+                reply
+            );
+        }
+    } catch (error) {
+        logger.error(
+            `[NEXA] Reply failed: ${error?.message || error}`
+        );
+    } finally {
+        nexaInFlight.delete(cooldownKey);
+    }
+}
+
+}
 
 
 

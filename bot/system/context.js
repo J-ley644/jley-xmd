@@ -618,6 +618,8 @@ export default async function createContext(
 
         client,
 
+        deploymentId: String(client?.deploymentId || "main"),
+
         message,
 
         sender,
