@@ -1215,6 +1215,7 @@ await handleCommand(
     message
 );
 
+
 /*
 |--------------------------------------------------------------------------
 | NEXA AI Assistant
@@ -1243,57 +1244,66 @@ if (
         chat
     );
 
-    
-if (settings.enabled) {
-    const cooldownKey = `${deploymentId}:${chat}`;
-    const now = Date.now();
-    const lastReply = nexaLastReply.get(cooldownKey) || 0;
+    if (settings.enabled) {
+        const cooldownKey = `${deploymentId}:${chat}`;
+        const now = Date.now();
+        const lastReply = nexaLastReply.get(cooldownKey) || 0;
 
-    if (
-        nexaInFlight.has(cooldownKey) ||
-        now - lastReply < NEXA_COOLDOWN_MS
-    ) {
-        return;
-    }
-
-    nexaInFlight.add(cooldownKey);
-    nexaLastReply.set(cooldownKey, now);
-
-    try {
-        const history = nexaStore.getHistory(
-            deploymentId,
-            chat
-        );
-
-        const reply = await nexaAI.generateReply(
-            trimmedText,
-            history
-        );
-
-        if (reply) {
-            await socket.sendMessage(
-                chat,
-                { text: reply },
-                { quoted: message }
-            );
-
-            nexaStore.addExchange(
-                deploymentId,
-                chat,
-                trimmedText,
-                reply
-            );
+        if (
+            nexaInFlight.has(cooldownKey) ||
+            now - lastReply < NEXA_COOLDOWN_MS
+        ) {
+            return;
         }
-    } catch (error) {
-        logger.error(
-            `[NEXA] Reply failed: ${error?.message || error}`
-        );
-    } finally {
-        nexaInFlight.delete(cooldownKey);
+
+        nexaInFlight.add(cooldownKey);
+
+        try {
+            const history = nexaStore.getHistory(
+                deploymentId,
+                chat
+            );
+
+            const reply = await nexaAI.generateReply(
+                trimmedText,
+                history
+            );
+
+            if (reply) {
+                await socket.sendMessage(
+                    chat,
+                    { text: reply },
+                    { quoted: message }
+                );
+
+                nexaStore.addExchange(
+                    deploymentId,
+                    chat,
+                    trimmedText,
+                    reply
+                );
+            }
+        } catch (error) {
+            const reason = String(
+                error?.message || error || "Unknown error"
+            ).slice(0, 250);
+
+            try {
+                await socket.sendMessage(chat, {
+                    text: `⚠️ NEXA couldn't generate a reply.\nReason: ${reason}`
+                });
+            } catch {
+                // WhatsApp delivery itself failed.
+            }
+
+            logger.error(`[NEXA] Reply failed: ${reason}`);
+        } finally {
+            nexaInFlight.delete(cooldownKey);
+            nexaLastReply.set(cooldownKey, Date.now());
+        }
     }
 }
 
-}
 
 
 
