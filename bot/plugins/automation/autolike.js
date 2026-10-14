@@ -1,3 +1,4 @@
+
 import automationStore from "../../system/automationStore.js";
 
 export default {
@@ -20,32 +21,25 @@ export default {
     },
 
     async execute(ctx) {
+        const option = String(ctx.args?.[0] || "")
+            .trim()
+            .toLowerCase();
 
-        const option =
-            String(ctx.args?.[0] || "")
-                .trim()
-                .toLowerCase();
-
+        // Settings belong to this specific deployment.
         const botIdentity =
-            ctx.client?.user?.lid ||
-            ctx.client?.user?.id ||
-            ctx.botJid ||
-            ctx.botId;
+            ctx.deploymentId ||
+            ctx.client?.deploymentId;
 
         if (!botIdentity) {
             return ctx.reply(
-                "❌ Unable to identify this bot account."
+                "❌ Unable to identify this bot deployment."
             );
         }
 
-        const settings =
-            automationStore.get(botIdentity);
+        const settings = automationStore.get(botIdentity);
 
-        // Show current status
         if (!["on", "off"].includes(option)) {
-
             return ctx.reply(
-
 `╭━━━〔 ❤️ AUTO LIKE STATUS 〕━━━╮
 
 Current Status
@@ -54,7 +48,7 @@ ${settings.autolike ? "🟢 Enabled" : "🔴 Disabled"}
 
 Reaction Emoji
 
-${settings.autolikeEmoji}
+${settings.autolikeEmoji || "❤️"}
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -69,7 +63,6 @@ Change Emoji
 .autolikeemoji 🔥
 
 ╰━━━━━━━━━━━━━━━━━━╯`
-
             );
         }
 
@@ -82,7 +75,6 @@ Change Emoji
         );
 
         return ctx.reply(
-
 `╭━━━〔 ❤️ AUTO LIKE STATUS 〕━━━╮
 
 Automatic status reactions
@@ -91,7 +83,7 @@ ${enabled ? "🟢 Enabled" : "🔴 Disabled"}
 
 Reaction Emoji
 
-${settings.autolikeEmoji}
+${settings.autolikeEmoji || "❤️"}
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -101,7 +93,6 @@ ${enabled
 }
 
 ╰━━━━━━━━━━━━━━━━━━╯`
-
         );
     }
 };

@@ -1,7 +1,7 @@
+
 import automationStore from "../../system/automationStore.js";
 
 export default {
-
     name: "autolikeemoji",
 
     aliases: [
@@ -17,102 +17,82 @@ export default {
 
     permissions: {},
 
-
     async execute(ctx) {
+        const botIdentity =
+            ctx.deploymentId ||
+            ctx.client?.deploymentId;
 
+        if (!botIdentity) {
+            return ctx.reply(
+                "❌ Unable to identify this bot deployment."
+            );
+        }
 
-        const emoji =
-            (ctx.args[0] || "").trim();
+        const emoji = (ctx.args || [])
+            .join(" ")
+            .trim();
 
-
-        // Show current emoji
+        const settings = automationStore.get(botIdentity);
 
         if (!emoji) {
-
-            const settings =
-                automationStore.get(ctx.sender);
-
             return ctx.reply(
-
 `╭━━━〔 ❤️ AUTO LIKE EMOJI 〕━━━╮
 
 Current Emoji
 
-${settings.autolikeEmoji}
+${settings.autolikeEmoji || "❤️"}
 
 ━━━━━━━━━━━━━━━━━━
 
-Example
+Examples
 
 .autolikeemoji ❤️
 .autolikeemoji 🔥
 .autolikeemoji 👍
 .autolikeemoji 🤩
 
-━━━━━━━━━━━━━━━━━━
-
-Use
-
-.autolike on
-
-to enable automatic status reactions.
+Use .autolike on to enable automatic
+status reactions.
 
 ╰━━━━━━━━━━━━━━━━━━╯`
-
             );
-
         }
 
+        // Accept one emoji, including joined sequences and skin tones.
+        const segments = [
+            ...new Intl.Segmenter(undefined, {
+                granularity: "grapheme"
+            }).segment(emoji)
+        ];
 
-        // Basic validation
-
-        if (emoji.length > 8) {
-
+        if (
+            segments.length !== 1 ||
+            !/\p{Extended_Pictographic}/u.test(emoji)
+        ) {
             return ctx.reply(
                 "❌ Please provide a single emoji."
             );
-
         }
 
-
-        automationStore.update(
-
-            ctx.sender,
-
-            {
-
-                autolikeEmoji: emoji
-
-            }
-
+        automationStore.set(
+            botIdentity,
+            "autolikeEmoji",
+            emoji
         );
 
-
-        await ctx.reply(
-
+        return ctx.reply(
 `╭━━━〔 ✅ AUTO LIKE UPDATED 〕━━━╮
 
-Your automatic reaction emoji
-has been updated.
-
-━━━━━━━━━━━━━━━━━━
+Reaction emoji updated successfully.
 
 New Emoji
 
 ${emoji}
 
-━━━━━━━━━━━━━━━━━━
-
-Use
-
-.autolike on
-
-to start reacting to statuses.
+Use .autolike on to enable
+automatic status reactions.
 
 ╰━━━━━━━━━━━━━━━━━━╯`
-
         );
-
     }
-
 };

@@ -2,619 +2,312 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-/*
-|--------------------------------------------------------------------------
-| Paths
-|--------------------------------------------------------------------------
-*/
+const DATABASE_DIR = path.join(
+    __dirname,
+    "..",
+    "database"
+);
 
-const __filename =
-    fileURLToPath(import.meta.url);
-
-const __dirname =
-    path.dirname(__filename);
-
-
-const DATABASE_DIR =
-    path.join(
-        __dirname,
-        "..",
-        "database"
-    );
-
-
-const DB_PATH =
-    path.join(
-        DATABASE_DIR,
-        "automationSettings.json"
-    );
-
-
-/*
-|--------------------------------------------------------------------------
-| Default Settings
-|--------------------------------------------------------------------------
-*/
+const DB_PATH = path.join(
+    DATABASE_DIR,
+    "automationSettings.json"
+);
 
 const DEFAULT_SETTINGS = {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Command Prefix
-    |--------------------------------------------------------------------------
-    |
-    | Default command prefix for every deployment.
-    |
-    | Individual deployments can change this using the setprefix
-    | command. Existing deployments automatically receive this
-    | value through the settings migration logic below.
-    |
-    */
-
     prefix: ".",
-
-
     mode: "public",
-
     autoview: false,
-
     autoread: false,
-
     autolike: false,
-
     autoreply: false,
-
     automention: false,
-
     autotyping: false,
-
     autorecording: false,
-
-    autolikeEmoji:
-        "❤️",
-
+    autolikeEmoji: "❤️",
     autoreplyText:
         "Hello! I'm currently unavailable. I'll respond as soon as possible.",
-
-    /*
-    |--------------------------------------------------------------------------
-    | Anti-Call
-    |--------------------------------------------------------------------------
-    |
-    | anticall:
-    |   Master switch.
-    |
-    | anticallMode:
-    |   off
-    |   decline
-    |   reply
-    |
-    | anticallReply:
-    |   Message sent to callers when reply mode is enabled.
-    |
-    */
-
     anticall: false,
-
-    anticallMode:
-        "off",
-
+    anticallMode: "off",
     anticallReply:
         "Sorry, I don't take WhatsApp calls. Please send me a message instead."
-
 };
 
-
-/*
-|--------------------------------------------------------------------------
-| Ensure Database
-|--------------------------------------------------------------------------
-*/
-
-function ensureDatabase() {
-
-    if (
-        !fs.existsSync(
-            DATABASE_DIR
-        )
-    ) {
-
-        fs.mkdirSync(
-            DATABASE_DIR,
-            {
-                recursive: true
-            }
-        );
-
-    }
-
-
-    if (
-        !fs.existsSync(
-            DB_PATH
-        )
-    ) {
-
-        fs.writeFileSync(
-            DB_PATH,
-            JSON.stringify(
-                {},
-                null,
-                4
-            ),
-            "utf8"
-        );
-
-    }
-
+function createBotSettings() {
+    return {
+        ...DEFAULT_SETTINGS,
+        chats: {}
+    };
 }
 
+function ensureDatabase() {
+    fs.mkdirSync(DATABASE_DIR, {
+        recursive: true
+    });
 
-/*
-|--------------------------------------------------------------------------
-| Load Database
-|--------------------------------------------------------------------------
-*/
+    if (!fs.existsSync(DB_PATH)) {
+        fs.writeFileSync(
+            DB_PATH,
+            JSON.stringify({}, null, 4),
+            "utf8"
+        );
+    }
+}
 
 function load() {
-
     ensureDatabase();
 
-
-    const content =
-        fs.readFileSync(
+    try {
+        const content = fs.readFileSync(
             DB_PATH,
             "utf8"
         ).trim();
 
+        if (!content) return {};
 
-    if (!content) {
-
-        return {};
-
-    }
-
-
-    try {
-
-        return JSON.parse(
-            content
-        );
-
-    } catch {
-
-        return {};
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Save Database
-|--------------------------------------------------------------------------
-*/
-
-function save(data) {
-
-    ensureDatabase();
-
-
-    fs.writeFileSync(
-
-        DB_PATH,
-
-        JSON.stringify(
-            data,
-            null,
-            4
-        ),
-
-        "utf8"
-
-    );
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Create Bot Settings
-|--------------------------------------------------------------------------
-*/
-
-function createBotSettings() {
-
-    return {
-
-        ...DEFAULT_SETTINGS,
-
-        chats: {}
-
-    };
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Get Bot Settings
-|--------------------------------------------------------------------------
-*/
-
-function get(user) {
-
-    const db =
-        load();
-
-
-    if (!db[user]) {
-
-        db[user] =
-            createBotSettings();
-
-        save(db);
-
-    } else {
-
-        let changed = false;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Add missing default settings
-        |--------------------------------------------------------------------------
-        */
-
-        for (
-            const [key, value]
-            of Object.entries(DEFAULT_SETTINGS)
-        ) {
-
-            if (
-                db[user][key] === undefined
-            ) {
-
-                db[user][key] =
-                    value;
-
-                changed = true;
-
-            }
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Ensure chats object exists
-        |--------------------------------------------------------------------------
-        */
+        const data = JSON.parse(content);
 
         if (
-            !db[user].chats
+            !data ||
+            typeof data !== "object" ||
+            Array.isArray(data)
         ) {
-
-            db[user].chats = {};
-
-            changed = true;
-
+            console.error(
+                "[AUTOMATION STORE] Invalid database format."
+            );
+            return {};
         }
 
+        return data;
+    } catch (error) {
+        console.error(
+            "[AUTOMATION STORE] Failed to load settings:",
+            error?.message || error
+        );
 
-        if (changed) {
-
-            save(db);
-
-        }
-
+        return {};
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Migration Protection
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !db[user].chats
-    ) {
-
-        db[user].chats = {};
-
-        save(db);
-
-    }
-
-
-    return db[user];
-
 }
 
+function save(data) {
+    ensureDatabase();
 
-/*
-|--------------------------------------------------------------------------
-| Set Global Setting
-|--------------------------------------------------------------------------
-*/
+    const temporaryPath = `${DB_PATH}.tmp`;
 
-function set(
-    user,
-    key,
-    value
-) {
+    fs.writeFileSync(
+        temporaryPath,
+        JSON.stringify(data, null, 4),
+        "utf8"
+    );
 
-    const db =
-        load();
-
-
-    if (!db[user]) {
-
-        db[user] =
-            createBotSettings();
-
-    }
-
-
-    db[user][key] =
-        value;
-
-
-    save(db);
-
-
-    return db[user];
-
+    fs.renameSync(temporaryPath, DB_PATH);
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Get Global Setting
-|--------------------------------------------------------------------------
-*/
-
-function getValue(
-    user,
-    key
-) {
-
-    const settings =
-        get(user);
-
-
-    return settings[key];
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Get Chat Settings
-|--------------------------------------------------------------------------
-*/
-
-function getChat(
-    user,
-    chat
-) {
-
-    const settings =
-        get(user);
-
-
-    if (
-        !settings.chats[chat]
-    ) {
-
-        settings.chats[chat] = {};
-
-    }
-
+function normalizeSettings(settings) {
+    const current =
+        settings &&
+        typeof settings === "object" &&
+        !Array.isArray(settings)
+            ? settings
+            : {};
 
     return {
-
         ...DEFAULT_SETTINGS,
-
-        ...settings.chats[chat]
-
-    };
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Set Chat Setting
-|--------------------------------------------------------------------------
-*/
-
-function setChat(
-    user,
-    chat,
-    key,
-    value
-) {
-
-    const db =
-        load();
-
-
-    if (!db[user]) {
-
-        db[user] =
-            createBotSettings();
-
-    }
-
-
-    if (
-        !db[user].chats
-    ) {
-
-        db[user].chats = {};
-
-    }
-
-
-    if (
-        !db[user].chats[chat]
-    ) {
-
-        db[user].chats[chat] = {};
-
-    }
-
-
-    db[user].chats[chat][key] =
-        value;
-
-
-    save(db);
-
-
-    return {
-
-        ...DEFAULT_SETTINGS,
-
-        ...db[user].chats[chat]
-
-    };
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Update Multiple Global Settings
-|--------------------------------------------------------------------------
-*/
-
-function update(
-    user,
-    settings
-) {
-
-    const db =
-        load();
-
-
-    if (!db[user]) {
-
-        db[user] =
-            createBotSettings();
-
-    }
-
-
-    db[user] = {
-
-        ...db[user],
-
-        ...settings,
-
+        ...current,
         chats:
-            db[user].chats || {}
-
+            current.chats &&
+            typeof current.chats === "object" &&
+            !Array.isArray(current.chats)
+                ? current.chats
+                : {}
     };
-
-
-    save(db);
-
-
-    return db[user];
-
 }
 
-
 /*
-|--------------------------------------------------------------------------
-| Update Multiple Chat Settings
-|--------------------------------------------------------------------------
-*/
-
-function updateChat(
-    user,
-    chat,
-    settings
-) {
-
-    const db =
-        load();
-
-
-    if (!db[user]) {
-
-        db[user] =
-            createBotSettings();
-
+ * Every deployment must use its deploymentId as the key.
+ */
+function get(deploymentId) {
+    if (
+        typeof deploymentId !== "string" ||
+        !deploymentId.trim()
+    ) {
+        throw new Error(
+            "A valid deploymentId is required for automation settings."
+        );
     }
 
+    const db = load();
+    const previous = db[deploymentId];
+    const normalized = normalizeSettings(previous);
 
     if (
-        !db[user].chats
+        !previous ||
+        JSON.stringify(previous) !== JSON.stringify(normalized)
     ) {
-
-        db[user].chats = {};
-
+        db[deploymentId] = normalized;
+        save(db);
     }
 
+    return db[deploymentId];
+}
+
+function set(deploymentId, key, value) {
+    if (
+        typeof deploymentId !== "string" ||
+        !deploymentId.trim()
+    ) {
+        throw new Error(
+            "A valid deploymentId is required for automation settings."
+        );
+    }
 
     if (
-        !db[user].chats[chat]
+        typeof key !== "string" ||
+        !key.trim() ||
+        key === "chats"
     ) {
-
-        db[user].chats[chat] = {};
-
+        throw new Error(
+            "A valid global setting key is required."
+        );
     }
 
+    const db = load();
 
-    db[user].chats[chat] = {
+    db[deploymentId] = normalizeSettings(
+        db[deploymentId]
+    );
 
-        ...db[user].chats[chat],
-
-        ...settings
-
-    };
-
+    db[deploymentId][key] = value;
 
     save(db);
 
+    return db[deploymentId];
+}
+
+function getValue(deploymentId, key) {
+    return get(deploymentId)[key];
+}
+
+function getChat(deploymentId, chat) {
+    const settings = get(deploymentId);
+
+    if (!settings.chats[chat]) {
+        settings.chats[chat] = {};
+        const db = load();
+        db[deploymentId] = settings;
+        save(db);
+    }
 
     return {
-
         ...DEFAULT_SETTINGS,
-
-        ...db[user].chats[chat]
-
+        ...settings.chats[chat]
     };
-
 }
 
+function setChat(deploymentId, chat, key, value) {
+    if (
+        typeof deploymentId !== "string" ||
+        !deploymentId.trim()
+    ) {
+        throw new Error(
+            "A valid deploymentId is required for chat settings."
+        );
+    }
 
-/*
-|--------------------------------------------------------------------------
-| Export
-|--------------------------------------------------------------------------
-*/
+    const db = load();
+
+    db[deploymentId] = normalizeSettings(
+        db[deploymentId]
+    );
+
+    if (!db[deploymentId].chats[chat]) {
+        db[deploymentId].chats[chat] = {};
+    }
+
+    db[deploymentId].chats[chat][key] = value;
+
+    save(db);
+
+    return {
+        ...DEFAULT_SETTINGS,
+        ...db[deploymentId].chats[chat]
+    };
+}
+
+function update(deploymentId, settings) {
+    if (
+        typeof deploymentId !== "string" ||
+        !deploymentId.trim()
+    ) {
+        throw new Error(
+            "A valid deploymentId is required for automation settings."
+        );
+    }
+
+    const db = load();
+
+    const current = normalizeSettings(
+        db[deploymentId]
+    );
+
+    const updates = {
+        ...(settings || {})
+    };
+
+    // Chat settings are managed separately.
+    delete updates.chats;
+
+    db[deploymentId] = {
+        ...current,
+        ...updates,
+        chats: current.chats
+    };
+
+    save(db);
+
+    return db[deploymentId];
+}
+
+function updateChat(deploymentId, chat, settings) {
+    if (
+        typeof deploymentId !== "string" ||
+        !deploymentId.trim()
+    ) {
+        throw new Error(
+            "A valid deploymentId is required for chat settings."
+        );
+    }
+
+    const db = load();
+
+    db[deploymentId] = normalizeSettings(
+        db[deploymentId]
+    );
+
+    const previous =
+        db[deploymentId].chats[chat] || {};
+
+    db[deploymentId].chats[chat] = {
+        ...previous,
+        ...(settings || {})
+    };
+
+    save(db);
+
+    return {
+        ...DEFAULT_SETTINGS,
+        ...db[deploymentId].chats[chat]
+    };
+}
 
 export default {
-
     get,
-
     set,
-
     getValue,
-
     getChat,
-
     setChat,
-
     update,
-
     updateChat
-
 };

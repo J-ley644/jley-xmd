@@ -287,10 +287,7 @@ const sessionPath =
                 |--------------------------------------------------------------------------
                 */
 
-                const botIdentity =
-                    socket.deploymentId ||
-                    socket.user?.lid ||
-                    socket.user?.id;
+                const botIdentity = socket.deploymentId || null;
 
 
                 if (!botIdentity) {
@@ -1225,7 +1222,12 @@ await handleCommand(
 
 const prefix = socket.commandPrefix || config.prefix || ".";
 const trimmedText = String(text || "").trim();
-const deploymentId = String(socket.deploymentId || "main");
+const deploymentId = socket.deploymentId;
+
+if (!deploymentId) {
+    logger.error("[NEXA] Missing deployment ID.");
+    return;
+}
 
 const isNonChat =
     !chat ||

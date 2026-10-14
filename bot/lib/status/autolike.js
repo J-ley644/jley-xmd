@@ -1,259 +1,153 @@
+
 import automationStore from "../../system/automationStore.js";
 import { isStatus } from "./helpers.js";
 
 const REACT_EMOJIS = [
-    "❤️",
-    "🔥",
-    "😍",
-    "😂",
-    "👍",
-    "👏",
-    "🤩",
-    "🥰",
-    "💯",
-    "✨"
+    "❤️", "🔥", "😍", "😂", "👍",
+    "👏", "🤩", "🥰", "💯", "✨"
 ];
 
-/*
- * Resolve the phone JID that WhatsApp expects
- * for status reactions.
- *
- * LID status participants must NOT be placed
- * inside statusJidList.
- */
-function resolvePhoneJid(key) {
+function isPhoneJid(jid) {
+    return typeof jid === "string" &&
+        jid.includes("@s.whatsapp.net");
+}
 
-    /*
-     * Best source on modern Baileys:
-     * participantPn = real phone JID.
-     */
-    if (
-        key?.participantPn &&
-        key.participantPn.includes(
-            "@s.whatsapp.net"
-        )
-    ) {
+function getBotPhone(socket) {
+    const botJid = socket?.user?.id || "";
+    return botJid ? botJid.replace(/:\d+@/, "@") : null;
+}
 
-        return key.participantPn;
+async function resolvePhoneJid(socket, key, message) {
+    const candidates = [
+        key?.participantPn,
+        key?.participant,
+        key?.senderPn,
+        message?.participantPn,
+        message?.senderPn
+    ];
 
+    for (const jid of candidates) {
+        if (isPhoneJid(jid)) return jid;
     }
 
-    /*
-     * Normal non-LID status.
-     */
-    if (
-        key?.participant &&
-        key.participant.includes(
-            "@s.whatsapp.net"
-        )
-    ) {
+    const lid = [
+        key?.participant,
+        message?.participant
+    ].find(jid =>
+        typeof jid === "string" &&
+        jid.includes("@lid")
+    );
 
-        return key.participant;
+    if (lid) {
+        try {
+            const mapped =
+                await socket?.signalRepository?.lidMapping?.getPNForLID?.(lid);
 
-    }
+            if (isPhoneJid(mapped)) return mapped;
+        } catch (error) {
+            console.log(
+                "[AUTOLIKE] LID lookup failed:",
+                error?.message || error
+            );
+        }
 
-    /*
-     * Some message versions may expose
-     * senderPn instead.
-     */
-    if (
-        key?.senderPn &&
-        key.senderPn.includes(
-            "@s.whatsapp.net"
-        )
-    ) {
+        const mapping = globalThis.lidJidMap;
+        const legacy = mapping
+            ? (
+                typeof mapping.get === "function"
+                    ? mapping.get(lid)
+                    : mapping[lid]
+            )
+            : null;
 
-        return key.senderPn;
-
+        if (isPhoneJid(legacy)) return legacy;
     }
 
     return null;
 }
 
-
-/*
- * Convert the bot's device JID:
- *
- * 254700000000:12@s.whatsapp.net
- *
- * into:
- *
- * 254700000000@s.whatsapp.net
- */
-function getBotPhone(socket) {
-
-    const botJid =
-        socket?.user?.id ||
-        "";
-
-    if (!botJid) {
-        return null;
-    }
-
-    return botJid.replace(
-        /:\d+@/,
-        "@"
-    );
-
-}
-
-
-async function handleAutoLike(
-    socket,
-    message
-) {
-
+async function handleAutoLike(socket, message) {
     try {
+        if (!isStatus(message)) return;
 
-        if (!isStatus(message)) {
-            return;
-        }
-
-        const key =
-            message?.key;
+        const key = message?.key;
 
         if (!key?.id) {
-
-            console.log(
-                "[AUTOLIKE] Status has no message ID."
-            );
-
+            console.log("[AUTOLIKE] Status has no message ID.");
             return;
-
         }
 
+        // Must match the key used by the automation commands.
         const botIdentity =
-            socket?.user?.lid ||
-            socket?.user?.id ||
+            socket?.deploymentId ||
             null;
 
         if (!botIdentity) {
-
-            console.log(
-                "[AUTOLIKE] Unable to identify bot."
-            );
-
-            return;
-
-        }
-
-        const settings =
-            automationStore.get(
-                botIdentity
-            );
-
-        if (!settings?.autolike) {
+            console.log("[AUTOLIKE] Missing deployment ID.");
             return;
         }
 
-        /*
-         * Original status key MUST be preserved.
-         */
+        const settings = automationStore.get(botIdentity);
+
+        if (!settings?.autolike) return;
+
         const participant =
             key?.participant ||
             message?.participant ||
+            key?.participantPn ||
             null;
 
         if (!participant) {
-
-            console.log(
-                "[AUTOLIKE] No status participant."
-            );
-
+            console.log("[AUTOLIKE] No status participant.");
             return;
-
         }
 
-        /*
-         * Resolve the sender to their PHONE JID.
-         *
-         * This is the critical LID fix.
-         */
-        const phoneJid =
-            resolvePhoneJid(key);
+        const phoneJid = await resolvePhoneJid(
+            socket,
+            key,
+            message
+        );
 
-        const botPhone =
-            getBotPhone(socket);
+        const botPhone = getBotPhone(socket);
 
-        /*
-         * WhatsApp expects phone JIDs here.
-         *
-         * Never intentionally put @lid into
-         * statusJidList.
-         */
         const statusJidList = [
             phoneJid,
             botPhone
-        ].filter(
-            jid =>
-                jid &&
-                jid.includes(
-                    "@s.whatsapp.net"
-                )
-        );
+        ].filter(isPhoneJid);
 
-        if (
-            statusJidList.length === 0
-        ) {
-
+        if (statusJidList.length === 0) {
             console.log(
-                "[AUTOLIKE] ❌ No phone JID available for status reaction.",
+                "[AUTOLIKE] No phone JID available for reaction.",
                 {
                     participant,
-                    participantPn:
-                        key?.participantPn
+                    participantPn: key?.participantPn
                 }
             );
-
             return;
-
         }
 
         const emoji =
             settings.autolikeEmoji ||
             REACT_EMOJIS[
-                Math.floor(
-                    Math.random() *
-                    REACT_EMOJIS.length
-                )
+                Math.floor(Math.random() * REACT_EMOJIS.length)
             ];
 
-        console.log(
-            "[AUTOLIKE] Reacting:",
-            {
-                statusId:
-                    key.id,
+        console.log("[AUTOLIKE] Reacting:", {
+            statusId: key.id,
+            participant,
+            phoneJid,
+            botPhone,
+            statusJidList,
+            emoji
+        });
 
-                participant,
-
-                phoneJid,
-
-                botPhone,
-
-                statusJidList,
-
-                emoji
-            }
-        );
-
-        /*
-         * ALSON's working technique:
-         *
-         * - destination = status@broadcast
-         * - reaction key = ORIGINAL status key
-         * - statusJidList = PHONE JIDs
-         */
         try {
-
             await socket.sendMessage(
                 "status@broadcast",
                 {
                     react: {
-                        text:
-                            emoji,
-
-                        key:
-                            key
+                        text: emoji,
+                        key
                     }
                 },
                 {
@@ -261,67 +155,42 @@ async function handleAutoLike(
                 }
             );
 
-            console.log(
-                "[AUTOLIKE] ✅ Status reaction sent."
-            );
-
+            console.log("[AUTOLIKE] Status reaction sent.");
             return;
-
         } catch (error) {
-
             console.log(
                 "[AUTOLIKE] Primary reaction failed:",
-                error?.message ||
-                error
+                error?.message || error
             );
-
         }
 
-        /*
-         * Fallback for Baileys builds that behave
-         * differently with statusJidList placement.
-         */
         try {
-
             await socket.sendMessage(
                 "status@broadcast",
                 {
                     react: {
-                        text:
-                            emoji,
-
-                        key:
-                            key
+                        text: emoji,
+                        key
                     },
-
                     statusJidList
                 }
             );
 
             console.log(
-                "[AUTOLIKE] ✅ Status reaction sent via fallback."
+                "[AUTOLIKE] Status reaction sent via fallback."
             );
-
         } catch (error) {
-
             console.error(
-                "[AUTOLIKE] ❌ Reaction failed:",
-                error?.message ||
-                error
+                "[AUTOLIKE] Reaction failed:",
+                error?.message || error
             );
-
         }
-
     } catch (error) {
-
         console.error(
             "[AUTOLIKE] Handler error:",
-            error?.message ||
-            error
+            error?.message || error
         );
-
     }
-
 }
 
 export default handleAutoLike;
