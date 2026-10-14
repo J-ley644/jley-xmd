@@ -1216,9 +1216,10 @@ await handleCommand(
 );
 
 
+
 /*
 |--------------------------------------------------------------------------
-| NEXA AI Assistant
+| NEXA AI Assistant — TEMPORARY DIAGNOSTIC
 |--------------------------------------------------------------------------
 */
 
@@ -1232,99 +1233,94 @@ const isNonChat =
     chat.endsWith("@newsletter") ||
     chat.endsWith("@broadcast");
 
-if (
-    message.__nexaNotify &&
-    !isBot &&
-    !isNonChat &&
-    trimmedText &&
-    !trimmedText.startsWith(prefix)
-) {
-    const settings = nexaStore.getSettings(
-        deploymentId,
-        chat
-    );
+if (!trimmedText || isBot || isNonChat) {
+    // Ignore empty messages, bot messages, and non-chat destinations.
+} else if (trimmedText.startsWith(prefix)) {
+    // Prefixed commands are handled by the command engine.
+} else {
+    try {
+        await socket.sendMessage(chat, {
+            text: "🔎 NEXA diagnostic: ordinary message received."
+        });
 
-    if (settings.enabled) {
-        const cooldownKey = `${deploymentId}:${chat}`;
-        const now = Date.now();
-        const lastReply = nexaLastReply.get(cooldownKey) || 0;
-
-        if (
-            nexaInFlight.has(cooldownKey) ||
-            now - lastReply < NEXA_COOLDOWN_MS
-        ) {
-            return;
-        }
-
-        nexaInFlight.add(cooldownKey);
-
-        try {
-            const history = nexaStore.getHistory(
+        if (!message.__nexaNotify) {
+            await socket.sendMessage(chat, {
+                text: `Diagnostic: message type is ${String(message.__nexaNotify)}.`
+            });
+        } else {
+            const settings = nexaStore.getSettings(
                 deploymentId,
                 chat
             );
 
-            const reply = await nexaAI.generateReply(
-                trimmedText,
-                history
-            );
-
-            if (reply) {
-                await socket.sendMessage(
-                    chat,
-                    { text: reply },
-                    { quoted: message }
-                );
-
-                nexaStore.addExchange(
-                    deploymentId,
-                    chat,
-                    trimmedText,
-                    reply
-                );
-            }
-        } catch (error) {
-            const reason = String(
-                error?.message || error || "Unknown error"
-            ).slice(0, 250);
-
-            try {
+            if (!settings.enabled) {
                 await socket.sendMessage(chat, {
-                    text: `⚠️ NEXA couldn't generate a reply.\nReason: ${reason}`
+                    text: `Diagnostic: NEXA is disabled. Deployment: ${deploymentId}.`
                 });
-            } catch {
-                // WhatsApp delivery itself failed.
-            }
+            } else {
+                await socket.sendMessage(chat, {
+                    text: "Diagnostic: NEXA enabled. Testing Gemini..."
+                });
 
-            logger.error(`[NEXA] Reply failed: ${reason}`);
-        } finally {
-            nexaInFlight.delete(cooldownKey);
-            nexaLastReply.set(cooldownKey, Date.now());
+                const history = nexaStore.getHistory(
+                    deploymentId,
+                    chat
+                );
+
+                const reply = await nexaAI.generateReply(
+                    trimmedText,
+                    history
+                );
+
+                if (!reply) {
+                    await socket.sendMessage(chat, {
+                        text: "Diagnostic: Gemini returned an empty reply."
+                    });
+                } else {
+                    await socket.sendMessage(chat, {
+                        text: `✅ Gemini replied successfully:\n\n${reply}`
+                    });
+
+                    nexaStore.addExchange(
+                        deploymentId,
+                        chat,
+                        trimmedText,
+                        reply
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        const reason = String(
+            error?.stack || error?.message || error || "Unknown error"
+        ).slice(0, 500);
+
+        logger.error(`[NEXA DIAGNOSTIC] ${reason}`);
+
+        try {
+            await socket.sendMessage(chat, {
+                text: `⚠️ NEXA diagnostic failed:\n${reason}`
+            });
+        } catch (sendError) {
+            logger.error(
+                `[NEXA DIAGNOSTIC DELIVERY FAILED] ${
+                    sendError?.message || sendError
+                }`
+            );
         }
     }
 }
 
+    } catch (error) {
+        const reason = String(
+            error?.stack || error?.message || error || "Unknown error"
+        );
 
-
-
-}catch(error){
-
-
-logger.error(
-    error,
-    "Message engine error"
-);
-
-
-
+        logger.error(
+            reason,
+            "Message engine error"
+        );
+    }
 }
-
-
-
-}
-
-
-
-
 
 export default startWhatsApp;
