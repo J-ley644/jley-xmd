@@ -16,14 +16,14 @@ async function resolveParticipant(socket, key, message) {
         message?.participant
     ];
 
-    // Prefer a real phone JID when WhatsApp provides one.
+    // Prefer a real phone JID when available.
     for (const jid of candidates) {
         if (isPhoneJid(jid)) {
             return jid;
         }
     }
 
-    // If only a LID is available, try Baileys' LID mapping.
+    // Resolve LID to phone JID when possible.
     const lid = candidates.find(
         jid =>
             typeof jid === "string" &&
@@ -47,7 +47,7 @@ async function resolveParticipant(socket, key, message) {
             );
         }
 
-        // Support an existing application-level LID map.
+        // Support the existing application-level LID map.
         const mapping = globalThis.lidJidMap;
 
         const legacy = mapping
@@ -60,7 +60,7 @@ async function resolveParticipant(socket, key, message) {
             return legacy;
         }
 
-        // Preserve the original participant as a last resort.
+        // Keep the original LID as a last resort.
         return lid;
     }
 
@@ -80,13 +80,11 @@ async function handleAutoView(socket, message) {
 
         if (key.remoteJid !== "status@broadcast") return;
 
-        const botIdentity =
-            socket?.user?.lid ||
-            socket?.user?.id ||
-            null;
+        // Must match the key used by automation commands.
+        const botIdentity = socket?.deploymentId || null;
 
         if (!botIdentity) {
-            console.log("[AUTOVIEW] Unable to identify bot.");
+            console.log("[AUTOVIEW] Missing deployment ID.");
             return;
         }
 

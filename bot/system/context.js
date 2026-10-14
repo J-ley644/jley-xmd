@@ -9,21 +9,12 @@ import runtime from "./runtime.js";
 import automationStore from "./automationStore.js";
 import { downloadMediaMessage } from "@whiskeysockets/baileys";
 
-import {
-    jidMatch
-} from "../lib/jid.js";
+import { jidMatch } from "../lib/jid.js";
+import { resolvePhoneNumber } from "./identity.js";
 
-import {
-    resolvePhoneNumber
-} from "./identity.js";
-
-
-const channelMetadataPromises =
-    new WeakMap();
-
+const channelMetadataPromises = new WeakMap();
 
 async function getChannelMetadata(client) {
-
     if (
         !config.channel?.inviteCode ||
         !client?.newsletterMetadata
@@ -32,46 +23,29 @@ async function getChannelMetadata(client) {
     }
 
     if (!channelMetadataPromises.has(client)) {
-
-        const promise =
-            client.newsletterMetadata(
+        const promise = client
+            .newsletterMetadata(
                 "invite",
                 config.channel.inviteCode
             )
             .catch(error => {
-
                 console.error(
                     "[CHANNEL] Failed to load channel metadata:",
                     error
                 );
 
                 channelMetadataPromises.delete(client);
-
                 return null;
-
             });
 
-        channelMetadataPromises.set(
-            client,
-            promise
-        );
-
+        channelMetadataPromises.set(client, promise);
     }
 
     return channelMetadataPromises.get(client);
-
 }
 
-
-async function addChannelPreview(
-    client,
-    content = {}
-) {
-
-    if (
-        !content ||
-        typeof content !== "object"
-    ) {
+async function addChannelPreview(client, content = {}) {
+    if (!content || typeof content !== "object") {
         return content;
     }
 
@@ -79,466 +53,262 @@ async function addChannelPreview(
         typeof content.text === "string" ||
         typeof content.caption === "string";
 
-    if (!hasText) {
-        return content;
-    }
+    if (!hasText) return content;
 
     try {
-
-        const channel =
-            await getChannelMetadata(client);
+        const channel = await getChannelMetadata(client);
 
         if (channel?.id) {
-
             return {
-
                 ...content,
-
                 contextInfo: {
-
                     ...(content.contextInfo || {}),
-
                     forwardingScore: 1,
-
                     isForwarded: true,
-
                     forwardedNewsletterMessageInfo: {
-
-                        newsletterJid:
-                            channel.id,
-
+                        newsletterJid: channel.id,
                         serverMessageId: 1,
-
                         newsletterName:
                             channel.name ||
                             config.channel?.name ||
                             "JLEY-XMD"
-
                     }
-
                 }
-
             };
-
         }
-
     } catch (error) {
-
         console.error(
             "[CHANNEL] Failed to attach channel preview:",
             error
         );
-
     }
 
     return content;
-
 }
 
-
-async function getGroupInfo(
-    client,
-    chat
-) {
-
-    if (!chat.endsWith("@g.us")) {
-
+async function getGroupInfo(client, chat) {
+    if (!chat?.endsWith("@g.us")) {
         return {
-
             metadata: null,
-
             members: [],
-
             admins: []
-
         };
-
     }
 
-    const metadata =
-        await client.groupMetadata(chat);
+    const metadata = await client.groupMetadata(chat);
+    const members = metadata.participants || [];
 
-    const members =
-        metadata.participants || [];
-
-    const admins =
-        members
-            .filter(
-                member =>
-                    member.admin === "admin" ||
-                    member.admin === "superadmin"
-            )
-            .flatMap(member => [
-                member.id,
-                member.lid
-            ].filter(Boolean));
+    const admins = members
+        .filter(member =>
+            member.admin === "admin" ||
+            member.admin === "superadmin"
+        )
+        .flatMap(member => [
+            member.id,
+            member.lid
+        ].filter(Boolean));
 
     return {
-
         metadata,
-
         members,
-
         admins
-
     };
-
 }
-
 
 function getText(message) {
-
     return (
-
         message.message?.conversation ||
-
         message.message?.extendedTextMessage?.text ||
-
         message.message?.imageMessage?.caption ||
-
         message.message?.videoMessage?.caption ||
-
         ""
-
     );
-
 }
 
-
-/**
- * Normalize View Once messages.
- *
- * WhatsApp can represent View Once media in
- * several different structures depending on
- * message/version:
- *
- * - viewOnceMessage
- * - viewOnceMessageV2
- * - viewOnceMessageV2Extension
- * - imageMessage.viewOnce
- * - videoMessage.viewOnce
- */
 function unwrapViewOnceMessage(message) {
-
-    if (!message) {
-        return null;
-    }
+    if (!message) return null;
 
     return (
-
         message?.viewOnceMessage?.message ||
-
         message?.viewOnceMessageV2?.message ||
-
         message?.viewOnceMessageV2Extension?.message ||
-
         message
-
     );
-
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Get Bot Prefix
-|--------------------------------------------------------------------------
-|
-| Prefixes are stored per deployment.
-|
-| Existing deployments automatically receive
-| "." through automationStore's default settings.
-|
-| config.prefix remains the final fallback.
-|
-*/
 
 function getBotPrefix(client) {
-
     if (
         typeof client?.commandPrefix === "string" &&
         client.commandPrefix.trim()
     ) {
-
         return client.commandPrefix.trim();
-
     }
 
-    const deploymentId =
-        client?.deploymentId;
+    const deploymentId = client?.deploymentId;
 
     if (deploymentId) {
-
-        const savedPrefix =
-            automationStore.getValue(
-                deploymentId,
-                "prefix"
-            );
+        const savedPrefix = automationStore.getValue(
+            deploymentId,
+            "prefix"
+        );
 
         if (
             typeof savedPrefix === "string" &&
             savedPrefix.trim()
         ) {
-
-            const prefix =
-                savedPrefix.trim();
-
-            client.commandPrefix =
-                prefix;
-
+            const prefix = savedPrefix.trim();
+            client.commandPrefix = prefix;
             return prefix;
-
         }
-
     }
 
-    const prefix =
-        config.prefix ||
-        ".";
-
-    client.commandPrefix =
-        prefix;
+    const prefix = config.prefix || ".";
+    client.commandPrefix = prefix;
 
     return prefix;
-
 }
 
-
-export default async function createContext(
-    client,
-    message
-) {
-
-    const text =
-        getText(message);
-
-
+export default async function createContext(client, message) {
     /*
-    |--------------------------------------------------------------------------
-    | Deployment Prefix
-    |--------------------------------------------------------------------------
-    */
-
-    const prefix =
-        getBotPrefix(
-            client
-        );
-
-
-    const args =
-        text
-            .slice(prefix.length)
-            .trim()
-            .split(/\s+/);
-
-
-    const command =
-        args.shift()?.toLowerCase() || "";
-
-
-    /*
-     * WhatsApp can identify the sender using either
-     * the normal participant JID or an alternate/LID JID.
+     * A real deployment ID is required so that settings
+     * remain isolated between deployed bot instances.
      */
+    const deploymentId =
+        typeof client?.deploymentId === "string" &&
+        client.deploymentId.trim()
+            ? client.deploymentId.trim()
+            : null;
+
+    if (!deploymentId) {
+        throw new Error(
+            "[CONTEXT] Missing deploymentId. " +
+            "Ensure the deployment ID is assigned to the WhatsApp socket."
+        );
+    }
+
+    const text = getText(message);
+    const prefix = getBotPrefix(client);
+
+    const args = text
+        .slice(prefix.length)
+        .trim()
+        .split(/\s+/);
+
+    const command = args.shift()?.toLowerCase() || "";
 
     const isGroup =
         message.key?.remoteJid?.endsWith("@g.us");
 
-
-    const sender =
-        message.key?.fromMe
+    const sender = message.key?.fromMe
+        ? (
+            client.user?.id ||
+            client.user?.lid ||
+            message.key?.remoteJid
+        )
+        : isGroup
             ? (
-                client.user?.id ||
-                client.user?.lid ||
-                message.key?.remoteJid
-            )
-            : isGroup
-                ? (
-                    message.key?.participant ||
-                    message.key?.participantAlt ||
-                    message.key?.remoteJid
-                )
-                : (
-                    message.key?.remoteJid ||
-                    message.key?.remoteJidAlt ||
-                    message.key?.participant ||
-                    message.key?.participantAlt
-                );
-
-
-    const senderAlt =
-        isGroup
-            ? (
-                message.key?.participantAlt ||
                 message.key?.participant ||
+                message.key?.participantAlt ||
                 message.key?.remoteJid
             )
             : (
-                message.key?.remoteJidAlt ||
                 message.key?.remoteJid ||
+                message.key?.remoteJidAlt ||
                 message.key?.participant ||
-                message.key?.participantAlt ||
-                ""
+                message.key?.participantAlt
             );
 
+    const senderAlt = isGroup
+        ? (
+            message.key?.participantAlt ||
+            message.key?.participant ||
+            message.key?.remoteJid
+        )
+        : (
+            message.key?.remoteJidAlt ||
+            message.key?.remoteJid ||
+            message.key?.participant ||
+            message.key?.participantAlt ||
+            ""
+        );
 
-    const chat =
-        message.key.remoteJid;
-
+    const chat = message.key.remoteJid;
 
     async function resolveSenderPhoneNumber(
         client,
         sender,
         senderAlt
     ) {
+        const direct = resolvePhoneNumber({
+            sender,
+            senderAlt,
+            client
+        });
 
-        const direct =
-            resolvePhoneNumber({
-                sender,
-                senderAlt,
-                client
-            });
-
-        if (direct) {
-            return direct;
-        }
+        if (direct) return direct;
 
         const identities = [
             sender,
             senderAlt
         ].filter(Boolean);
 
-        const lid =
-            identities.find(identity =>
-                String(identity).endsWith("@lid")
-            );
+        const lid = identities.find(identity =>
+            String(identity).endsWith("@lid")
+        );
 
-        if (!lid) {
-            return "";
-        }
+        if (!lid) return "";
 
         try {
+            const mapping =
+                client?.signalRepository?.lidMapping;
 
-            const getPNForLID =
-                client
-                    ?.signalRepository
-                    ?.lidMapping
-                    ?.getPNForLID;
+            const getPNForLID = mapping?.getPNForLID;
 
-            if (
-                typeof getPNForLID !== "function"
-            ) {
+            if (typeof getPNForLID !== "function") {
                 return "";
             }
 
-            const pn =
-                await getPNForLID.call(
-                    client.signalRepository.lidMapping,
-                    lid
-                );
+            const pn = await getPNForLID.call(
+                mapping,
+                lid
+            );
 
             return pn
                 ? String(pn).replace(/\D/g, "")
                 : "";
-
         } catch (error) {
-
             console.error(
                 "[IDENTITY] Failed to resolve LID to phone:",
-                error.message
+                error?.message || error
             );
 
             return "";
-
         }
-
     }
 
-
-    // Identity
-
-    const realNumber =
-        await resolveSenderPhoneNumber(
-            client,
-            sender,
-            senderAlt
-        );
-
-
-    console.log({
+    const realNumber = await resolveSenderPhoneNumber(
+        client,
         sender,
-        senderAlt,
-        realNumber
-    });
+        senderAlt
+    );
 
+    const pushName = message.pushName || "Unknown";
+    const chatType = isGroup ? "group" : "private";
 
-    const pushName =
-        message.pushName ||
-        "Unknown";
+    const groupInfo = await getGroupInfo(client, chat);
 
+    const isAdmin = groupInfo.admins.some(admin =>
+        jidMatch(admin, sender) ||
+        jidMatch(admin, senderAlt)
+    );
 
-    // Chat
+    const botPhoneJid = client.user?.id || "";
+    const botLid = client.user?.lid || "";
 
-    const chatType =
-        isGroup
-            ? "group"
-            : "private";
-
-
-    // Group foundation
-
-    const groupInfo =
-        await getGroupInfo(
-            client,
-            chat
-        );
-
-
-    /*
-     * Check both sender identities.
-     *
-     * This preserves LID/PN-compatible admin detection.
-     */
-
-    const isAdmin =
-        groupInfo.admins.some(
-            admin =>
-                jidMatch(
-                    admin,
-                    sender
-                )
-                ||
-                jidMatch(
-                    admin,
-                    senderAlt
-                )
-        );
-
-
-    const botPhoneJid =
-        client.user?.id || "";
-
-
-    const botLid =
-        client.user?.lid || "";
-
-
-    const isBotAdmin =
-        groupInfo.admins.some(
-            admin =>
-                jidMatch(
-                    admin,
-                    botPhoneJid
-                )
-                ||
-                jidMatch(
-                    admin,
-                    botLid
-                )
-        );
-
-
-    // Quoted message
+    const isBotAdmin = groupInfo.admins.some(admin =>
+        jidMatch(admin, botPhoneJid) ||
+        jidMatch(admin, botLid)
+    );
 
     const quoted =
         message.message
@@ -547,316 +317,147 @@ export default async function createContext(
             ?.quotedMessage ||
         null;
 
-
-    const isReply =
-        Boolean(quoted);
-
+    const isReply = Boolean(quoted);
 
     const target =
-
-        // Reply target
         message.message
             ?.extendedTextMessage
             ?.contextInfo
             ?.participant ||
-
-        // Mention target
         message.message
             ?.extendedTextMessage
             ?.contextInfo
             ?.mentionedJid?.[0] ||
-
         null;
 
-
-    /*
-     * Media normalization.
-     *
-     * For normal media, mediaMessage === quoted.
-     *
-     * For View Once media, mediaMessage becomes
-     * the inner message containing imageMessage/videoMessage.
-     */
-
-    const mediaMessage =
-        unwrapViewOnceMessage(
-            quoted
-        );
-
+    const mediaMessage = unwrapViewOnceMessage(quoted);
 
     const media =
         mediaMessage?.imageMessage ||
-
         mediaMessage?.videoMessage ||
-
         mediaMessage?.audioMessage ||
-
         mediaMessage?.stickerMessage ||
-
         mediaMessage?.documentMessage ||
-
         null;
 
-
-    const isViewOnce =
-        Boolean(
-
-            quoted?.viewOnceMessage ||
-
-            quoted?.viewOnceMessageV2 ||
-
-            quoted?.viewOnceMessageV2Extension ||
-
-            media?.viewOnce === true
-
-        );
-
+    const isViewOnce = Boolean(
+        quoted?.viewOnceMessage ||
+        quoted?.viewOnceMessageV2 ||
+        quoted?.viewOnceMessageV2Extension ||
+        media?.viewOnce === true
+    );
 
     const ctx = {
-
         // Core
-
         client,
-
-        deploymentId: String(client?.deploymentId || "main"),
-
+        deploymentId,
         message,
-
         sender,
-
         senderAlt,
-
         chat,
-
         text,
-
         args,
-
         command,
 
-
         // User
-
-        number:
-            realNumber,
-
+        number: realNumber,
         pushName,
-
         target,
 
-
         // Chat
-
         isGroup,
-
         chatType,
 
-
         // Group
-
-        groupMetadata:
-            groupInfo.metadata,
-
-        members:
-            groupInfo.members,
-
-        admins:
-            groupInfo.admins,
-
+        groupMetadata: groupInfo.metadata,
+        members: groupInfo.members,
+        admins: groupInfo.admins,
         isAdmin,
-
         isBotAdmin,
 
-
         // Runtime
-
         runtime,
-
         config,
-
-        version:
-            runtime.version(),
-
-        botName:
-            runtime.botName(),
-
+        version: runtime.version(),
+        botName: runtime.botName(),
         prefix,
 
-
         // Media
-
         quoted,
-
         media,
-
         mediaMessage,
-
         isReply,
-
         isViewOnce,
-
-        isImage:
-            Boolean(
-                mediaMessage?.imageMessage
-            ),
-
-        isVideo:
-            Boolean(
-                mediaMessage?.videoMessage
-            ),
-
-        isAudio:
-            Boolean(
-                mediaMessage?.audioMessage
-            ),
-
-        isSticker:
-            Boolean(
-                mediaMessage?.stickerMessage
-            ),
-
-        isDocument:
-            Boolean(
-                mediaMessage?.documentMessage
-            ),
-
+        isImage: Boolean(mediaMessage?.imageMessage),
+        isVideo: Boolean(mediaMessage?.videoMessage),
+        isAudio: Boolean(mediaMessage?.audioMessage),
+        isSticker: Boolean(mediaMessage?.stickerMessage),
+        isDocument: Boolean(mediaMessage?.documentMessage),
 
         // Helpers
-
-        async reply(
-            text,
-            options = {}
-        ) {
-
+        async reply(text, options = {}) {
             const replyOptions = {
-
                 text,
-
                 ...options
-
             };
 
-            const finalOptions =
-                await addChannelPreview(
-                    client,
-                    replyOptions
-                );
-
-            return client.sendMessage(
-
-                chat,
-
-                finalOptions,
-
-                {
-                    quoted: message
-                }
-
+            const finalOptions = await addChannelPreview(
+                client,
+                replyOptions
             );
 
+            return client.sendMessage(
+                chat,
+                finalOptions,
+                { quoted: message }
+            );
         },
-
 
         async send(content) {
-
-            const finalContent =
-                await addChannelPreview(
-                    client,
-                    content
-                );
-
-            return client.sendMessage(
-
-                chat,
-
-                finalContent,
-
-                {
-                    quoted: message
-                }
-
+            const finalContent = await addChannelPreview(
+                client,
+                content
             );
 
+            return client.sendMessage(
+                chat,
+                finalContent,
+                { quoted: message }
+            );
         },
-
 
         async react(emoji) {
-
-            return client.sendMessage(
-
-                chat,
-
-                {
-
-                    react: {
-
-                        text: emoji,
-
-                        key: message.key
-
-                    }
-
+            return client.sendMessage(chat, {
+                react: {
+                    text: emoji,
+                    key: message.key
                 }
-
-            );
-
+            });
         },
 
-
         async download() {
-
-            if (
-                !isReply ||
-                !media
-            ) {
-
+            if (!isReply || !media) {
                 throw new Error(
                     "Reply to a media message."
                 );
-
             }
 
-            /*
-             * Use the normalized message so
-             * View Once wrappers can also be
-             * downloaded correctly.
-             */
-
             return downloadMediaMessage(
-
-                {
-                    message: mediaMessage
-                },
-
+                { message: mediaMessage },
                 "buffer",
-
                 {},
-
                 {}
-
             );
-
         },
-
 
         async downloadBuffer() {
-
             return this.download();
-
         },
 
-
         async error(text) {
-
-            return this.reply(
-                `❌ ${text}`
-            );
-
+            return this.reply(`❌ ${text}`);
         }
-
     };
 
-
     return ctx;
-
 }

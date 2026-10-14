@@ -94,17 +94,27 @@ model Deployment {
   owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
+
 model Payment {
-  id            String        @id @default(uuid())
-  amount        Float
-  currency      String        @default("KES")
-  provider      String
-  transactionId String?
-  status        PaymentStatus @default(PENDING)
-  userId        String
-  createdAt     DateTime      @default(now())
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String        @id @default(uuid())
+  amount              Float
+  currency            String        @default("KES")
+  provider            String
+  transactionId       String?       @unique
+  checkoutRequestId   String?       @unique
+  merchantRequestId   String?
+  phoneNumber         String?
+  jlAmount            Int?
+  resultCode          String?
+  resultDescription   String?
+  status              PaymentStatus @default(PENDING)
+  userId              String
+  createdAt           DateTime      @default(now())
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
+
 
 model SystemSetting {
   id        String   @id @default(uuid())

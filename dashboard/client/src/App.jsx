@@ -15,6 +15,8 @@ import Deployments from "./pages/Deployments";
 import Admin from "./pages/Admin";
 import AdminApp from "./admin/AdminApp";
 import Wallet from "./pages/Wallet";
+import ProjectCatalog from "./pages/ProjectCatalog";
+
 
 
 function ComingSoon({ title, icon }) {
@@ -72,6 +74,8 @@ function App() {
 
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
+    const [showCatalog, setShowCatalog] = useState(true);
+
 
 
     useEffect(() => {
@@ -469,157 +473,163 @@ function App() {
     /*
      * AUTH SCREEN
      */
-    if (!user) {
+    
+/*
+ * PUBLIC PROJECT CATALOG + AUTH SCREEN
+ */
+if (!user) {
+    if (showCatalog) {
         return (
-            <div className="auth-container">
-
-                <div className="auth-card">
-
-                    <h1>
-                        JLEY-XMD
-                    </h1>
-
-                    <p>
-                        {
-                            mode === "login"
-                                ? "Sign in to continue"
-                                : "Create your account"
-                        }
-                    </p>
-
-
-                    {error && (
-                        <div className="error-box">
-                            {error}
-                        </div>
-                    )}
-
-
-                    {message && (
-                        <div className="success-box">
-                            {message}
-                        </div>
-                    )}
-
-
-                    {mode === "login" ? (
-                        <>
-
-                            <input
-                                placeholder="Email"
-                                value={email}
-                                onChange={e =>
-                                    setEmail(
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={e =>
-                                    setPassword(
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-
-                            <button
-                                onClick={login}
-                                disabled={loading}
-                            >
-                                {
-                                    loading
-                                        ? "Signing in..."
-                                        : "Login"
-                                }
-                            </button>
-
-
-                            <button
-                                className="link-button"
-                                onClick={() => {
-                                    setMode("register");
-                                    setError("");
-                                    setMessage("");
-                                }}
-                            >
-                                Create account
-                            </button>
-
-                        </>
-                    ) : (
-                        <>
-
-                            <input
-                                placeholder="Full Name"
-                                value={name}
-                                onChange={e =>
-                                    setName(
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-
-                            <input
-                                placeholder="Email"
-                                value={email}
-                                onChange={e =>
-                                    setEmail(
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={e =>
-                                    setPassword(
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-
-                            <button
-                                onClick={register}
-                                disabled={loading}
-                            >
-                                {
-                                    loading
-                                        ? "Creating..."
-                                        : "Register"
-                                }
-                            </button>
-
-
-                            <button
-                                className="link-button"
-                                onClick={() => {
-                                    setMode("login");
-                                    setError("");
-                                    setMessage("");
-                                }}
-                            >
-                                Back to login
-                            </button>
-
-                        </>
-                    )}
-
-                </div>
-
-            </div>
+            <ProjectCatalog
+                onLogin={() => {
+                    setMode("login");
+                    setShowCatalog(false);
+                    setError("");
+                    setMessage("");
+                }}
+                onRegister={() => {
+                    setMode("register");
+                    setShowCatalog(false);
+                    setError("");
+                    setMessage("");
+                }}
+                onExplore={() => {
+                    setMode("login");
+                    setShowCatalog(false);
+                    setError("");
+                    setMessage("");
+                }}
+            />
         );
     }
+
+    return (
+        <div className="auth-container">
+            <div className="auth-card">
+                <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => {
+                        setShowCatalog(true);
+                        setError("");
+                        setMessage("");
+                    }}
+                >
+                    ← Back to projects
+                </button>
+
+                <h1>JLEY-XMD</h1>
+
+                <p>
+                    {mode === "login"
+                        ? "Sign in to continue"
+                        : "Create your account"}
+                </p>
+
+                {error && (
+                    <div className="error-box">
+                        {error}
+                    </div>
+                )}
+
+                {message && (
+                    <div className="success-box">
+                        {message}
+                    </div>
+                )}
+
+                {mode === "login" ? (
+                    <>
+                        <input
+                            placeholder="Email"
+                            value={email}
+                            onChange={e =>
+                                setEmail(e.target.value)
+                            }
+                        />
+
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={e =>
+                                setPassword(e.target.value)
+                            }
+                        />
+
+                        <button
+                            onClick={login}
+                            disabled={loading}
+                        >
+                            {loading
+                                ? "Signing in..."
+                                : "Login"}
+                        </button>
+
+                        <button
+                            className="link-button"
+                            onClick={() => {
+                                setMode("register");
+                                setError("");
+                                setMessage("");
+                            }}
+                        >
+                            Create account
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <input
+                            placeholder="Full Name"
+                            value={name}
+                            onChange={e =>
+                                setName(e.target.value)
+                            }
+                        />
+
+                        <input
+                            placeholder="Email"
+                            value={email}
+                            onChange={e =>
+                                setEmail(e.target.value)
+                            }
+                        />
+
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={e =>
+                                setPassword(e.target.value)
+                            }
+                        />
+
+                        <button
+                            onClick={register}
+                            disabled={loading}
+                        >
+                            {loading
+                                ? "Creating..."
+                                : "Register"}
+                        </button>
+
+                        <button
+                            className="link-button"
+                            onClick={() => {
+                                setMode("login");
+                                setError("");
+                                setMessage("");
+                            }}
+                        >
+                            Back to login
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 
 
     /*
