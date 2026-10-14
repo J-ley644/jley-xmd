@@ -28,6 +28,7 @@ import {
 import automationStore from "../system/automationStore.js";
 import nexaStore from "../system/nexaStore.js";
 import nexaAI from "../services/nexaAI.js";
+import groupActivityStore from "../system/groupActivityStore.js";
 
 
 
@@ -639,6 +640,40 @@ const sessionPath =
                 continue;
 
             }
+
+            /*
+|--------------------------------------------------------------------------
+| Group Activity Tracker
+|--------------------------------------------------------------------------
+| Count only newly received messages, not history sync events.
+|--------------------------------------------------------------------------
+*/
+
+if (
+    type === "notify" &&
+    message.key?.remoteJid?.endsWith("@g.us") &&
+    !message.key?.fromMe
+) {
+    const groupId = message.key.remoteJid;
+
+    const memberId =
+        message.key.participant ||
+        message.key.participantAlt ||
+        message.participantPn ||
+        null;
+
+    if (memberId) {
+        const timestamp = Number(message.messageTimestamp);
+
+        groupActivityStore.recordMessage(
+            socket.deploymentId,
+            groupId,
+            memberId,
+            message.pushName || "Unknown",
+            timestamp > 0 ? timestamp * 1000 : Date.now()
+        );
+    }
+}
 
 
             /*
