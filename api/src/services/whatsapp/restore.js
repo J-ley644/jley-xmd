@@ -2,12 +2,10 @@
 import prisma from "../../config/prisma.js";
 import { createSession } from "./pairing.js";
 
-/*
- * Restore eligible WhatsApp sessions from persistent storage.
- *
- * Only deployments that are RUNNING and have not expired
- * should be restored. Stored credentials alone do not mean
- * a deployment is still active.
+/**
+ * Restore persisted WhatsApp sessions after an API restart.
+ * A stale STOPPED status must not prevent restoring saved
+ * WhatsApp authentication data.
  */
 export async function restoreSessions() {
     const storedSessions = await prisma.whatsAppSession.findMany({
@@ -30,32 +28,13 @@ export async function restoreSessions() {
                     id: deploymentId
                 },
                 select: {
-                    botName: true,
-                    status: true,
-                    expiresAt: true
+                    botName: true
                 }
             });
 
             if (!deployment) {
                 console.log(
                     `Skipping restore: deployment ${deploymentId} no longer exists.`
-                );
-                continue;
-            }
-
-            if (deployment.status !== "RUNNING") {
-                console.log(
-                    `Skipping restore for ${deployment.botName || deploymentId}: status is ${deployment.status}.`
-                );
-                continue;
-            }
-
-            if (
-                deployment.expiresAt &&
-                deployment.expiresAt <= new Date()
-            ) {
-                console.log(
-                    `Skipping restore for ${deployment.botName || deploymentId}: deployment has expired.`
                 );
                 continue;
             }
