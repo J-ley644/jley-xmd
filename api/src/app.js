@@ -14,7 +14,17 @@ import adminRoutes from "./routes/adminRoutes.js";
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+
+const allowedOrigins = [
+    "https://jley-xmd.netlify.app"
+];
+
+app.use(cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+}));
 app.use(express.json());
 app.use(morgan("dev"));
 
