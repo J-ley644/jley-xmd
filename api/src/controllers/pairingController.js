@@ -1,13 +1,10 @@
 import prisma from "../config/prisma.js";
 
 import {
-
     startDeploymentSession,
-
     requestPairingCode,
-
-    getDeploymentStatus
-
+    getDeploymentStatus,
+    stopDeploymentSession
 } from "../services/whatsapp/index.js";
 
 export async function generatePairingCode(req, res) {

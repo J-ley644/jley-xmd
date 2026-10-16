@@ -7,16 +7,17 @@ import {
 } from "./socket.js";
 
 import {
-    getAuthState,
-    deleteSessionFolder
-} from "./sessionStore.js";
-
-import {
     hasLock,
     getLock,
     setLock,
     clearLock
 } from "./manager.js";
+
+import {
+    getAuthState,
+    deleteSessionFolder,
+    deletePersistedSession
+} from "./sessionStore.js";
 
 
 const sleep = ms =>
@@ -98,61 +99,39 @@ export async function createSession(
      * create a fresh authentication session.
      */
     if (phoneNumber) {
-
-        const existing =
-            getSocket(key);
-
+        const existing = getSocket(key);
 
         if (existing) {
-
             try {
-
-                await destroySocket(
-                    key,
-                    true
-                );
-
+                await destroySocket(key, true);
             } catch (error) {
-
                 console.error(
                     "Existing socket cleanup error:",
                     error.message
                 );
-
+                throw error;
             }
-
         }
 
+        // Remove old database credentials before loading a
+        // new authentication state for fresh pairing.
+        await deletePersistedSession(key);
 
-        /*
-         * Remove previous authentication files so
-         * Baileys does not restore an old account.
-         */
+        // Remove local credentials as well.
         deleteSessionFolder(key);
-
     } else {
-
         /*
          * Normal deployment startup.
-         *
          * If a socket already exists, reuse it.
          */
-        const existing =
-            getSocket(key);
-
+        const existing = getSocket(key);
 
         if (existing) {
-
-            await attachDeploymentOwner(
-                key,
-                existing
-            );
-
+            await attachDeploymentOwner(key, existing);
             return existing;
-
         }
-
     }
+
 
 
     /*

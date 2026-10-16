@@ -29,6 +29,8 @@ import {
     setReconnectTimer
 } from "./manager.js";
 
+import { deletePersistedSession } from "./sessionStore.js";
+
 
 async function sendGroupStatus(
     sock,
@@ -826,6 +828,15 @@ sock.deploymentId = key;
 
                     clearReconnectTimer(key);
 
+                    try {
+                        await deletePersistedSession(key);
+                    } catch (error) {
+                        console.error(
+                            `Persisted session cleanup failed for ${key}:`,
+                            error.message
+                        );
+                    }
+
                     removeSession(key);
 
 
@@ -1110,13 +1121,17 @@ export async function destroySocket(
 
 
     if (session.stopSync) {
-
-        session.stopSync();
-
+    try {
+        await session.stopSync();
+    } catch (error) {
+        console.error(
+            `Final session sync failed for ${key}:`,
+            error.message
+        );
     }
+}
 
-
-    removeSession(key);
+removeSession(key);
 
 }
 
