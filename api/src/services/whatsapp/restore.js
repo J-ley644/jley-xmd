@@ -1,14 +1,13 @@
+
 import prisma from "../../config/prisma.js";
 import { createSession } from "./pairing.js";
 
 /*
- * Restore WhatsApp sessions from the persistent
- * WhatsAppSession store.
+ * Restore eligible WhatsApp sessions from persistent storage.
  *
- * The WhatsAppSession table is the source of truth for
- * authentication data. We do not rely only on
- * Deployment.status/sessionReady because those values
- * can be stale after moving the API to another server.
+ * Only deployments that are RUNNING and have not expired
+ * should be restored. Stored credentials alone do not mean
+ * a deployment is still active.
  */
 export async function restoreSessions() {
     const storedSessions = await prisma.whatsAppSession.findMany({
@@ -26,20 +25,46 @@ export async function restoreSessions() {
         const deploymentId = String(stored.deploymentId);
 
         try {
-            await createSession(deploymentId);
-
             const deployment = await prisma.deployment.findUnique({
                 where: {
                     id: deploymentId
                 },
                 select: {
-                    botName: true
+                    botName: true,
+                    status: true,
+                    expiresAt: true
                 }
             });
 
+            if (!deployment) {
+                console.log(
+                    `Skipping restore: deployment ${deploymentId} no longer exists.`
+                );
+                continue;
+            }
+
+            if (deployment.status !== "RUNNING") {
+                console.log(
+                    `Skipping restore for ${deployment.botName || deploymentId}: status is ${deployment.status}.`
+                );
+                continue;
+            }
+
+            if (
+                deployment.expiresAt &&
+                deployment.expiresAt <= new Date()
+            ) {
+                console.log(
+                    `Skipping restore for ${deployment.botName || deploymentId}: deployment has expired.`
+                );
+                continue;
+            }
+
+            await createSession(deploymentId);
+
             console.log(
-                "Restored:",
-                deployment?.botName || deploymentId
+                "Restore initiated:",
+                deployment.botName || deploymentId
             );
         } catch (err) {
             console.error(

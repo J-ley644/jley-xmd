@@ -628,3 +628,49 @@ if (
 
 
 }
+
+
+/*
+ * Delete persisted authentication files from PostgreSQL.
+ *
+ * Use ONLY when explicitly starting a fresh pairing or
+ * when WhatsApp confirms the account has been logged out.
+ * Do not use during ordinary reconnects or server restarts.
+ */
+export async function deletePersistedSession(deploymentId) {
+    const key = String(deploymentId);
+
+    // Cancel pending writes before removing stored credentials.
+    const timer = syncTimers.get(key);
+
+    if (timer) {
+        clearTimeout(timer);
+        syncTimers.delete(key);
+    }
+
+    // Wait for any active sync to finish, preventing it from
+    // writing old credentials back after deletion.
+    const activeSync = syncLocks.get(key);
+
+    if (activeSync) {
+        try {
+            await activeSync;
+        } catch (error) {
+            console.error(
+                `[SESSION DELETE] Existing sync failed for ${key}:`,
+                error.message
+            );
+        }
+    }
+
+    // Remove all persisted auth files for this deployment.
+    await prisma.whatsAppSession.deleteMany({
+        where: {
+            deploymentId: key
+        }
+    });
+
+    console.log(
+        `[SESSION DELETE] Removed persisted credentials for deployment ${key}`
+    );
+}
