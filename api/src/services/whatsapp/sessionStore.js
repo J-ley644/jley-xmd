@@ -103,6 +103,41 @@ if (!files.length) {
 }
 
 
+/*
+ * Existing persisted sessions must include valid credentials.
+ * Prevent Baileys from silently creating a fresh login when
+ * a saved session is incomplete or corrupted.
+ */
+const credsRow = files.find((file) => file.fileName === "creds.json");
+
+if (
+    !credsRow ||
+    typeof credsRow.data !== "string" ||
+    !credsRow.data.trim()
+) {
+    throw new Error(
+        `Persisted WhatsApp session for ${key} is missing creds.json; refusing to start a fresh session.`
+    );
+}
+
+try {
+    const parsedCreds = JSON.parse(credsRow.data);
+
+    if (
+        !parsedCreds ||
+        typeof parsedCreds !== "object" ||
+        Array.isArray(parsedCreds)
+    ) {
+        throw new Error("creds.json must contain a JSON object");
+    }
+} catch (error) {
+    throw new Error(
+        `Persisted WhatsApp credentials for ${key} are invalid; refusing to start a fresh session. ${error.message}`
+    );
+}
+
+
+
 let restored = 0;
 
 

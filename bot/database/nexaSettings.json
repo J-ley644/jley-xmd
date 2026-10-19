@@ -11,14 +11,6 @@
         "history": [
           {
             "role": "user",
-            "text": "Yes..I need the link to create account in JLEY-XMD"
-          },
-          {
-            "role": "model",
-            "text": "I don't have a direct link for account creation"
-          },
-          {
-            "role": "user",
             "text": "If I give you that link...Will you remember it?"
           },
           {
@@ -56,6 +48,14 @@
           {
             "role": "model",
             "text": "I don't"
+          },
+          {
+            "role": "user",
+            "text": "🤖 NEXA is now enabled in this chat."
+          },
+          {
+            "role": "model",
+            "text": "Hello! I'm NEXA, ready to help. How can I assist you today?"
           }
         ]
       }
