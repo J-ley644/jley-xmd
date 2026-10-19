@@ -58,5 +58,22 @@
         "autolikeEmoji": "❤️",
         "autoreplyText": "Hello! I'm currently unavailable. I'll respond as soon as possible.",
         "chats": {}
+    },
+    "main": {
+        "prefix": ".",
+        "mode": "private",
+        "autoview": false,
+        "autoread": false,
+        "autolike": false,
+        "autoreply": false,
+        "automention": false,
+        "autotyping": false,
+        "autorecording": false,
+        "autolikeEmoji": "❤️",
+        "autoreplyText": "Hello! I'm currently unavailable. I'll respond as soon as possible.",
+        "anticall": false,
+        "anticallMode": "off",
+        "anticallReply": "Sorry, I don't take WhatsApp calls. Please send me a message instead.",
+        "chats": {}
     }
 }

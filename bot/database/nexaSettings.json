@@ -1,0 +1,64 @@
+{
+  "main": {
+    "globalEnabled": false,
+    "chats": {
+      "15535718809833@lid": {
+        "override": true,
+        "history": []
+      },
+      "185122200547532@lid": {
+        "override": true,
+        "history": [
+          {
+            "role": "user",
+            "text": "Yes..I need the link to create account in JLEY-XMD"
+          },
+          {
+            "role": "model",
+            "text": "I don't have a direct link for account creation"
+          },
+          {
+            "role": "user",
+            "text": "If I give you that link...Will you remember it?"
+          },
+          {
+            "role": "model",
+            "text": "I will remember it for the rest of our current conversation! However, I can't permanently save it to my system or remember it across new sessions."
+          },
+          {
+            "role": "user",
+            "text": "So Nexa are dobyou have the link for bot deployment site of JLEY-XMD"
+          },
+          {
+            "role": "model",
+            "text": "Yes! You can find"
+          },
+          {
+            "role": "user",
+            "text": "Please give me the link"
+          },
+          {
+            "role": "model",
+            "text": "Here is the official link: https://jley-xmd.netlify.app"
+          },
+          {
+            "role": "user",
+            "text": "Thanks..who's your owner again"
+          },
+          {
+            "role": "model",
+            "text": "You're welcome! My owner is J.ley."
+          },
+          {
+            "role": "user",
+            "text": "Okay. Do you have his contact or know any way i can get his contact please?"
+          },
+          {
+            "role": "model",
+            "text": "I don't"
+          }
+        ]
+      }
+    }
+  }
+}

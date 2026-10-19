@@ -517,11 +517,17 @@ const sessionPath =
 
         for (const message of messages) {
 
-            console.log(
-    "MESSAGE RECEIVED:",
-    message.key?.remoteJid,
-    message.key?.participant || ""
-);
+            console.log("[INCOMING]", {
+    chat: message.key?.remoteJid,
+    fromMe: message.key?.fromMe,
+    type,
+    hasMessage: Boolean(message.message),
+    messageTypes: Object.keys(message.message || {}),
+    text:
+        message.message?.conversation ||
+        message.message?.extendedTextMessage?.text ||
+        ""
+});
 
             if (!message?.message) {
                 continue;
@@ -1279,6 +1285,13 @@ if (
             chat
         );
 
+        console.log("[NEXA DEBUG]", {
+  deploymentId,
+  chat,
+  enabled: settings.enabled,
+  text: trimmedText
+});
+
         if (settings.enabled) {
             const history = nexaStore.getHistory(
                 deploymentId,
@@ -1292,15 +1305,10 @@ if (
 
             if (reply) {
                 await socket.sendMessage(chat, {
-                    text: reply
-                });
+    text: `🤖 *NEXA AI*\n\n${reply}`
+});
 
-                nexaStore.addExchange(
-                    deploymentId,
-                    chat,
-                    trimmedText,
-                    reply
-                );
+nexaStore.addExchange(deploymentId, chat, trimmedText, reply);
             }
         }
     } catch (error) {

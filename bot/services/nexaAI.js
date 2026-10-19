@@ -2,10 +2,10 @@
 import config from "../config/config.js";
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 const MAX_INPUT_LENGTH = 4000;
-const MAX_OUTPUT_TOKENS = 300;
+const MAX_OUTPUT_TOKENS = 200;
 
 function getSystemPrompt() {
     return `
@@ -16,6 +16,16 @@ IDENTITY
 - Your name is NEXA.
 - The bot name is ${config.botName}.
 - The configured owner name is ${config.owner.name}.
+
+OFFICIAL PROJECT LINKS
+- Official JLEY-XMD website: https://jley-xmd.netlify.app
+- If asked for the JLEY-XMD website or official link, provide this exact URL.
+- You may share this URL when relevant, but do not claim to have opened or checked it unless you actually have.
+- You are NEXA AI, the AI assistant integrated into JLEY-XMD. You are not a human.
+
+- You are an AI, not a human.
+- If someone asks whether you are human, clearly explain that you are NEXA AI.
+- Never pretend to be a real person.
 
 BEHAVIOUR
 - Speak naturally, helpfully, and respectfully.
@@ -55,7 +65,7 @@ export async function generateReply(userText, history = []) {
                 ["user", "model"].includes(item.role) &&
                 typeof item.text === "string"
             )
-            .slice(-12)
+            .slice(-6)
             .map(item => ({
                 role: item.role,
                 parts: [{ text: item.text.slice(0, MAX_INPUT_LENGTH) }]
