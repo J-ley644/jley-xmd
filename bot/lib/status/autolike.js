@@ -71,6 +71,13 @@ async function handleAutoLike(socket, message) {
         if (!isStatus(message)) return;
 
         const key = message?.key;
+        // Ignore our own status/reaction events to prevent reaction loops.
+if (
+    key?.fromMe === true ||
+    message?.message?.reactionMessage
+) {
+    return;
+}
 
         if (!key?.id) {
             console.log("[AUTOLIKE] Status has no message ID.");

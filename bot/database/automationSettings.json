@@ -62,7 +62,7 @@
     "main": {
         "prefix": ".",
         "mode": "private",
-        "autoview": false,
+        "autoview": true,
         "autoread": false,
         "autolike": false,
         "autoreply": false,
