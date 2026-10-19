@@ -2,12 +2,16 @@
 import prisma from "../../config/prisma.js";
 import { createSession } from "./pairing.js";
 
+const RESTORE_CONCURRENCY = 3;
+
 /**
  * Restore persisted WhatsApp sessions after an API restart.
- * A stale STOPPED status must not prevent restoring saved
- * WhatsApp authentication data.
+ * Restore up to three deployments concurrently without
+ * changing their stored authentication credentials.
  */
 export async function restoreSessions() {
+    console.log("[RESTORE] Loading persisted deployment sessions...");
+
     const storedSessions = await prisma.whatsAppSession.findMany({
         select: {
             deploymentId: true
@@ -16,41 +20,94 @@ export async function restoreSessions() {
     });
 
     console.log(
-        `Found ${storedSessions.length} persisted WhatsApp deployment session(s).`
+        `[RESTORE] Found ${storedSessions.length} persisted deployment session(s).`
     );
 
-    for (const stored of storedSessions) {
-        const deploymentId = String(stored.deploymentId);
+    if (storedSessions.length === 0) {
+        console.log("[RESTORE] No sessions require restoration.");
+        return;
+    }
 
-        try {
-            const deployment = await prisma.deployment.findUnique({
-                where: {
-                    id: deploymentId
-                },
-                select: {
-                    botName: true
-                }
-            });
+    let nextIndex = 0;
+    let initiated = 0;
+    let skipped = 0;
+    let failed = 0;
 
-            if (!deployment) {
-                console.log(
-                    `Skipping restore: deployment ${deploymentId} no longer exists.`
-                );
-                continue;
+    const workerCount = Math.min(
+        RESTORE_CONCURRENCY,
+        storedSessions.length
+    );
+
+    console.log(
+        `[RESTORE] Starting ${workerCount} restoration worker(s).`
+    );
+
+    async function restoreNext() {
+        while (true) {
+            const index = nextIndex++;
+
+            if (index >= storedSessions.length) {
+                return;
             }
 
-            await createSession(deploymentId);
+            const deploymentId = String(
+                storedSessions[index].deploymentId
+            );
 
-            console.log(
-                "Restore initiated:",
-                deployment.botName || deploymentId
-            );
-        } catch (err) {
-            console.error(
-                "Restore failed:",
-                deploymentId,
-                err.message
-            );
+            try {
+                console.log(
+                    `[RESTORE] ${deploymentId}: checking deployment...`
+                );
+
+                const deployment = await prisma.deployment.findUnique({
+                    where: {
+                        id: deploymentId
+                    },
+                    select: {
+                        botName: true
+                    }
+                });
+
+                if (!deployment) {
+                    skipped++;
+
+                    console.log(
+                        `[RESTORE] ${deploymentId}: skipped; deployment no longer exists.`
+                    );
+
+                    continue;
+                }
+
+                console.log(
+                    `[RESTORE] ${deploymentId}: initializing session...`
+                );
+
+                await createSession(deploymentId);
+
+                initiated++;
+
+                console.log(
+                    `[RESTORE] ${deployment.botName || deploymentId}: session initialization completed.`
+                );
+            } catch (err) {
+                failed++;
+
+                console.error(
+                    `[RESTORE] ${deploymentId}: restoration failed:`,
+                    err?.stack || err?.message || err
+                );
+            }
         }
     }
+
+    await Promise.all(
+        Array.from(
+            { length: workerCount },
+            () => restoreNext()
+        )
+    );
+
+    console.log(
+        `[RESTORE] Finished. Initiated: ${initiated}; skipped: ${skipped}; failed: ${failed}.`
+    );
 }
