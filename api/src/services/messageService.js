@@ -1,5 +1,5 @@
 import { handleCommand } from "../../../bot/core/commandHandler.js";
-import loadPlugins from "../../../bot/core/pluginLoader.js";
+import pluginStore from "../../../bot/system/pluginStore.js";
 import config from "../../../bot/config/config.js";
 import automationStore from "../../../bot/system/automationStore.js";
 import relationshipTracker from "../../../bot/system/relationshipTracker.js";
@@ -774,8 +774,7 @@ export async function handleMessage(
            LOAD PLUGINS
         ===================================================== */
 
-        const plugins =
-            await loadPlugins();
+        const plugins = pluginStore.getAll();
 
 
         /* =====================================================
