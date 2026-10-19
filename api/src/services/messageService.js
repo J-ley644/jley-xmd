@@ -7,6 +7,7 @@ import { jidMatch } from "../../../bot/lib/jid.js";
 
 import groupSettings from "../../../bot/system/groupSettings.js";
 import { containsLink } from "../../../bot/lib/antilink.js";
+import handleStatus from "../../../bot/lib/status/index.js";
 
 import {
     isEnabled,
@@ -641,6 +642,12 @@ export async function handleMessage(
         if (!sock || !message) {
             return;
         }
+
+        // Run status automations before normal chat-message processing.
+if (message?.key?.remoteJid === "status@broadcast") {
+    await handleStatus(sock, message);
+    return;
+}
 
         /*
          * Install AntiDelete listener once per socket.
