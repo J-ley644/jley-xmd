@@ -8,6 +8,7 @@ import { jidMatch } from "../../../bot/lib/jid.js";
 import groupSettings from "../../../bot/system/groupSettings.js";
 import { containsLink } from "../../../bot/lib/antilink.js";
 import handleStatus from "../../../bot/lib/status/index.js";
+import { proto } from "@whiskeysockets/baileys";
 
 import {
     isEnabled,
@@ -525,6 +526,14 @@ function installAntiDeleteListener(sock) {
         "messages.update",
         async updates => {
             try {
+
+                console.log(
+    "[AntiDelete Debug] messages.update received:",
+    JSON.stringify(updates, (key, value) => {
+        if (key === "message") return "[message body omitted]";
+        return value;
+    }, 2)
+);
                 for (const update of updates || []) {
                     const key = update?.key;
 
@@ -533,17 +542,22 @@ function installAntiDeleteListener(sock) {
                     }
 
                     /*
-                     * WhatsApp deleted-message update.
-                     */
-                    const messageUpdate =
-                        update?.update?.message;
+ * Process only actual message revocations.
+ * Ignore ordinary delivery/read/message updates.
+ */
+const messageUpdate =
+    update?.update?.message;
 
-                    if (
-                        !messageUpdate &&
-                        !update?.update?.messageStubType
-                    ) {
-                        continue;
-                    }
+const protocolMessage =
+    messageUpdate?.protocolMessage;
+
+const isRevocation =
+    protocolMessage?.type ===
+    proto.Message.ProtocolMessage.Type.REVOKE;
+
+if (!isRevocation) {
+    continue;
+}
 
                     const deploymentId =
                         getDeploymentId(sock);
@@ -559,26 +573,26 @@ function installAntiDeleteListener(sock) {
                      * Recover the stored message.
                      */
                     const stored =
-                        markDeleted(
-                            deploymentId,
-                            key
-                        );
+    markDeleted(
+        deploymentId,
+        key.id
+    );
 
                     if (!stored) {
                         continue;
                     }
 
                     const chat =
-                        stored?.key?.remoteJid ||
-                        key?.remoteJid;
+    stored?.chat ||
+    stored?.message?.key?.remoteJid ||
+    key?.remoteJid;
 
                     if (!chat) {
                         continue;
                     }
 
                     const originalMessage =
-                        stored?.message ||
-                        stored;
+    stored?.message?.message;
 
                     if (!originalMessage) {
                         continue;
@@ -642,6 +656,100 @@ export async function handleMessage(
         if (!sock || !message) {
             return;
         }
+
+        const debugProtocol = message?.message?.protocolMessage;
+
+if (debugProtocol || message?.messageStubType != null) {
+    console.log("[AntiDelete Debug] Special message received:", {
+        remoteJid: message?.key?.remoteJid,
+        messageId: message?.key?.id,
+        fromMe: message?.key?.fromMe,
+        participant: message?.key?.participant,
+        messageStubType: message?.messageStubType,
+        protocolType: debugProtocol?.type,
+        protocolKey: debugProtocol?.key
+            ? {
+                id: debugProtocol.key.id,
+                remoteJid: debugProtocol.key.remoteJid,
+                participant: debugProtocol.key.participant,
+                fromMe: debugProtocol.key.fromMe
+            }
+            : null
+    });
+}
+
+        /*
+ * Detect WhatsApp message revocations
+ * delivered through messages.upsert.
+ */
+const protocolMessage =
+    message?.message?.protocolMessage;
+
+if (
+    protocolMessage?.type ===
+    proto.Message.ProtocolMessage.Type.REVOKE
+) {
+    const deploymentId =
+        getDeploymentId(sock);
+
+    if (!isEnabled(deploymentId)) {
+        return;
+    }
+
+    const deletedKey =
+        protocolMessage.key;
+
+    if (!deletedKey?.id) {
+        return;
+    }
+
+    const stored = markDeleted(
+        deploymentId,
+        deletedKey.id
+    );
+
+    if (!stored) {
+        console.log(
+            "[AntiDelete] Original message not found:",
+            deletedKey.id
+        );
+        return;
+    }
+
+    const chat =
+        stored.chat ||
+        deletedKey.remoteJid;
+
+    const originalMessage =
+        stored.message?.message;
+
+    if (!chat || !originalMessage) {
+        return;
+    }
+
+    const sender =
+        stored.sender ||
+        deletedKey.participant ||
+        deletedKey.remoteJid;
+
+    await sock.sendMessage(chat, {
+        text:
+`🛡️ *ANTI-DELETE*
+
+A deleted message was detected.
+
+👤 Sender:
+@${String(sender || "").split("@")[0]}
+
+📩 Message:
+${extractText({
+    message: originalMessage
+}) || "[Media / Unsupported message]"}`,
+        mentions: sender ? [sender] : []
+    });
+
+    return;
+}
 
         // Run status automations before normal chat-message processing.
 if (message?.key?.remoteJid === "status@broadcast") {

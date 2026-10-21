@@ -517,6 +517,25 @@ const sessionPath =
 
         for (const message of messages) {
 
+            if (message?.message?.protocolMessage) {
+    const protocol = message.message.protocolMessage;
+
+    console.log("[AntiDelete Debug] Revocation payload:", {
+        remoteJid: message.key?.remoteJid,
+        eventMessageId: message.key?.id,
+        protocolType: protocol.type,
+        revokeType: "check against Baileys REVOKE enum",
+        deletedKey: protocol.key
+            ? {
+                id: protocol.key.id,
+                remoteJid: protocol.key.remoteJid,
+                participant: protocol.key.participant,
+                fromMe: protocol.key.fromMe
+            }
+            : null
+    });
+}
+
             console.log("[INCOMING]", {
     chat: message.key?.remoteJid,
     fromMe: message.key?.fromMe,
@@ -558,17 +577,8 @@ const sessionPath =
             |
             */
 
-            const messageValues =
-                Object.values(
-                    message.message || {}
-                );
-
-
             const protocolMessage =
-                messageValues.find(
-                    value =>
-                        value?.protocolMessage
-                )?.protocolMessage;
+    message.message?.protocolMessage;
 
 
             if (
@@ -582,6 +592,11 @@ const sessionPath =
 
                 const deletedMessageId =
                     deletedKey?.id;
+
+                    console.log("[AntiDelete] Deletion detected:", {
+    deploymentId,
+    deletedMessageId
+});
 
 
                 /*
@@ -603,6 +618,11 @@ const sessionPath =
                         deletedBy
                     );
 
+                    console.log("[AntiDelete] History lookup:", {
+    found: Boolean(deleted),
+    enabled: isEnabled(deploymentId)
+});
+
 
                 /*
                 |----------------------------------------------------------------------
@@ -619,14 +639,49 @@ const sessionPath =
 
                     try {
 
-                        await processMessage(
-                            socket,
-                            {
-                                ...message,
-                                antidelete:
-                                    deleted
-                            }
-                        );
+                        const originalMessage =
+    deleted.message?.message;
+
+const originalChat =
+    deleted.chat;
+
+const originalText =
+    originalMessage?.conversation ||
+    originalMessage?.extendedTextMessage?.text ||
+    originalMessage?.imageMessage?.caption ||
+    originalMessage?.videoMessage?.caption ||
+    "";
+
+if (!originalChat || !originalMessage) {
+    console.log(
+        "[AntiDelete] Missing original chat or message"
+    );
+    continue;
+}
+
+const recoveryText =
+    `🛡️ *ANTI-DELETE RECOVERY*\n\n` +
+    `👤 Sender: ${deleted.senderName || "Unknown"}\n\n` +
+    `📩 Recovered message:\n` +
+    `${originalText || "[Media / Unsupported message]"}`;
+
+console.log("[AntiDelete] Sending recovery:", {
+    chat: originalChat,
+    messageId: deleted.messageId,
+    hasText: Boolean(originalText)
+});
+
+const sent = await socket.sendMessage(
+    originalChat,
+    {
+        text: recoveryText
+    }
+);
+
+console.log("[AntiDelete] Recovery send result:", {
+    sent: Boolean(sent?.key?.id),
+    sentMessageId: sent?.key?.id
+});
 
                     }
                     catch (error) {

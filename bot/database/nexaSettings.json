@@ -7,32 +7,8 @@
         "history": []
       },
       "185122200547532@lid": {
-        "override": true,
+        "override": false,
         "history": [
-          {
-            "role": "user",
-            "text": "If I give you that link...Will you remember it?"
-          },
-          {
-            "role": "model",
-            "text": "I will remember it for the rest of our current conversation! However, I can't permanently save it to my system or remember it across new sessions."
-          },
-          {
-            "role": "user",
-            "text": "So Nexa are dobyou have the link for bot deployment site of JLEY-XMD"
-          },
-          {
-            "role": "model",
-            "text": "Yes! You can find"
-          },
-          {
-            "role": "user",
-            "text": "Please give me the link"
-          },
-          {
-            "role": "model",
-            "text": "Here is the official link: https://jley-xmd.netlify.app"
-          },
           {
             "role": "user",
             "text": "Thanks..who's your owner again"
@@ -56,6 +32,30 @@
           {
             "role": "model",
             "text": "Hello! I'm NEXA, ready to help. How can I assist you today?"
+          },
+          {
+            "role": "user",
+            "text": "Test delete"
+          },
+          {
+            "role": "model",
+            "text": "If you're"
+          },
+          {
+            "role": "user",
+            "text": "🤖 NEXA is now disabled globally for this deployment."
+          },
+          {
+            "role": "model",
+            "text": "Understood. If you"
+          },
+          {
+            "role": "user",
+            "text": "Test"
+          },
+          {
+            "role": "model",
+            "text": "Loud and clear! How can I"
           }
         ]
       }
