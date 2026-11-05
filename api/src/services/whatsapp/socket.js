@@ -693,6 +693,86 @@ sock.deploymentId = key;
     });
 
 
+        /*
+     * Send a one-time connection success message
+     * to the WhatsApp account that was just connected.
+     */
+
+    if (sock.user?.id) {
+
+        const activationTime = new Date();
+
+        const activationClaim =
+            await prisma.deployment.updateMany({
+
+                where: {
+                    id: key,
+                    activatedAt: null
+                },
+
+                data: {
+                    activatedAt: activationTime
+                }
+
+            });
+
+
+        if (activationClaim.count === 1) {
+
+            try {
+
+                await sock.sendMessage(
+                    sock.user.id,
+                    {
+                        text:
+                            `✅ *JLEY-XMD CONNECTED SUCCESSFULLY!*\n\n` +
+                            `Your WhatsApp account has been connected to JLEY-XMD successfully.\n\n` +
+                            `Your bot is now online and ready to receive commands.\n\n` +
+                            `⚡ *Powered by JLEY TECH*`
+                    }
+                );
+
+
+                console.log(
+                    `Connection success message sent for deployment ${key}`
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to send connection success message:",
+                    error.message
+                );
+
+
+                // Allow another connection attempt to retry delivery.
+                await prisma.deployment.updateMany({
+
+                    where: {
+                        id: key,
+                        activatedAt: activationTime
+                    },
+
+                    data: {
+                        activatedAt: null
+                    }
+
+                }).catch(resetError => {
+
+                    console.error(
+                        "Failed to reset activation notification:",
+                        resetError.message
+                    );
+
+                });
+
+            }
+
+        }
+
+    }
+
+
     /*
      * Send the JLEY session ID to the linked
      * WhatsApp account's own DM.
