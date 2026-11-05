@@ -19,9 +19,8 @@
 |
 |--------------------------------------------------------------------------
 */
+import yts from "yt-search";
 
-const SEARCH_API =
-    "https://apiziaul.vercel.app/api/downloader/ytplaymp3";
 
 const YTDL_API =
     "https://api.sidycoders.xyz/api/ytdl";
@@ -29,8 +28,20 @@ const YTDL_API =
 const YTDL_API_KEY =
     "memberdycoders";
 
-const REQUEST_TIMEOUT =
-    45_000;
+const REQUEST_TIMEOUT = 120_000;
+
+
+
+
+    function playDebug(stage, details = {}) {
+    const timestamp = new Date().toISOString();
+
+    console.log(
+        `[JLEY-PLAY DEBUG] ${timestamp} | ${stage}`,
+        JSON.stringify(details)
+    );
+}
+
 
 
 /*
@@ -110,6 +121,14 @@ async function fetchJson(
                 }
             );
 
+            playDebug("API RESPONSE", {
+    host: new URL(url).hostname,
+    status: response.status,
+    ok: response.ok,
+    contentType: response.headers.get("content-type"),
+    contentLength: response.headers.get("content-length")
+});
+
         const text =
             await response.text();
 
@@ -125,6 +144,8 @@ async function fetchJson(
             throw new Error(
                 `Downloader API returned invalid JSON (${response.status}).`
             );
+
+            
 
         }
 
@@ -187,62 +208,26 @@ async function fetchJson(
 |--------------------------------------------------------------------------
 */
 
-async function searchSong(
-    query
-) {
+async function searchSong(query) {
+    playDebug("YOUTUBE SEARCH START", { query });
 
-    const url =
-        `${SEARCH_API}?query=${encodeURIComponent(query)}`;
+    const results = await yts(query);
 
-    const data =
-        await fetchJson(
-            url
-        );
+    const video = results.videos?.[0];
 
-    if (
-        data?.status === false
-    ) {
-
-        throw new Error(
-            "No YouTube result was found."
-        );
-
+    if (!video?.url) {
+        throw new Error("No YouTube result was found.");
     }
 
-    const result =
-        data?.result ||
-        data?.data ||
-        data;
-
-    const audioUrl =
-        result?.downloadUrl ||
-        result?.download_url ||
-        result?.url ||
-        data?.downloadUrl ||
-        data?.download_url;
-
-    if (!audioUrl) {
-
-        throw new Error(
-            "The search service did not return an audio URL."
-        );
-
-    }
-
-    const title =
-        result?.title ||
-        result?.name ||
-        data?.title ||
-        "JLEY-XMD Audio";
+    playDebug("YOUTUBE SEARCH RESULT", {
+        title: video.title,
+        videoUrl: video.url
+    });
 
     return {
-
-        audioUrl,
-
-        title
-
+        youtubeUrl: video.url,
+        title: video.title
     };
-
 }
 
 
@@ -263,69 +248,91 @@ async function searchSong(
 |--------------------------------------------------------------------------
 */
 
-async function resolveYouTubeAudio(
-    youtubeUrl
-) {
+async function downloadYouTubeAudio(youtubeUrl) {
+    playDebug("SAMPLECUT DOWNLOAD START", {
+        youtubeUrl
+    });
 
-    const params =
-        new URLSearchParams({
+    const controller = new AbortController();
 
-            url:
-                youtubeUrl,
+    const timeout = setTimeout(
+        () => controller.abort(),
+        REQUEST_TIMEOUT
+    );
 
-            format:
-                "mp3",
+    try {
+        const response = await fetch(
+            "https://api.samplecut.app/v1/downloads",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Client-Name": "JLEY-XMD"
+                },
+                body: JSON.stringify({
+                    url: youtubeUrl,
+                    format: "mp3",
+                    response: "file"
+                }),
+                signal: controller.signal
+            }
+        );
 
-            apikey:
-                YTDL_API_KEY
+        const contentType =
+            response.headers.get("content-type") || "";
 
+        if (!response.ok) {
+            const errorBody = await response.text();
+
+            let errorMessage = errorBody;
+
+            try {
+                const parsed = JSON.parse(errorBody);
+                errorMessage =
+                    parsed?.error?.message || errorBody;
+            } catch {}
+
+            throw new Error(
+                `Samplecut HTTP ${response.status}: ${errorMessage}`
+            );
+        }
+
+        if (!contentType.includes("audio/")) {
+            throw new Error(
+                `Samplecut returned unexpected content: ${contentType}`
+            );
+        }
+
+        const audioBuffer = Buffer.from(
+            await response.arrayBuffer()
+        );
+
+        if (!audioBuffer.length) {
+            throw new Error("Samplecut returned an empty audio file.");
+        }
+
+        playDebug("SAMPLECUT DOWNLOAD COMPLETED", {
+            contentType,
+            size: audioBuffer.length
         });
 
-    const endpoint =
-        `${YTDL_API}?${params.toString()}`;
+        return {
+            audioBuffer,
+            contentType: contentType.split(";")[0]
+        };
 
-    const data =
-        await fetchJson(
-            endpoint
-        );
+    } catch (error) {
+        if (error.name === "AbortError") {
+            throw new Error(
+                "Audio extraction timed out. Please try again."
+            );
+        }
 
-    if (
-        data?.status === false
-    ) {
+        throw error;
 
-        throw new Error(
-            data?.message ||
-            "The YouTube audio service rejected the request."
-        );
-
+    } finally {
+        clearTimeout(timeout);
     }
-
-    const audioUrl =
-        data?.cdn ||
-        data?.downloadUrl ||
-        data?.download_url ||
-        data?.result?.downloadUrl ||
-        data?.result?.url;
-
-    if (!audioUrl) {
-
-        throw new Error(
-            "The YouTube audio service did not return an audio URL."
-        );
-
-    }
-
-    return {
-
-        audioUrl,
-
-        title:
-            data?.title ||
-            data?.result?.title ||
-            "JLEY-XMD Audio"
-
-    };
-
 }
 
 
@@ -386,124 +393,41 @@ export default {
 
         try {
 
-            let audioUrl =
-                null;
+            let youtubeUrl = null;
+let title = "JLEY-XMD Audio";
 
-            let title =
-                "JLEY-XMD Audio";
+if (isYouTubeUrl(query)) {
 
+    await ctx.reply("🔎 Reading YouTube audio...");
+    youtubeUrl = query;
 
-            /*
-            |--------------------------------------------------------------------------
-            | YouTube URL
-            |--------------------------------------------------------------------------
-            */
+} else {
 
-            if (
-                isYouTubeUrl(
-                    query
-                )
-            ) {
+    await ctx.reply("🔎 Searching for the song...");
 
-                await ctx.reply(
-                    "🔎 Reading YouTube audio..."
-                );
+    const result = await searchSong(query);
 
-                const result =
-                    await resolveYouTubeAudio(
-                        query
-                    );
+    youtubeUrl = result.youtubeUrl;
+    title = result.title || title;
+}
 
-                audioUrl =
-                    result.audioUrl;
+if (!youtubeUrl) {
+    throw new Error("No YouTube video URL was found.");
+}
 
-                title =
-                    result.title ||
-                    title;
+await ctx.reply(`⬇️ *Downloading audio:*\n${title}`);
 
-            }
+const result = await downloadYouTubeAudio(youtubeUrl);
 
+await ctx.send({
+    audio: result.audioBuffer,
+    mimetype: result.contentType,
+    fileName: `${sanitizeFileName(title)}.mp3`,
+    ptt: false
+});
 
-            /*
-            |--------------------------------------------------------------------------
-            | Song search
-            |--------------------------------------------------------------------------
-            */
+playDebug("WHATSAPP SEND COMPLETED", { title });
 
-            else {
-
-                await ctx.reply(
-                    "🔎 Searching for the song..."
-                );
-
-                const result =
-                    await searchSong(
-                        query
-                    );
-
-                audioUrl =
-                    result.audioUrl;
-
-                title =
-                    result.title ||
-                    title;
-
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Validate resolver result
-            |--------------------------------------------------------------------------
-            */
-
-            if (!audioUrl) {
-
-                throw new Error(
-                    "No audio URL was returned."
-                );
-
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Send audio
-            |--------------------------------------------------------------------------
-            |
-            | Important:
-            |
-            | ctx.send() already supports:
-            |
-            |   audio: { url: "https://..." }
-            |
-            | So we don't download the file to the JLEY-XMD server.
-            |
-            |--------------------------------------------------------------------------
-            */
-
-            await ctx.reply(
-                `⬇️ *Sending audio:*\n${title}`
-            );
-
-
-            await ctx.send({
-
-                audio: {
-                    url:
-                        audioUrl
-                },
-
-                mimetype:
-                    "audio/mpeg",
-
-                fileName:
-                    `${sanitizeFileName(title)}.mp3`,
-
-                ptt:
-                    false
-
-            });
 
 
         } catch (error) {

@@ -998,56 +998,66 @@ sock.deploymentId = key;
      * Pairing-code flow.
      */
 
+    
+    /*
+     * Pairing-code flow with temporary diagnostics.
+     */
     if (phoneNumber) {
+        const normalizedPhone = String(phoneNumber).replace(/\D/g, "");
+
+        console.log("[PAIRING DIAG] Starting pairing-code request", {
+            deploymentId: key,
+            phoneNumberLength: normalizedPhone.length,
+            socketExists: Boolean(session.sock),
+            socketUserExists: Boolean(session.sock?.user),
+            socketReadyState: session.sock?.ws?.readyState ?? null,
+            sessionIsActive: getSession(key) === session
+        });
 
         try {
-
-            const normalizedPhone =
-                String(phoneNumber)
-                    .replace(/\D/g, "");
-
-
             if (!normalizedPhone) {
-
-                throw new Error(
-                    "Invalid phone number."
-                );
-
+                throw new Error("Invalid phone number.");
             }
 
+            if (!session.sock) {
+                throw new Error("WhatsApp socket is unavailable.");
+            }
 
-            const pairingCode =
-                await session.sock.requestPairingCode(
-                    normalizedPhone
-                );
+            console.log("[PAIRING DIAG] Calling requestPairingCode");
 
+            const pairingCode = await session.sock.requestPairingCode(
+                normalizedPhone
+            );
 
-            session.code =
-                pairingCode;
+            if (!pairingCode) {
+                throw new Error("Baileys returned an empty pairing code.");
+            }
 
+            session.code = pairingCode;
             session.qr = null;
+            session.status = CONNECTION.CONNECTING;
 
-            session.status =
-                CONNECTION.CONNECTING;
-
-
-            console.log(
-                "PAIRING CODE READY:",
-                pairingCode
-            );
-
+            console.log("[PAIRING DIAG] Pairing code generated successfully", {
+                deploymentId: key,
+                codeLength: String(pairingCode).length,
+                sessionIsActive: getSession(key) === session
+            });
         } catch (error) {
-
-            console.error(
-                "Pairing code generation failed:",
-                error.message
-            );
+            console.error("[PAIRING DIAG] Pairing-code request failed", {
+                deploymentId: key,
+                errorName: error?.name,
+                errorMessage: error?.message,
+                errorCode: error?.code,
+                stack: error?.stack
+            });
 
             session.code = null;
 
+            // Temporarily rethrow so the caller can see the actual failure.
+            throw error;
         }
-
     }
+
 
 
     return session;
